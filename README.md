@@ -4,6 +4,10 @@ Folio is a local-first Android app for tracking a personal investment portfolio.
 
 All portfolio records are stored in a Room/SQLite database on the device. Internet access is used only to look up instruments and refresh market prices; previously saved prices, valuations, and portfolio data remain available offline.
 
+<p align="center">
+  <img src="docs/images/folio-dashboard.png" alt="Folio portfolio dashboard" width="442">
+</p>
+
 ## What it does
 
 - Tracks assets across these classes: fixed income, US dollar, crypto, Iranian stock, global stock, gold, silver, and manual assets.
