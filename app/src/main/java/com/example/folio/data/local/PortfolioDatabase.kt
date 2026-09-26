@@ -77,6 +77,16 @@ data class ProviderRefreshEntity(@PrimaryKey(autoGenerate = true) val id: Long =
     @Insert suspend fun insertPortfolioSnapshot(item: PortfolioSnapshotEntity): Long
     @Query("SELECT * FROM portfolio_snapshot ORDER BY captured_at ASC, id ASC") fun observePortfolioSnapshots(): Flow<List<PortfolioSnapshotEntity>>
     @Query("SELECT * FROM portfolio_snapshot ORDER BY captured_at ASC, id ASC") suspend fun portfolioSnapshots(): List<PortfolioSnapshotEntity>
+    @Query("SELECT * FROM portfolio_snapshot ORDER BY captured_at DESC, id DESC LIMIT 1") suspend fun latestPortfolioSnapshot(): PortfolioSnapshotEntity?
+    /** Publish the per-asset records and their total as one coherent history point. */
+    @Transaction
+    suspend fun insertValuationSnapshot(
+        valuations: List<AssetValuationEntity>,
+        snapshot: PortfolioSnapshotEntity,
+    ) {
+        for (valuation in valuations) insertValuation(valuation)
+        insertPortfolioSnapshot(snapshot)
+    }
     @Query("SELECT * FROM portfolio_assetvaluation WHERE asset_id=:assetId ORDER BY captured_at DESC, id DESC LIMIT 1") suspend fun latestValuation(assetId: Long): AssetValuationEntity?
     @Query("SELECT * FROM portfolio_assetvaluation WHERE asset_id=:assetId ORDER BY captured_at ASC") fun observeValuations(assetId: Long): Flow<List<AssetValuationEntity>>
 }

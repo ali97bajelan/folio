@@ -157,8 +157,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             val quantity = HoldingService.quantityAt(dao.transactions(asset.id))
             AssetValuationEntity(assetId = asset.id, quantity = quantity, usdtValue = quantity.multiply(usdtPrice), tomanValue = quantity.multiply(tomanPrice), capturedAt = capturedAt)
         }
-        for (valuation in valuations) dao.insertValuation(valuation)
-        dao.insertPortfolioSnapshot(PortfolioSnapshotEntity(
+        dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
             usdtValue = valuations.map { it.usdtValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
             tomanValue = valuations.map { it.tomanValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
             capturedAt = capturedAt,

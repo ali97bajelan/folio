@@ -127,11 +127,19 @@ class PortfolioRepository(private val dao: PortfolioDao) {
             )
         }.sortedWith(compareByDescending<AssetRow> { it.tomanValue != null }.thenByDescending { it.tomanValue })
 
+        val liveTomanTotal = rows.mapNotNull(AssetRow::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add)
+        val liveUsdTotal = rows.mapNotNull(AssetRow::usdValue).fold(BigDecimal.ZERO, BigDecimal::add)
+        // The header and chart deliberately share this immutable total. Rows
+        // can react to an in-progress quote refresh, but the headline changes
+        // only when that refresh has committed its complete valuation point.
+        val latestSnapshot = dao.latestPortfolioSnapshot()
         return DashboardData(
             rows = rows,
-            tomanTotal = rows.mapNotNull(AssetRow::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add),
+            tomanTotal = latestSnapshot?.tomanValue ?: liveTomanTotal,
+            usdTotal = latestSnapshot?.usdtValue ?: liveUsdTotal,
             missing = rows.count { it.tomanValue == null },
-            updatedAt = latestPrices.values.filterNotNull().maxByOrNull(AssetPriceEntity::capturedAt)?.capturedAt,
+            updatedAt = latestSnapshot?.capturedAt
+                ?: latestPrices.values.filterNotNull().maxByOrNull(AssetPriceEntity::capturedAt)?.capturedAt,
         )
     }
 
@@ -173,8 +181,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
             val prices = pricesByAsset[asset.id].orEmpty()
             AssetValuationEntity(assetId = asset.id, quantity = HoldingService.quantityAt(items), usdtValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt), tomanValue = PortfolioValuationService.assetValue(asset, items, prices, "IRT", null, usdIrt), capturedAt = now)
         }
-        for (valuation in valuations) dao.insertValuation(valuation)
-        dao.insertPortfolioSnapshot(PortfolioSnapshotEntity(
+        dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
             usdtValue = valuations.mapNotNull(AssetValuationEntity::usdtValue).fold(BigDecimal.ZERO, BigDecimal::add),
             tomanValue = valuations.mapNotNull(AssetValuationEntity::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add),
             capturedAt = now,
@@ -213,6 +220,7 @@ data class AssetRow(
 data class DashboardData(
     val rows: List<AssetRow>,
     val tomanTotal: BigDecimal,
+    val usdTotal: BigDecimal,
     val missing: Int,
     val updatedAt: Instant? = null,
 )

@@ -48,7 +48,7 @@ class MainViewModel(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            DashboardData(emptyList(), BigDecimal.ZERO, 0),
+            DashboardData(emptyList(), BigDecimal.ZERO, BigDecimal.ZERO, 0),
         )
     val portfolioHistory = merge(
         refresh.map { Unit },
