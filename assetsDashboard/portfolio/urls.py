@@ -1,0 +1,6 @@
+from django.urls import path
+from . import views
+urlpatterns = [
+    path('', views.dashboard, name='dashboard'), path('pricing/refresh/', views.refresh_prices, name='refresh_prices'), path('pricing/search/', views.provider_instrument_search, name='provider_instrument_search'), path('pricing/tsetmc/search/', views.tsetmc_instrument_search, name='tsetmc_instrument_search'),
+    path('assets/', views.asset_list, name='asset_list'), path('assets/new/', views.asset_create, name='asset_create'), path('assets/<int:pk>/', views.asset_detail, name='asset_detail'), path('assets/<int:pk>/edit/', views.asset_edit, name='asset_edit'), path('assets/<int:pk>/delete/', views.asset_delete, name='asset_delete'), path('assets/<int:pk>/prices/manual/', views.manual_price, name='manual_price'),
+    path('transactions/', views.transaction_list, name='transaction_list'), path('transactions/new/', views.transaction_create, name='transaction_create'), path('transactions/<int:pk>/edit/', views.transaction_edit, name='transaction_edit'), path('transactions/<int:pk>/delete/', views.transaction_delete, name='transaction_delete'), path('tags/', views.tags, name='tags'), path('locations/', views.locations, name='locations')]

@@ -1,0 +1,107 @@
+{% extends 'portfolio/base.html' %}
+{% load portfolio_i18n %}
+{% block heading %}{{ title }}{% endblock %}
+{% block content %}
+<section class="form-panel panel"><form method="post">{% csrf_token %}{{ form.non_field_errors }}
+{% for field in form %}
+{% if field.is_hidden %}{{ field }}{% else %}<div class="form-row"><label>{{ field.label }}{% if field.field.required %}<i>*</i>{% endif %}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for e in field.errors %}<div class="error">{{ e }}</div>{% endfor %}</div>{% endif %}
+{% if field.name == 'name' %}{% for e in form.symbol.errors %}<div class="error">{{ e }}</div>{% endfor %}{% endif %}
+{% if field.name == 'price_provider' %}
+<section id="provider-search" class="instrument-search" hidden>
+  <label>{{ 'Matching instruments'|ui }}</label>
+  <small id="provider-search-help">{{ 'Enter an asset name, then choose a suggested market.'|ui }}</small>
+  <div id="provider-results" class="instrument-results" aria-live="polite"></div>
+  {% for e in form.provider_symbol.errors %}<div class="error">{{ e }}</div>{% endfor %}
+</section>
+{% endif %}
+{% endfor %}
+{% if holdings_formset %}<fieldset><legend>{{ 'Opening holdings by location'|ui }}</legend><p class="muted">{{ 'Add one row for each exchange or wallet where you already hold this asset.'|ui }}</p>{{ holdings_formset.management_form }}<div id="holding-forms">{% for holding in holdings_formset %}<div class="form-row holding-row">{% for field in holding.visible_fields %}<label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="error">{{ e }}</div>{% endfor %}{% endfor %}</div>{% endfor %}</div><template id="holding-empty-form"><div class="form-row holding-row">{% for field in holdings_formset.empty_form.visible_fields %}<label>{{ field.label }}</label>{{ field }}{% endfor %}</div></template><button id="add-holding" class="button ghost" type="button">{{ '+ Add another holding'|ui }}</button></fieldset>{% endif %}
+<div class="form-actions"><a href="javascript:history.back()">{{ 'Cancel'|ui }}</a><button class="button" type="submit">{{ submit }}</button></div></form></section>
+<style>
+.instrument-search{margin:-5px 0 20px;padding:14px;border:1px solid rgba(101,140,242,.22);border-radius:8px;background:rgba(74,113,223,.06)}.instrument-search label{display:block;font-weight:700;margin-bottom:7px}.instrument-search .field{width:100%}.instrument-search small{display:block;color:var(--muted);margin-top:6px}.instrument-results{display:grid;gap:5px;margin-top:10px}.instrument-result{display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:10px;width:100%;padding:9px 10px;text-align:left;color:var(--ink);background:#101a2c;border:1px solid var(--line);border-radius:6px;cursor:pointer}.instrument-result:hover{border-color:rgba(116,157,255,.65);background:#17233c}.instrument-result b{color:#9eb9ff}.instrument-result span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.instrument-result small{margin:0;color:#74849d;font:10px 'DM Mono'}
+</style>
+<script>
+(() => {
+  const provider = document.getElementById('id_price_provider');
+  const name = document.getElementById('id_name');
+  const symbol = document.getElementById('id_provider_symbol');
+  const assetSymbol = document.getElementById('id_symbol');
+  const assetType = document.getElementById('id_asset_type');
+  const panel = document.getElementById('provider-search');
+  const help = document.getElementById('provider-search-help');
+  const results = document.getElementById('provider-results');
+  if (!provider || !name || !symbol || !assetSymbol || !panel || !results) return;
+  const searchUrl = '{% url "provider_instrument_search" %}'; let timer;
+  const providerCopy = {
+    TSETMC: 'Find a TSETMC stock', NOBITEX: 'Find a Nobitex market',
+    ABANTETHER: 'Find an Aban Tether crypto asset', RAHAVARD: 'Find a Rahavard instrument',
+  };
+  function clearResults(message = '') { results.replaceChildren(); if (message) results.textContent = message; }
+  function syncPanel() {
+    const label = providerCopy[provider.value]; panel.hidden = !label;
+    if (!label) return clearResults();
+    panel.querySelector('label').textContent = label;
+    help.textContent = name.value.trim() ? 'Choose a suggested market to set pricing automatically.' : 'Enter an asset name to search this provider.';
+    search();
+  }
+  function search() {
+    window.clearTimeout(timer); const value = name.value.trim(); if (!providerCopy[provider.value] || !value) return clearResults();
+    timer = window.setTimeout(async () => {
+      clearResults(`Searching ${provider.options[provider.selectedIndex].text}…`);
+      try {
+        const response = await fetch(`${searchUrl}?provider=${encodeURIComponent(provider.value)}&q=${encodeURIComponent(value)}&asset_type=${encodeURIComponent(assetType?.value || '')}`); const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Search is unavailable.');
+        results.replaceChildren(); if (!payload.results.length) return clearResults('No matching instruments found.');
+        payload.results.forEach(item => {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'instrument-result';
+          const ticker = document.createElement('b'); ticker.textContent = item.symbol || '—';
+          const name = document.createElement('span'); name.textContent = item.name || 'Unnamed instrument';
+          const code = document.createElement('small'); code.textContent = item.meta || item.provider_symbol;
+          button.append(ticker, name, code);
+          button.addEventListener('click', () => { symbol.value = item.provider_symbol; assetSymbol.value = item.asset_symbol || item.symbol; clearResults(`Selected ${item.symbol}.`); });
+          results.append(button);
+        });
+      } catch (error) { clearResults(error.message); }
+    }, 280);
+  }
+  provider.addEventListener('change', () => { symbol.value = ''; assetSymbol.value = ''; syncPanel(); });
+  assetType?.addEventListener('change', () => { symbol.value = ''; assetSymbol.value = ''; search(); });
+  name.addEventListener('input', () => { symbol.value = ''; assetSymbol.value = ''; search(); });
+  syncPanel();
+})();
+</script>
+<script>
+(() => {
+  const assetType = document.getElementById('id_asset_type');
+  const dollarAssetTypes = new Set(['USD', 'CRYPTO', 'US_STOCK', 'GOLD', 'SILVER']);
+  if (!assetType) return;
+  function selectDollarTag() {
+    if (!dollarAssetTypes.has(assetType.value)) return;
+    const dollarTag = [...document.querySelectorAll('#id_tags input[type="checkbox"]')]
+      .find(input => input.closest('label')?.textContent.trim() === 'دلاری');
+    if (dollarTag) dollarTag.checked = true;
+  }
+  assetType.addEventListener('change', selectDollarTag);
+  selectDollarTag();
+})();
+</script>
+<script>
+(() => {
+  const forms = document.getElementById('holding-forms');
+  const add = document.getElementById('add-holding');
+  const total = document.getElementById('id_holdings-TOTAL_FORMS');
+  const empty = document.getElementById('holding-empty-form');
+  if (!forms || !add || !total || !empty) return;
+  add.addEventListener('click', () => {
+    const index = Number(total.value);
+    const row = empty.content.cloneNode(true);
+    row.querySelectorAll('[name], [id], label[for]').forEach(element => {
+      ['name', 'id', 'for'].forEach(attribute => {
+        if (element.hasAttribute(attribute)) element.setAttribute(attribute, element.getAttribute(attribute).replaceAll('__prefix__', index));
+      });
+    });
+    forms.append(row); total.value = index + 1;
+  });
+})();
+</script>
+{% endblock %}

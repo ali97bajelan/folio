@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">فولیو</string>
+    <string name="nav_dashboard">نمای کلی</string>
+    <string name="nav_assets">دارایی‌ها</string>
+    <string name="nav_transactions">تراکنش‌ها</string>
+    <string name="nav_more">بیشتر</string>
+    <string name="dashboard_title">داشبورد</string>
+    <string name="refresh_prices">بروزرسانی قیمت</string>
+    <string name="add_transaction">افزودن تراکنش</string>
+    <string name="add_asset">افزودن دارایی</string>
+    <string name="update_price">بروزرسانی قیمت</string>
+    <string name="asset">دارایی</string>
+    <string name="transaction">تراکنش</string>
+    <string name="asset_allocation_by_class">تخصیص بر اساس کلاس دارایی</string>
+    <string name="total_portfolio_value">ارزش کل پرتفوی</string>
+    <string name="portfolio_value_history">تاریخچه ارزش پرتفوی</string>
+    <string name="portfolio_history_empty">برای نمایش نمودار، حداقل دو اسنپ‌شات ارزش‌گذاری ذخیره کنید.</string>
+    <string name="chart_1_day">۱ روز</string>
+    <string name="chart_1_week">۱ هفته</string>
+    <string name="chart_1_month">۱ ماه</string>
+    <string name="chart_all_time">همه</string>
+    <string name="assets_waiting_for_price">%1$d دارایی در انتظار قیمت</string>
+    <string name="active_assets">دارایی فعال</string>
+    <string name="entire_portfolio">در تمام پرتفوی</string>
+    <string name="last_updated">آخرین بروزرسانی</string>
+    <string name="prices_available_offline">قیمت‌ها آفلاین می‌مانند</string>
+    <string name="refreshing_provider_prices">در حال بروزرسانی قیمت‌های %1$s…</string>
+    <string name="language">زبان</string>
+    <string name="language_hint">زبان نمایش برنامه را انتخاب کنید.</string>
+    <string name="language_persian">فارسی</string>
+    <string name="language_english">English</string>
+    <string name="tags">برچسب‌ها</string>
+    <string name="tags_hint">دسته‌بندی دارایی‌ها</string>
+    <string name="locations">محل نگهداری</string>
+    <string name="locations_hint">صرافی‌ها، کیف پول‌ها و محل نگهداری</string>
+    <string-array name="default_location_names">
+        <item>نوبیتکس</item>
+        <item>والکس</item>
+        <item>آبان تتر</item>
+        <item>فیزیکی</item>
+    </string-array>
+    <string name="local_data_hint">قیمت‌ها و داده‌های پرتفوی در SQLite محلی نگهداری می‌شوند. تازه‌سازی ارائه‌دهنده‌ها در پس‌زمینه و فقط هنگام اتصال اینترنت انجام می‌شود.</string>
+    <string name="personal_wealth">دارایی شخصی</string>
+    <string name="unavailable">نامشخص</string><string name="empty_value">—</string>
+    <string name="dashboard_empty_title">هنوز دارایی ندارید</string><string name="dashboard_empty_copy">اولین دارایی خود را اضافه کنید تا وضعیت پرتفوی نمایش داده شود.</string>
+    <string name="asset_values_unavailable">نامشخص</string><string name="sort_value">ارزش</string><string name="sort_name">نام</string><string name="sort_quantity">تعداد</string>
+    <string name="assets_empty_title">دارایی فعالی نیست</string><string name="assets_empty_copy">یک دارایی ایجاد کنید.</string>
+    <string name="transactions_empty_title">تراکنشی ندارید</string><string name="transactions_empty_copy">خرید و فروش‌ها منبع اصلی موجودی هستند.</string>
+    <string name="buy">خرید</string><string name="sell">فروش</string><string name="loading">در حال بارگذاری…</string><string name="edit">ویرایش</string>
+    <string name="delete_asset_title">حذف دارایی؟</string><string name="delete_asset_message">همهٔ تراکنش‌ها و قیمت‌های این دارایی حذف می‌شوند.</string><string name="delete">حذف</string><string name="cancel">لغو</string>
+    <string name="asset_details">جزئیات دارایی</string><string name="symbol">نماد</string><string name="type">نوع</string><string name="pricing">قیمت‌گذاری</string><string name="manual">دستی</string><string name="market_provider">بازار · %1$s</string><string name="last_price">آخرین قیمت</string>
+    <string name="holdings_by_location">موجودی بر اساس محل نگهداری</string><string name="no_location">بدون محل نگهداری</string><string name="no_holdings">موجودی ثبت نشده است</string>
+    <string name="quantity">تعداد</string><string name="value_irt">ارزش (IRT)</string><string name="value_usdt">ارزش (USDT)</string><string name="average_cost">میانگین هزینه</string>
+    <string name="add_asset_title">افزودن دارایی</string><string name="edit_asset_title">ویرایش دارایی</string><string name="name">نام</string><string name="asset_type">نوع دارایی</string><string name="unit">واحد</string><string name="pricing_method">روش قیمت</string><string name="provider">ارائه‌دهنده</string><string name="suggested_markets">بازارهای پیشنهادی</string><string name="searching_or_empty">در حال جست‌وجو یا نتیجه‌ای پیدا نشد.</string><string name="provider_symbol">نماد در ارائه‌دهنده</string><string name="provider_symbol_hint">با انتخاب نتیجه تکمیل می‌شود</string><string name="manual_price_currency">ارز قیمت دستی</string>
+    <string name="opening_holding">موجودی اولیه (اختیاری)</string><string name="opening_holding_hint">برای هر صرافی یا کیف پول یک دارایی جداگانه ایجاد کنید، یا بعداً تراکنش اضافه کنید.</string><string name="location">محل نگهداری</string><string name="opening_quantity">تعداد اولیه</string><string name="optional">اختیاری</string><string name="average_purchase_price">میانگین قیمت خرید</string><string name="asset_is_active">دارایی فعال است</string>
+    <string name="add_transaction_title">ثبت تراکنش</string><string name="edit_transaction_title">ویرایش تراکنش</string><string name="select_asset">انتخاب دارایی</string><string name="price_per_unit">قیمت هر واحد (اختیاری)</string><string name="fee">کارمزد (اختیاری)</string><string name="transaction_currency">ارز تراکنش</string><string name="notes">یادداشت</string><string name="price">قیمت</string><string name="currency">ارز</string><string name="price_snapshot_hint">ذخیرهٔ قیمت، اسنپ‌شات ارزش‌گذاری آفلاین را نیز ثبت می‌کند.</string><string name="save">ذخیره</string><string name="add">افزودن</string><string name="no_entries">هنوز موردی ثبت نشده است</string>
+    <string name="type_fixed_income">درآمد ثابت</string><string name="type_usd">دلار</string><string name="type_crypto">رمزارز</string><string name="type_iran_stock">سهام ایران</string><string name="type_us_stock">سهام جهانی</string><string name="type_gold">طلا</string><string name="type_silver">نقره</string><string name="type_manual">دستی</string>
+    <string name="error_name_required">نام الزامی است</string><string name="error_symbol_required">نماد الزامی است</string><string name="error_market_selection_required">برای قیمت بازار، ارائه‌دهنده و نماد بازار را انتخاب کنید</string><string name="error_asset_required">دارایی را انتخاب کنید</string><string name="error_quantity_positive">تعداد باید بزرگ‌تر از صفر باشد</string><string name="error_price_invalid">قیمت معتبر وارد کنید</string>
+</resources>
