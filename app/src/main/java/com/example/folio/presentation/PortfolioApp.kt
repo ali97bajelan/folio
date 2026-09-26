@@ -288,8 +288,159 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
 @Composable private fun Tiny(t:String)=Text(t,color=Muted,style=MaterialTheme.typography.labelSmall)
 @Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=RoundedCornerShape(5.dp)){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
 
-@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val dash by vm.dashboard.collectAsState();val history by vm.portfolioHistory.collectAsState();var displayCurrency by rememberSaveable{mutableStateOf("IRT")};Page(stringResource(R.string.dashboard_title),action={TextButton(vm::refreshPrices){Text("↻ ${stringResource(R.string.refresh_prices)}")};TextButton(addTx){Text("+ ${stringResource(R.string.transaction)}")};Button(addAsset){Text("+ ${stringResource(R.string.asset)}")}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));Metric(stringResource(R.string.active_assets),dash.rows.size.toString(),stringResource(R.string.entire_portfolio),Modifier.fillMaxWidth());Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_allocation_by_class),fontWeight=FontWeight.Bold);dash.rows.groupBy{typeLabel(it.asset.assetType)}.forEach{(label,rows)->val total=if(displayCurrency=="USD")rows.mapNotNull{it.usdValue}.fold(BigDecimal.ZERO,BigDecimal::add) else rows.mapNotNull{it.tomanValue}.fold(BigDecimal.ZERO,BigDecimal::add);DetailLine(label,if(displayCurrency=="USD")number(total,"USD") else compact(total))}};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_assets),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);dash.rows.forEach{AssetRowItem(it,open)};if(dash.rows.isEmpty())Empty(title=stringResource(R.string.dashboard_empty_title),copy=stringResource(R.string.dashboard_empty_copy),action=addAsset)}}
-@Composable private fun PortfolioValue(dash:DashboardData,currency:String,onCurrencyChange:(String)->Unit)=Column{Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){Tiny(stringResource(R.string.total_portfolio_value));Row(verticalAlignment=Alignment.CenterVertically){Text("IRT",color=if(currency=="IRT")Aqua else Muted,style=MaterialTheme.typography.labelMedium);Switch(checked=currency=="USD",onCheckedChange={onCurrencyChange(if(it)"USD" else "IRT")},modifier=Modifier.padding(horizontal=6.dp));Text("USD",color=if(currency=="USD")Aqua else Muted,style=MaterialTheme.typography.labelMedium)}};val total=if(currency=="USD")dash.usdTotal else dash.tomanTotal;Text(if(currency=="USD")wholeUsd(total) else compact(total),style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis);Tiny("${stringResource(R.string.last_updated)} · ${dash.updatedAt?.let(dateFormat::format)?:stringResource(R.string.empty_value)}");if(dash.missing>0)Tiny(stringResource(R.string.assets_waiting_for_price, dash.missing))}
+@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val dash by vm.dashboard.collectAsState();val history by vm.portfolioHistory.collectAsState();var displayCurrency by rememberSaveable{mutableStateOf("IRT")};Page(stringResource(R.string.dashboard_title),action={TextButton(vm::refreshPrices){Text("↻ ${stringResource(R.string.refresh_prices)}")};TextButton(addTx){Text("+ ${stringResource(R.string.transaction)}")};Button(addAsset){Text("+ ${stringResource(R.string.asset)}")}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AllocationCakeChart(dash.rows,displayCurrency)}}}
+
+private data class AllocationSlice(val assetType: String, val value: BigDecimal)
+
+@Composable
+private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
+    val slices = rows.groupBy { it.asset.assetType }
+        .map { (assetType, typeRows) ->
+            val value = if (currency == "USD") {
+                typeRows.mapNotNull { it.usdValue }.fold(BigDecimal.ZERO, BigDecimal::add)
+            } else {
+                typeRows.mapNotNull { it.tomanValue }.fold(BigDecimal.ZERO, BigDecimal::add)
+            }
+            AllocationSlice(assetType, value)
+        }
+        .filter { it.value.signum() > 0 }
+        .sortedByDescending { it.value }
+    val total = slices.fold(BigDecimal.ZERO) { sum, slice -> sum.add(slice.value) }
+    val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B))
+
+    Text(stringResource(R.string.asset_allocation_by_class), fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(12.dp))
+    if (slices.isEmpty() || total.signum() == 0) {
+        Tiny(stringResource(R.string.unavailable))
+        return
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(148.dp)) {
+            var startAngle = -90f
+            slices.forEachIndexed { index, slice ->
+                val sweepAngle = slice.value.divide(total, 8, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal("360")).toFloat()
+                drawArc(
+                    color = colors[index % colors.size],
+                    startAngle = startAngle + 1f,
+                    sweepAngle = (sweepAngle - 2f).coerceAtLeast(0f),
+                    useCenter = true,
+                )
+                startAngle += sweepAngle
+            }
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            slices.forEachIndexed { index, slice ->
+                val percentage = slice.value.divide(total, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal("100"))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = colors[index % colors.size], shape = RoundedCornerShape(50)) {
+                        Spacer(Modifier.size(10.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(typeLabel(slice.assetType), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Tiny(ltrValue("${formattedNumber(percentage, "%", 1, 0)} · ${if (currency == "USD") formattedNumber(slice.value, "USD", 0, 0) else formattedNumber(slice.value, "IRT", 0, 0)}"))
+                    }
+                }
+            }
+        }
+    }
+}
+@Composable
+private fun PortfolioValue(
+    dash: DashboardData,
+    currency: String,
+    onCurrencyChange: (String) -> Unit,
+) = Column {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.total_portfolio_value), fontWeight = FontWeight.SemiBold)
+        CurrencySelector(currency, onCurrencyChange)
+    }
+
+    val total = if (currency == "USD") dash.usdTotal else dash.tomanTotal
+    val alternateTotal = if (currency == "USD") compact(dash.tomanTotal) else wholeUsd(dash.usdTotal)
+    Spacer(Modifier.height(14.dp))
+    Text(
+        if (currency == "USD") wholeUsd(total) else compact(total),
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "≈ $alternateTotal",
+        color = Muted,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+
+    Spacer(Modifier.height(16.dp))
+    Surface(color = Panel.copy(alpha = .72f), shape = RoundedCornerShape(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Tiny(stringResource(R.string.active_assets))
+                Text(dash.rows.size.toString(), fontWeight = FontWeight.Bold)
+            }
+            Column(Modifier.weight(1f)) {
+                Tiny(stringResource(R.string.last_updated))
+                Text(
+                    dash.updatedAt?.let(dateFormat::format) ?: stringResource(R.string.empty_value),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+
+    if (dash.missing > 0) {
+        Spacer(Modifier.height(12.dp))
+        Surface(color = Danger.copy(alpha = .14f), shape = RoundedCornerShape(6.dp)) {
+            Text(
+                stringResource(R.string.assets_waiting_for_price, dash.missing),
+                color = Danger,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
+    Surface(color = Panel.copy(alpha = .72f), shape = RoundedCornerShape(9.dp)) {
+        Row(Modifier.padding(3.dp)) {
+            listOf("IRT", "USD").forEach { option ->
+                val selected = currency == option
+                Surface(
+                    color = if (selected) Aqua.copy(alpha = .18f) else Color.Transparent,
+                    shape = RoundedCornerShape(7.dp),
+                    modifier = Modifier.clickable { onCurrencyChange(option) },
+                ) {
+                    Text(
+                        option,
+                        color = if (selected) Aqua else Muted,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    )
+                }
+            }
+        }
+    }
+}
 
 private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1)), WEEK(Duration.ofDays(7)), MONTH(Duration.ofDays(30)), ALL(null) }
 @Composable private fun chartValue(value: BigDecimal, currency: String) =
