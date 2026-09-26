@@ -2,7 +2,6 @@ package com.example.folio.presentation
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -25,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -119,11 +118,141 @@ private fun defaultProviderFor(assetType: String) = when (assetType) {
 private fun NavBackStackEntry.longArgument(name: String): Long? =
     arguments?.getString(name)?.toLongOrNull()
 
-@Composable fun PortfolioApp(factory:ViewModelProvider.Factory, languagePreferences: LanguagePreferences) { val vm:MainViewModel=viewModel(factory=factory); val nav=rememberNavController(); val entry by nav.currentBackStackEntryAsState(); val route=entry?.destination?.route?:"dashboard"
- MaterialTheme(colorScheme=darkColorScheme(primary=Blue,secondary=Aqua,surface=Panel,background=Navy,error=Danger)) { Scaffold(containerColor=Navy,bottomBar={ NavigationBar(containerColor=Panel) { listOf(Triple("dashboard",stringResource(R.string.nav_dashboard),FolioIcons.Dashboard),Triple("assets",stringResource(R.string.nav_assets),FolioIcons.AccountBalanceWallet),Triple("transactions",stringResource(R.string.nav_transactions),FolioIcons.ReceiptLong),Triple("settings",stringResource(R.string.nav_more),Icons.Outlined.Settings)).forEach{(target,label,icon)-> NavigationBarItem(selected=route==target,onClick={nav.navigate(target){popUpTo("dashboard");launchSingleTop=true}},icon={Icon(icon,contentDescription=label)},label={Text(label)})} } }) { pad -> NavHost(nav,"dashboard",Modifier.padding(pad)) {
-  composable("dashboard"){Dashboard(vm,{nav.navigate("asset/$it")},{nav.navigate("asset/new")},{nav.navigate("transaction/new")})}; composable("assets"){Assets(vm,{nav.navigate("asset/$it")},{nav.navigate("asset/new")})}; composable("transactions"){Transactions(vm,{nav.navigate("transaction/new")},{nav.navigate("transaction/edit/$it")})}; composable("settings"){Settings({nav.navigate("tags")},{nav.navigate("locations")}, languagePreferences)}; composable("tags"){Manage(stringResource(R.string.tags),vm.tags.collectAsState().value.map{it.name}){vm.saveTag(it)}}; composable("locations"){Locations(vm)}
-  composable("asset/new"){AssetForm(vm,done={nav.popBackStack()})}; composable("asset/{id}"){entry->entry.longArgument("id")?.let{id->AssetDetailScreen(vm,id,{nav.navigate("asset/edit/$id")},{nav.navigate("price/$id")},{nav.navigate("transaction/new?asset=$id")},{nav.popBackStack()})}}; composable("asset/edit/{id}"){entry->entry.longArgument("id")?.let{id->AssetForm(vm,id){nav.popBackStack()}}}; composable("price/{id}"){entry->entry.longArgument("id")?.let{id->PriceForm(vm,id){nav.popBackStack()}}}; composable("transaction/new?asset={asset}"){entry->TransactionForm(vm,entry.longArgument("asset")){nav.popBackStack()}}; composable("transaction/edit/{id}"){entry->entry.longArgument("id")?.let{id->TransactionForm(vm,null,id){nav.popBackStack()}}}
- } } } }
+@Composable
+fun PortfolioApp(
+    factory: ViewModelProvider.Factory,
+    languagePreferences: LanguagePreferences,
+) {
+    val viewModel: MainViewModel = viewModel(factory = factory)
+    val navigationController = rememberNavController()
+    val entry by navigationController.currentBackStackEntryAsState()
+    val currentRoute = entry?.destination?.route ?: "dashboard"
+
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = Blue,
+            secondary = Aqua,
+            surface = Panel,
+            background = Navy,
+            error = Danger,
+        ),
+    ) {
+        Scaffold(
+            containerColor = Navy,
+            bottomBar = {
+                AppNavigationBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navigationController.navigate(route) {
+                            popUpTo("dashboard")
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            },
+        ) { paddingValues ->
+            NavHost(
+                navController = navigationController,
+                startDestination = "dashboard",
+                modifier = Modifier.padding(paddingValues),
+            ) {
+                composable("dashboard") {
+                    Dashboard(
+                        viewModel,
+                        open = { navigationController.navigate("asset/$it") },
+                        addAsset = { navigationController.navigate("asset/new") },
+                        addTx = { navigationController.navigate("transaction/new") },
+                    )
+                }
+                composable("assets") {
+                    Assets(
+                        viewModel,
+                        open = { navigationController.navigate("asset/$it") },
+                        add = { navigationController.navigate("asset/new") },
+                    )
+                }
+                composable("transactions") {
+                    Transactions(
+                        viewModel,
+                        add = { navigationController.navigate("transaction/new") },
+                        edit = { navigationController.navigate("transaction/edit/$it") },
+                    )
+                }
+                composable("settings") {
+                    Settings(
+                        tags = { navigationController.navigate("tags") },
+                        locations = { navigationController.navigate("locations") },
+                        languagePreferences = languagePreferences,
+                    )
+                }
+                composable("tags") {
+                    Manage(
+                        stringResource(R.string.tags),
+                        viewModel.tags.collectAsState().value.map { it.name },
+                        viewModel::saveTag,
+                    )
+                }
+                composable("locations") { Locations(viewModel) }
+                composable("asset/new") { AssetForm(viewModel) { navigationController.popBackStack() } }
+                composable("asset/{id}") { backStackEntry ->
+                    backStackEntry.longArgument("id")?.let { id ->
+                        AssetDetailScreen(
+                            viewModel,
+                            id,
+                            edit = { navigationController.navigate("asset/edit/$id") },
+                            price = { navigationController.navigate("price/$id") },
+                            tx = { navigationController.navigate("transaction/new?asset=$id") },
+                            back = { navigationController.popBackStack() },
+                        )
+                    }
+                }
+                composable("asset/edit/{id}") { backStackEntry ->
+                    backStackEntry.longArgument("id")?.let { id ->
+                        AssetForm(viewModel, id) { navigationController.popBackStack() }
+                    }
+                }
+                composable("price/{id}") { backStackEntry ->
+                    backStackEntry.longArgument("id")?.let { id ->
+                        PriceForm(viewModel, id) { navigationController.popBackStack() }
+                    }
+                }
+                composable("transaction/new?asset={asset}") { backStackEntry ->
+                    TransactionForm(viewModel, backStackEntry.longArgument("asset")) {
+                        navigationController.popBackStack()
+                    }
+                }
+                composable("transaction/edit/{id}") { backStackEntry ->
+                    backStackEntry.longArgument("id")?.let { id ->
+                        TransactionForm(viewModel, fixedAsset = null, editId = id) {
+                            navigationController.popBackStack()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit) {
+    val destinations = listOf(
+        Triple("dashboard", stringResource(R.string.nav_dashboard), FolioIcons.Dashboard),
+        Triple("assets", stringResource(R.string.nav_assets), FolioIcons.AccountBalanceWallet),
+        Triple("transactions", stringResource(R.string.nav_transactions), FolioIcons.ReceiptLong),
+        Triple("settings", stringResource(R.string.nav_more), Icons.Outlined.Settings),
+    )
+
+    NavigationBar(containerColor = Panel) {
+        destinations.forEach { (route, label, icon) ->
+            NavigationBarItem(
+                selected = currentRoute == route,
+                onClick = { onNavigate(route) },
+                icon = { Icon(icon, contentDescription = label) },
+                label = { Text(label) },
+            )
+        }
+    }
+}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun Page(title:String,subtitle:String=stringResource(R.string.personal_wealth),action:(@Composable () -> Unit)?=null,content:@Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp)) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -155,7 +284,7 @@ private fun NavBackStackEntry.longArgument(name: String): Long? =
 @Composable private fun Tiny(t:String)=Text(t,color=Muted,style=MaterialTheme.typography.labelSmall)
 @Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=RoundedCornerShape(5.dp)){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
 
-@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val dash by vm.dashboard.collectAsState();val history by vm.portfolioHistory.collectAsState();val refreshes by vm.refreshes.collectAsState();var displayCurrency by rememberSaveable{mutableStateOf("IRT")};val latest=refreshes.firstOrNull();Page(stringResource(R.string.dashboard_title),action={TextButton(vm::refreshPrices){Text("↻ ${stringResource(R.string.refresh_prices)}")};TextButton(addTx){Text("+ ${stringResource(R.string.transaction)}")};Button(addAsset){Text("+ ${stringResource(R.string.asset)}")}}){if(latest != null) Tiny(if(latest.finishedAt==null) stringResource(R.string.refreshing_provider_prices, latest.provider) else "${latest.provider}: ${latest.status}${if(latest.errorMessage.isBlank()) "" else " · ${latest.errorMessage}"}");PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));Metric(stringResource(R.string.active_assets),dash.rows.size.toString(),stringResource(R.string.entire_portfolio),Modifier.fillMaxWidth());Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_allocation_by_class),fontWeight=FontWeight.Bold);dash.rows.groupBy{typeLabel(it.asset.assetType)}.forEach{(label,rows)->val total=if(displayCurrency=="USD")rows.mapNotNull{it.usdValue}.fold(BigDecimal.ZERO,BigDecimal::add) else rows.mapNotNull{it.tomanValue}.fold(BigDecimal.ZERO,BigDecimal::add);DetailLine(label,if(displayCurrency=="USD")number(total,"USD") else compact(total))}};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_assets),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);dash.rows.forEach{AssetRowItem(it,open)};if(dash.rows.isEmpty())Empty(stringResource(R.string.dashboard_empty_title),stringResource(R.string.dashboard_empty_copy),addAsset)}}
+@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val dash by vm.dashboard.collectAsState();val history by vm.portfolioHistory.collectAsState();var displayCurrency by rememberSaveable{mutableStateOf("IRT")};Page(stringResource(R.string.dashboard_title),action={TextButton(vm::refreshPrices){Text("↻ ${stringResource(R.string.refresh_prices)}")};TextButton(addTx){Text("+ ${stringResource(R.string.transaction)}")};Button(addAsset){Text("+ ${stringResource(R.string.asset)}")}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));Metric(stringResource(R.string.active_assets),dash.rows.size.toString(),stringResource(R.string.entire_portfolio),Modifier.fillMaxWidth());Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_allocation_by_class),fontWeight=FontWeight.Bold);dash.rows.groupBy{typeLabel(it.asset.assetType)}.forEach{(label,rows)->val total=if(displayCurrency=="USD")rows.mapNotNull{it.usdValue}.fold(BigDecimal.ZERO,BigDecimal::add) else rows.mapNotNull{it.tomanValue}.fold(BigDecimal.ZERO,BigDecimal::add);DetailLine(label,if(displayCurrency=="USD")number(total,"USD") else compact(total))}};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_assets),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);dash.rows.forEach{AssetRowItem(it,open)};if(dash.rows.isEmpty())Empty(title=stringResource(R.string.dashboard_empty_title),copy=stringResource(R.string.dashboard_empty_copy),action=addAsset)}}
 @Composable private fun PortfolioValue(dash:DashboardData,currency:String,onCurrencyChange:(String)->Unit)=Column{Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){Tiny(stringResource(R.string.total_portfolio_value));Row(verticalAlignment=Alignment.CenterVertically){Text("IRT",color=if(currency=="IRT")Aqua else Muted,style=MaterialTheme.typography.labelMedium);Switch(checked=currency=="USD",onCheckedChange={onCurrencyChange(if(it)"USD" else "IRT")},modifier=Modifier.padding(horizontal=6.dp));Text("USD",color=if(currency=="USD")Aqua else Muted,style=MaterialTheme.typography.labelMedium)}};val total=if(currency=="USD")dash.usdTotal else dash.tomanTotal;Text(if(currency=="USD")wholeUsd(total) else compact(total),style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis);Tiny("${stringResource(R.string.last_updated)} · ${dash.updatedAt?.let(dateFormat::format)?:stringResource(R.string.empty_value)}");if(dash.missing>0)Tiny(stringResource(R.string.assets_waiting_for_price, dash.missing))}
 
 private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1)), WEEK(Duration.ofDays(7)), MONTH(Duration.ofDays(30)), ALL(null) }
@@ -231,8 +360,46 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
 @Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
-@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(stringResource(R.string.assets_empty_title),stringResource(R.string.assets_empty_copy),add)}}
-@Composable private fun Transactions(vm:MainViewModel,add:()->Unit,edit:(Long)->Unit){val items by vm.transactions.collectAsState();val assets by vm.assets.collectAsState();val names=assets.associateBy{it.id};Page(stringResource(R.string.nav_transactions),action={Button(add){Text(stringResource(R.string.add_transaction))}}){if(items.isEmpty())Empty(stringResource(R.string.transactions_empty_title),stringResource(R.string.transactions_empty_copy),add);items.forEach{t->ListItem(modifier=Modifier.fillMaxWidth().clickable{edit(t.id)},headlineContent={Text("${if(t.transactionType=="BUY")stringResource(R.string.buy) else stringResource(R.string.sell)} · ${names[t.assetId]?.symbol?:stringResource(R.string.empty_value)}")},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(if(t.transactionType=="BUY")stringResource(R.string.buy) else stringResource(R.string.sell),if(t.transactionType=="BUY")Aqua else Danger)});HorizontalDivider(color=Color.White.copy(.06f))}}}
+@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add)}}
+@Composable
+private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Unit) {
+    val transactions by vm.transactions.collectAsState()
+    val assets by vm.assets.collectAsState()
+    val assetsById = assets.associateBy { it.id }
+
+    Page(
+        stringResource(R.string.nav_transactions),
+        action = { Button(add) { Text(stringResource(R.string.add_transaction)) } },
+    ) {
+        if (transactions.isEmpty()) {
+            Empty(
+                title = stringResource(R.string.transactions_empty_title),
+                copy = stringResource(R.string.transactions_empty_copy),
+                actionLabel = stringResource(R.string.add_transaction),
+                action = add,
+            )
+        }
+
+        transactions.forEach { transaction ->
+            val isPurchase = transaction.transactionType == "BUY"
+            val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
+            val assetSymbol = assetsById[transaction.assetId]?.symbol
+                ?: stringResource(R.string.empty_value)
+
+            ListItem(
+                modifier = Modifier.fillMaxWidth().clickable { edit(transaction.id) },
+                headlineContent = { Text("$transactionLabel · $assetSymbol") },
+                supportingContent = {
+                    Text("${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}")
+                },
+                trailingContent = {
+                    Pill(transactionLabel, if (isPurchase) Aqua else Danger)
+                },
+            )
+            HorizontalDivider(color = Color.White.copy(alpha = .06f))
+        }
+    }
+}
 
 @Composable private fun AssetDetailScreen(vm:MainViewModel,id:Long,edit:()->Unit,price:()->Unit,tx:()->Unit,back:()->Unit){val x by vm.detail(id).collectAsState(null);val locs by vm.locations.collectAsState();val dashboard by vm.dashboard.collectAsState();var confirm by remember{mutableStateOf(false)};val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.rows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode=="MANUAL")Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.delete_asset_title))},text={Text(stringResource(R.string.delete_asset_message))},confirmButton={Button({vm.deleteAsset(d.asset);back()},colors=ButtonDefaults.buttonColors(containerColor=Danger)){Text(stringResource(R.string.delete))}},dismissButton={TextButton({confirm=false}){Text(stringResource(R.string.cancel))}});Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(tx){Text("+ ${stringResource(R.string.transaction)}")};OutlinedButton({confirm=true}){Text(stringResource(R.string.delete),color=Danger)}};Spacer(Modifier.height(14.dp));AssetMetrics(d,row?.tomanValue,row?.usdValue);Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_details),fontWeight=FontWeight.Bold);DetailLine(stringResource(R.string.symbol),d.asset.symbol);DetailLine(stringResource(R.string.type),typeLabel(d.asset.assetType));DetailLine(stringResource(R.string.pricing),if(d.asset.pricingMode=="MANUAL")stringResource(R.string.manual) else stringResource(R.string.market_provider,d.asset.priceProvider));DetailLine(stringResource(R.string.last_price),d.prices.firstOrNull()?.let{money(it.price,it.currency)}?:stringResource(R.string.unavailable))};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.holdings_by_location),fontWeight=FontWeight.Bold);d.byLocation.forEach{(loc,q)->DetailLine(loc?.let{key->locs.firstOrNull{it.id==key}?.name}?:stringResource(R.string.no_location),detailQuantity(q))};if(d.byLocation.isEmpty())Tiny(stringResource(R.string.no_holdings))};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_transactions),fontWeight=FontWeight.Bold);d.transactions.forEach{t->ListItem(headlineContent={Text(if(t.transactionType=="BUY")stringResource(R.string.buy) else stringResource(R.string.sell))},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(t.transactionCurrency)});HorizontalDivider(color=Color.White.copy(.06f))}}}
 @Composable private fun AssetMetrics(d:AssetDetail,tomanValue:BigDecimal?,usdtValue:BigDecimal?)=BoxWithConstraints(Modifier.fillMaxWidth()){val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),d.asset.unit,modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)};if(maxWidth<480.dp)Column(verticalArrangement=Arrangement.spacedBy(8.dp)){cards(Modifier.fillMaxWidth())}else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){cards(Modifier.weight(1f))}}
@@ -240,7 +407,124 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 
 @Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else vm.asset(id).collectAsState(null));val tagIds by (if(id==null) remember{mutableStateOf(emptyList<Long>())} else vm.assetTagIds(id).collectAsState(emptyList()));val tags by vm.tags.collectAsState();val locations by vm.locations.collectAsState();val results by vm.instrumentResults.collectAsState();val searchError by vm.instrumentSearchError.collectAsState();var name by remember{mutableStateOf("")};var symbol by remember{mutableStateOf("")};var type by remember{mutableStateOf("CRYPTO")};var unit by remember{mutableStateOf("UNIT")};var mode by remember{mutableStateOf("MARKET")};var provider by remember{mutableStateOf("NOBITEX")};var providerSymbol by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var active by remember{mutableStateOf(true)};var selected by remember{mutableStateOf(setOf<Long>())};var openingLocation by remember{mutableStateOf(0L)};var openingQuantity by remember{mutableStateOf("")};var openingAverage by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);LaunchedEffect(old,tagIds){old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;selected=tagIds.toSet()}};LaunchedEffect(id,type){if(id==null){provider=defaultProviderFor(type);providerSymbol=""}};LaunchedEffect(mode,provider,name,type){if(mode=="MARKET"&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode=="MANUAL")"MANUAL" else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode=="MARKET"&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf("CRYPTO","USD","IRAN_STOCK","US_STOCK","GOLD","SILVER","FIXED_INCOME","MANUAL")){type=it};Choice(stringResource(R.string.unit),unit,listOf("UNIT","GRAM")){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf("MANUAL","MARKET")){mode=it};if(mode=="MARKET"){Choice(stringResource(R.string.provider),provider,listOf("NOBITEX","ABANTETHER","TSETMC","RAHAVARD")){provider=it};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf("IRT","USD","USDT")){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
 
-@Composable private fun TransactionForm(vm:MainViewModel,fixedAsset:Long?,editId:Long?=null,done:()->Unit){val assets by vm.assets.collectAsState();val locations by vm.locations.collectAsState();val transactions by vm.transactions.collectAsState();val old=transactions.firstOrNull{it.id==editId};var asset by remember{mutableStateOf(fixedAsset?:0L)};var kind by remember{mutableStateOf("BUY")};var quantity by remember{mutableStateOf("")};var price by remember{mutableStateOf("")};var fee by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var location by remember{mutableStateOf(0L)};var notes by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};LaunchedEffect(old, fixedAsset){old?.let{item->asset=item.assetId;kind=item.transactionType;quantity=item.quantity.toPlainString();price=item.pricePerUnit?.toPlainString().orEmpty();fee=item.fee?.toPlainString().orEmpty();currency=item.transactionCurrency;location=item.locationId?:0L;notes=item.notes}?:run{if(editId==null){asset=fixedAsset?:0L}}};FormPage(if(editId==null)"ثبت تراکنش" else "ویرایش تراکنش",error,done={val q=quantity.toBigDecimalOrNull();if(asset==0L)error="دارایی را انتخاب کنید" else if(q==null||q<=BigDecimal.ZERO)error="تعداد باید بزرگ‌تر از صفر باشد" else vm.saveTransaction(TransactionEntity(editId?:0,asset,kind,q,price.toBigDecimalOrNull(),fee.toBigDecimalOrNull(),currency,location.takeIf{it!=0L},old?.executedAt?:Instant.now(),notes),{error=it}){done()}}){if(fixedAsset==null)Choice("دارایی",asset.toString(),assets.map{it.id.toString()},render={value->assets.firstOrNull{it.id.toString()==value}?.let{"${it.symbol} · ${it.name}"}?:"انتخاب دارایی"}){asset=it.toLong()};Choice("نوع",kind,listOf("BUY","SELL")){kind=it};Field("تعداد",quantity){quantity=it};Field("قیمت هر واحد (اختیاری)",price){price=it};Field("کارمزد (اختیاری)",fee){fee=it};Choice("ارز تراکنش",currency,listOf("IRT","USD","USDT")){currency=it};Choice("موقعیت",location.toString(),listOf("0")+locations.map{it.id.toString()},render={v->if(v=="0")"بدون موقعیت" else locations.firstOrNull{it.id.toString()==v}?.name?:"بدون موقعیت"}){location=it.toLong()};Field("یادداشت",notes){notes=it}}}
+@Composable
+private fun TransactionForm(
+    vm: MainViewModel,
+    fixedAsset: Long?,
+    editId: Long? = null,
+    done: () -> Unit,
+) {
+    val assets by vm.assets.collectAsState()
+    val locations by vm.locations.collectAsState()
+    val transactions by vm.transactions.collectAsState()
+    val existingTransaction = transactions.firstOrNull { it.id == editId }
+
+    var assetId by remember { mutableStateOf(fixedAsset ?: 0L) }
+    var transactionType by remember { mutableStateOf("BUY") }
+    var quantity by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var fee by remember { mutableStateOf("") }
+    var currency by remember { mutableStateOf("IRT") }
+    var locationId by remember { mutableStateOf(0L) }
+    var notes by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+
+    val noLocation = stringResource(R.string.no_location)
+    val selectAsset = stringResource(R.string.select_asset)
+    val assetRequiredError = stringResource(R.string.error_asset_required)
+    val quantityPositiveError = stringResource(R.string.error_quantity_positive)
+    val buyLabel = stringResource(R.string.buy)
+    val sellLabel = stringResource(R.string.sell)
+
+    LaunchedEffect(existingTransaction, fixedAsset) {
+        if (existingTransaction != null) {
+            val transaction = existingTransaction
+            assetId = transaction.assetId
+            transactionType = transaction.transactionType
+            quantity = transaction.quantity.toPlainString()
+            price = transaction.pricePerUnit?.toPlainString().orEmpty()
+            fee = transaction.fee?.toPlainString().orEmpty()
+            currency = transaction.transactionCurrency
+            locationId = transaction.locationId ?: 0L
+            notes = transaction.notes
+        } else if (editId == null) {
+            assetId = fixedAsset ?: 0L
+        }
+    }
+
+    FormPage(
+        title = stringResource(
+            if (editId == null) R.string.add_transaction_title else R.string.edit_transaction_title,
+        ),
+        error = error,
+        done = {
+            val parsedQuantity = quantity.toBigDecimalOrNull()
+            when {
+                assetId == 0L -> error = assetRequiredError
+                parsedQuantity == null || parsedQuantity <= BigDecimal.ZERO -> {
+                    error = quantityPositiveError
+                }
+                else -> vm.saveTransaction(
+                    TransactionEntity(
+                        id = editId ?: 0,
+                        assetId = assetId,
+                        transactionType = transactionType,
+                        quantity = parsedQuantity,
+                        pricePerUnit = price.toBigDecimalOrNull(),
+                        fee = fee.toBigDecimalOrNull(),
+                        transactionCurrency = currency,
+                        locationId = locationId.takeIf { it != 0L },
+                        executedAt = existingTransaction?.executedAt ?: Instant.now(),
+                        notes = notes,
+                    ),
+                    onError = { error = it },
+                    done = done,
+                )
+            }
+        },
+    ) {
+        if (fixedAsset == null) {
+            Choice(
+                label = stringResource(R.string.asset),
+                selected = assetId.toString(),
+                options = assets.map { it.id.toString() },
+                render = { value ->
+                    assets.firstOrNull { it.id.toString() == value }
+                        ?.let { "${it.symbol} · ${it.name}" }
+                        ?: selectAsset
+                },
+                select = { assetId = it.toLong() },
+            )
+        }
+        Choice(
+            label = stringResource(R.string.type),
+            selected = transactionType,
+            options = listOf("BUY", "SELL"),
+            render = { if (it == "BUY") buyLabel else sellLabel },
+            select = { transactionType = it },
+        )
+        Field(stringResource(R.string.quantity), quantity) { quantity = it }
+        Field(stringResource(R.string.price_per_unit), price) { price = it }
+        Field(stringResource(R.string.fee), fee) { fee = it }
+        Choice(
+            label = stringResource(R.string.transaction_currency),
+            selected = currency,
+            options = listOf("IRT", "USD", "USDT"),
+            select = { currency = it },
+        )
+        Choice(
+            label = stringResource(R.string.location),
+            selected = locationId.toString(),
+            options = listOf("0") + locations.map { it.id.toString() },
+            render = { value ->
+                if (value == "0") noLocation
+                else locations.firstOrNull { it.id.toString() == value }?.name ?: noLocation
+            },
+            select = { locationId = it.toLong() },
+        )
+        Field(stringResource(R.string.notes), notes) { notes = it }
+    }
+}
 @Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){var price by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var error by remember{mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf("IRT","USD","USDT")){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
 @Composable private fun Settings(tags:()->Unit,locations:()->Unit,languagePreferences: LanguagePreferences) {
     var language by remember { mutableStateOf(languagePreferences.current()) }
@@ -267,7 +551,18 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 @Composable private fun Locations(vm:MainViewModel){val entries by vm.locations.collectAsState();var name by remember{mutableStateOf("")};var notes by remember{mutableStateOf("")};FormPage(stringResource(R.string.locations),"",button=stringResource(R.string.add),done={if(name.isNotBlank()){vm.saveLocation(name,notes);name="";notes=""}}){Field(stringResource(R.string.name),name){name=it};Field(stringResource(R.string.notes),notes){notes=it};entries.forEach{DetailLine(it.name,it.notes)}}}
 @Composable private fun FormPage(title:String,error:String,button:String?=null,done:()->Unit,content:@Composable ColumnScope.()->Unit)=Page(title){PanelCard(Modifier.fillMaxWidth()){content();if(error.isNotBlank())Text(error,color=Danger);Spacer(Modifier.height(14.dp));Button(done,Modifier.align(Alignment.End)){Text(button ?: stringResource(R.string.save))}}}
 @Composable private fun Field(label:String,value:String,hint:String="",change:(String)->Unit){OutlinedTextField(value,change,Modifier.fillMaxWidth().padding(bottom=10.dp),label={Text(label)},placeholder={if(hint.isNotBlank())Text(hint)},singleLine=label != stringResource(R.string.notes))}
-@OptIn(ExperimentalMaterial3Api::class) @Composable private fun Choice(label:String,selected:String,options:List<String>,render:(String)->String={it},select:(String)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded,{expanded=it},Modifier.fillMaxWidth().padding(bottom=10.dp)){OutlinedTextField(render(selected),{},Modifier.menuAnchor().fillMaxWidth(),readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded)});ExposedDropdownMenu(expanded,{expanded=false}){options.forEach{o->DropdownMenuItem({Text(render(o))},{select(o);expanded=false})}}}}
+@OptIn(ExperimentalMaterial3Api::class) @Composable private fun Choice(label:String,selected:String,options:List<String>,render:(String)->String={it},select:(String)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded,{expanded=it},Modifier.fillMaxWidth().padding(bottom=10.dp)){OutlinedTextField(render(selected),{},Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded)});ExposedDropdownMenu(expanded,{expanded=false}){options.forEach{o->DropdownMenuItem({Text(render(o))},{select(o);expanded=false})}}}}
 @Composable private fun SingleChoiceRow(selected:String,values:List<String>,select:(String)->Unit)=Row{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(v)},Modifier.padding(end=6.dp))}}
 @Composable private fun <T> SingleChoiceRow(selected:T,values:List<T>,render:@Composable (T)->String,select:(T)->Unit)=Row{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(render(v))},Modifier.padding(end=6.dp))}}
-@Composable private fun Empty(title:String,copy:String,action:()->Unit)=PanelCard(Modifier.fillMaxWidth()){Text(title,fontWeight=FontWeight.Bold);Tiny(copy);Spacer(Modifier.height(10.dp));Button(action){Text(stringResource(R.string.add_asset))}}
+@Composable
+private fun Empty(
+    title: String,
+    copy: String,
+    actionLabel: String = stringResource(R.string.add_asset),
+    action: () -> Unit,
+) = PanelCard(Modifier.fillMaxWidth()) {
+    Text(title, fontWeight = FontWeight.Bold)
+    Tiny(copy)
+    Spacer(Modifier.height(10.dp))
+    Button(action) { Text(actionLabel) }
+}
