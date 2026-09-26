@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.ViewModelProvider
@@ -255,14 +257,16 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
 }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun Page(title:String,subtitle:String=stringResource(R.string.personal_wealth),action:(@Composable () -> Unit)?=null,content:@Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp)) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    var headerWidthPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    Box(Modifier.fillMaxWidth().onSizeChanged { headerWidthPx = it.width }) {
         val heading: @Composable () -> Unit = {
             Column {
                 Text(subtitle,color=Muted,style=MaterialTheme.typography.labelSmall)
                 Text(title,style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
             }
         }
-        if (maxWidth < 600.dp) {
+        if (with(density) { headerWidthPx.toDp() } < 600.dp) {
             Column {
                 heading()
                 if (action != null) {
@@ -329,10 +333,14 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
         Column(Modifier.width(72.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
             Tiny(chartValue(high, currency)); Tiny(chartValue(midpoint, currency)); Tiny(chartValue(low, currency))
         }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+        var chartWidthPx by remember { mutableIntStateOf(0) }
+        val density = LocalDensity.current
+        Box(Modifier.weight(1f).fillMaxHeight().onSizeChanged { chartWidthPx = it.width }) {
             val tooltipWidth = 96.dp
             val selectedFraction = selectedIndex.toFloat() / (points.size - 1).toFloat()
-            val tooltipX = (maxWidth - tooltipWidth).coerceAtLeast(0.dp) * selectedFraction
+            val tooltipX = with(density) {
+                ((chartWidthPx - tooltipWidth.roundToPx()).coerceAtLeast(0) * selectedFraction).toDp()
+            }
             Canvas(Modifier.fillMaxSize().padding(vertical=10.dp).pointerInput(points) {
                 detectTapGestures { tap ->
                     val fraction = (tap.x / size.width).coerceIn(0f, 1f)
@@ -402,7 +410,15 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
 }
 
 @Composable private fun AssetDetailScreen(vm:MainViewModel,id:Long,edit:()->Unit,price:()->Unit,tx:()->Unit,back:()->Unit){val x by vm.detail(id).collectAsState(null);val locs by vm.locations.collectAsState();val dashboard by vm.dashboard.collectAsState();var confirm by remember{mutableStateOf(false)};val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.rows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode=="MANUAL")Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text(stringResource(R.string.delete_asset_title))},text={Text(stringResource(R.string.delete_asset_message))},confirmButton={Button({vm.deleteAsset(d.asset);back()},colors=ButtonDefaults.buttonColors(containerColor=Danger)){Text(stringResource(R.string.delete))}},dismissButton={TextButton({confirm=false}){Text(stringResource(R.string.cancel))}});Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(tx){Text("+ ${stringResource(R.string.transaction)}")};OutlinedButton({confirm=true}){Text(stringResource(R.string.delete),color=Danger)}};Spacer(Modifier.height(14.dp));AssetMetrics(d,row?.tomanValue,row?.usdValue);Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_details),fontWeight=FontWeight.Bold);DetailLine(stringResource(R.string.symbol),d.asset.symbol);DetailLine(stringResource(R.string.type),typeLabel(d.asset.assetType));DetailLine(stringResource(R.string.pricing),if(d.asset.pricingMode=="MANUAL")stringResource(R.string.manual) else stringResource(R.string.market_provider,d.asset.priceProvider));DetailLine(stringResource(R.string.last_price),d.prices.firstOrNull()?.let{money(it.price,it.currency)}?:stringResource(R.string.unavailable))};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.holdings_by_location),fontWeight=FontWeight.Bold);d.byLocation.forEach{(loc,q)->DetailLine(loc?.let{key->locs.firstOrNull{it.id==key}?.name}?:stringResource(R.string.no_location),detailQuantity(q))};if(d.byLocation.isEmpty())Tiny(stringResource(R.string.no_holdings))};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_transactions),fontWeight=FontWeight.Bold);d.transactions.forEach{t->ListItem(headlineContent={Text(if(t.transactionType=="BUY")stringResource(R.string.buy) else stringResource(R.string.sell))},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(t.transactionCurrency)});HorizontalDivider(color=Color.White.copy(.06f))}}}
-@Composable private fun AssetMetrics(d:AssetDetail,tomanValue:BigDecimal?,usdtValue:BigDecimal?)=BoxWithConstraints(Modifier.fillMaxWidth()){val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),d.asset.unit,modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)};if(maxWidth<480.dp)Column(verticalArrangement=Arrangement.spacedBy(8.dp)){cards(Modifier.fillMaxWidth())}else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){cards(Modifier.weight(1f))}}
+@Composable private fun AssetMetrics(d:AssetDetail,tomanValue:BigDecimal?,usdtValue:BigDecimal?) {
+    var metricsWidthPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    Box(Modifier.fillMaxWidth().onSizeChanged { metricsWidthPx = it.width }) {
+        val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),d.asset.unit,modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)}
+        if (with(density) { metricsWidthPx.toDp() } < 480.dp) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.fillMaxWidth()) }
+        else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.weight(1f)) }
+    }
+}
 @Composable private fun DetailLine(a:String,b:String)=Row(Modifier.fillMaxWidth().padding(top=9.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){Text(a,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))}
 
 @Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else vm.asset(id).collectAsState(null));val tagIds by (if(id==null) remember{mutableStateOf(emptyList<Long>())} else vm.assetTagIds(id).collectAsState(emptyList()));val tags by vm.tags.collectAsState();val locations by vm.locations.collectAsState();val results by vm.instrumentResults.collectAsState();val searchError by vm.instrumentSearchError.collectAsState();var name by remember{mutableStateOf("")};var symbol by remember{mutableStateOf("")};var type by remember{mutableStateOf("CRYPTO")};var unit by remember{mutableStateOf("UNIT")};var mode by remember{mutableStateOf("MARKET")};var provider by remember{mutableStateOf("NOBITEX")};var providerSymbol by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var active by remember{mutableStateOf(true)};var selected by remember{mutableStateOf(setOf<Long>())};var openingLocation by remember{mutableStateOf(0L)};var openingQuantity by remember{mutableStateOf("")};var openingAverage by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);LaunchedEffect(old,tagIds){old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;selected=tagIds.toSet()}};LaunchedEffect(id,type){if(id==null){provider=defaultProviderFor(type);providerSymbol=""}};LaunchedEffect(mode,provider,name,type){if(mode=="MARKET"&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode=="MANUAL")"MANUAL" else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode=="MARKET"&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf("CRYPTO","USD","IRAN_STOCK","US_STOCK","GOLD","SILVER","FIXED_INCOME","MANUAL")){type=it};Choice(stringResource(R.string.unit),unit,listOf("UNIT","GRAM")){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf("MANUAL","MARKET")){mode=it};if(mode=="MARKET"){Choice(stringResource(R.string.provider),provider,listOf("NOBITEX","ABANTETHER","TSETMC","RAHAVARD")){provider=it};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf("IRT","USD","USDT")){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
@@ -419,7 +435,7 @@ private fun TransactionForm(
     val transactions by vm.transactions.collectAsState()
     val existingTransaction = transactions.firstOrNull { it.id == editId }
 
-    var assetId by remember { mutableStateOf(fixedAsset ?: 0L) }
+    var assetId by remember { mutableLongStateOf(fixedAsset ?: 0L) }
     var transactionType by remember { mutableStateOf("BUY") }
     var quantity by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
