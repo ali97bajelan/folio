@@ -1,30 +1,88 @@
-# Folio — local-first Android portfolio
+# Folio
 
-This is a native Kotlin/Jetpack Compose application. Its data lives only in the Room/SQLite database on the device; it has no Django dependency, API, WebView, browser UI, account, or cloud database.
+Folio is a local-first Android app for tracking a personal investment portfolio. It is designed for portfolios that span crypto, Iranian and global equities, cash, precious metals, fixed income, and manually priced assets—without requiring an account or cloud service.
 
-## Build and install
+All portfolio records are stored in a Room/SQLite database on the device. Internet access is used only to look up instruments and refresh market prices; previously saved prices, valuations, and portfolio data remain available offline.
 
-Open this folder in Android Studio, let Gradle sync, then run the `app` configuration on an Android 9+ device/emulator. From a terminal: `./gradlew :app:assembleDebug`.
+## What it does
 
-## Django audit and migration map
+- Tracks assets across these classes: fixed income, US dollar, crypto, Iranian stock, global stock, gold, silver, and manual assets.
+- Records buy and sell transactions, including quantity, optional unit price and fee, currency, location, and notes.
+- Calculates holdings from the transaction ledger and prevents edits that would create a negative historical balance.
+- Calculates weighted-average cost basis: buy fees are included; selling does not change the average cost until the holding reaches zero.
+- Organizes assets with tags and storage locations such as exchanges, wallets, or physical holdings.
+- Shows portfolio totals and allocation by asset class in both IRT and USD/USDT equivalents.
+- Saves valuation snapshots and displays an interactive portfolio-history chart for 1 day, 1 week, 1 month, or all time.
+- Supports manual prices as well as market-priced assets, with cached quotes available offline.
+- Offers Persian and English interfaces, including RTL-aware Persian financial notation.
 
-| Django source | Native destination | Preserved behavior |
-|---|---|---|
-| `models.py` Tag, Location, Asset, Transaction | `data/local/PortfolioDatabase.kt` Room entities | unique names/symbol; enums as stable string values; timestamps UTC; FK deletion rules |
-| AssetPrice, AssetValuation, ProviderRefresh | same Room schema | captured snapshots and provider outcome/error history |
-| `services.py` HoldingService | `domain/PortfolioServices.kt` | BUY minus SELL, optional historical moment, per-location grouping |
-| CostBasisService | `domain/PortfolioServices.kt` | chronological weighted average including BUY fee; SELL does not change average; zero clears it |
-| PricingService | `domain/PortfolioServices.kt` | latest price and historical price at-or-earliest fallback |
-| Currency/Portfolio valuation services | `domain/PortfolioServices.kt` | USD/USDT equivalence, USD/IRT proxy aliases, missing-price reporting, toman semantics |
-| `pricing.py` parsers | `data/network/PriceProviders.kt` | Nobitex/TSETMC rial ÷ 10; Aban midpoint; malformed/unsupported response errors |
-| `views.py`, templates and URLs | `presentation/PortfolioApp.kt` Navigation Compose | Dashboard, assets, detail, transactions, manual price, tag/location, settings destinations |
-| `forms.py` and `check_timeline` | repository validation | market-provider requirements, required names/symbols, positive quantities and chronological no-negative holdings |
-| Django migrations | Room schema v1 | complete released schema, no server migration necessary |
+## Price providers
 
-## Provider limitations
+Market-priced assets can be searched and refreshed from public provider endpoints:
 
-Network price refresh is deliberately optional; saved prices and all valuations work offline. Nobitex, Aban Tether and TSETMC parsing is implemented around their public response shapes and must tolerate provider changes/timeouts. Rahavard remains selectable but should use manual prices until a stable, permitted public quote endpoint can be maintained. No credentials are embedded.
+| Provider | Typical use |
+| --- | --- |
+| Nobitex | Crypto markets and the USDT/IRT conversion rate |
+| Aban Tether | Crypto assets quoted in IRT |
+| TSETMC | Iranian equities |
+| Rahavard | Precious metals and supported market listings |
 
-## Backup/restore
+Folio schedules a best-effort refresh every six hours when the device has a network connection. A refresh can also be started from the dashboard. Failed calls never remove existing cached prices, and provider responses may change or become unavailable; manual pricing is always available as a fallback. No provider credentials are embedded in the app.
 
-The Room schema holds all exportable relationships and timestamps. Backup/restore is intentionally scoped to Android's system backup until the release JSON document-picker flow is completed; direct database-file copying is not presented as a user workflow. JSON import must run as one Room transaction and validate unique asset symbols and all foreign-key references before it replaces rows.
+## Privacy and data
+
+- No account, server, WebView, or cloud database is required.
+- Portfolio data and cached prices live in local SQLite storage on the device.
+- The app requests `INTERNET` solely for optional instrument search and price refresh.
+- Android system backup is enabled. Folio does not currently provide a custom JSON import/export workflow.
+
+## Build
+
+### Requirements
+
+- Android Studio with JDK 11 support
+- Android SDK 35
+- An Android 9 (API 28) or newer device/emulator
+
+### Run from Android Studio
+
+1. Open this repository in Android Studio.
+2. Allow Gradle to sync.
+3. Select an Android 9+ device or emulator.
+4. Run the `app` configuration.
+
+### Build from the command line
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+The debug APK is produced under `app/build/outputs/apk/debug/`.
+
+## Architecture
+
+Folio is a native Kotlin application built with Jetpack Compose. Its core layers are:
+
+| Layer | Responsibility |
+| --- | --- |
+| `presentation/` | Compose screens, navigation, language selection, and view-model state |
+| `data/local/` | Room entities, DAO, migrations, and local persistence |
+| `data/` | Repository and dashboard/history aggregation |
+| `domain/` | Holdings, cost basis, pricing, currency conversion, and valuation rules |
+| `data/network/` | Provider parsers, instrument search, and WorkManager price refresh |
+
+The `assetsDashboard/` directory contains the earlier Django implementation retained as migration/reference material; the Android app does not depend on it at runtime.
+
+## Tests
+
+Run local unit tests with:
+
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+The test suite covers the core portfolio calculations and provider response parsers.
+
+## Notes
+
+Folio is a personal tracking tool, not financial advice. Market data is best-effort and should be verified before making financial decisions.
