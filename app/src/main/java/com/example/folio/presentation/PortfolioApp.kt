@@ -266,7 +266,10 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
                 Text(title,style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
             }
         }
-        if (with(density) { headerWidthPx.toDp() } < 600.dp) {
+        // The dashboard has three fairly wide actions.  At medium widths, placing
+        // them beside the title forces the primary button onto a second line where
+        // it appears oversized and detached from the other actions.
+        if (with(density) { headerWidthPx.toDp() } < 1_200.dp) {
             Column {
                 heading()
                 if (action != null) {
@@ -318,12 +321,19 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
         Canvas(Modifier.size(148.dp)) {
             var startAngle = -90f
             slices.forEachIndexed { index, slice ->
-                val sweepAngle = slice.value.divide(total, 8, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal("360")).toFloat()
+                // Do not shrink the arcs to create spacing: the panel colour then shows
+                // through as dark cracks, which makes the pie look like it contains extra
+                // slices.  Let the final segment absorb rounding so the circle closes cleanly.
+                val sweepAngle = if (index == slices.lastIndex) {
+                    270f - startAngle
+                } else {
+                    slice.value.divide(total, 8, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal("360")).toFloat()
+                }
                 drawArc(
                     color = colors[index % colors.size],
-                    startAngle = startAngle + 1f,
-                    sweepAngle = (sweepAngle - 2f).coerceAtLeast(0f),
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
                     useCenter = true,
                 )
                 startAngle += sweepAngle
@@ -341,7 +351,12 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(typeLabel(slice.assetType), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Tiny(ltrValue("${formattedNumber(percentage, "%", 1, 0)} · ${if (currency == "USD") formattedNumber(slice.value, "USD", 0, 0) else formattedNumber(slice.value, "IRT", 0, 0)}"))
+                        val allocationValue = if (currency == "USD") {
+                            formattedNumber(slice.value, "USD", 0, 0)
+                        } else {
+                            compact(slice.value)
+                        }
+                        Tiny(ltrValue("${formattedNumber(percentage, "%", 1, 0)} · $allocationValue"))
                     }
                 }
             }
