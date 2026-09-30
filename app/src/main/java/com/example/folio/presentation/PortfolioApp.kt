@@ -535,7 +535,32 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
 @Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
-@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val history by vm.assetTypeHistory.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){if(rows.isNotEmpty()){PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)};Spacer(Modifier.height(14.dp))};SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add)}}
+@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val history by vm.assetTypeHistory.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add) else {Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)}}}}
+
+private data class PercentageAxis(val lower: Float, val upper: Float, val ticks: List<Float>)
+
+private fun percentageAxis(percentages: List<BigDecimal>): PercentageAxis {
+    val minimum = percentages.minOf(BigDecimal::toFloat)
+    val maximum = percentages.maxOf(BigDecimal::toFloat)
+    val padding = if (minimum == maximum) (minimum * .1f).coerceAtLeast(5f) else 0f
+    val rawLower = (minimum - padding).coerceAtLeast(0f)
+    val rawUpper = (maximum + padding).coerceAtMost(100f)
+    val roughStep = ((rawUpper - rawLower) / 6f).coerceAtLeast(.1f)
+    val magnitude = java.lang.Math.pow(10.0, kotlin.math.floor(kotlin.math.log10(roughStep.toDouble()))).toFloat()
+    val step = when (roughStep / magnitude) {
+        in 0f..1f -> magnitude
+        in 1f..2f -> 2f * magnitude
+        in 2f..5f -> 5f * magnitude
+        else -> 10f * magnitude
+    }
+    val lower = (kotlin.math.floor(rawLower / step) * step).toFloat().coerceAtLeast(0f)
+    val upper = (kotlin.math.ceil(rawUpper / step) * step).toFloat().coerceAtMost(100f)
+    val count = ((upper - lower) / step).toInt().coerceAtLeast(1)
+    return PercentageAxis(lower, upper, (0..count).map { lower + it * step })
+}
+
+private fun percentageLabel(value: Float): String =
+    formattedNumber(BigDecimal.valueOf(value.toDouble()), "%", if (value % 1f == 0f) 0 else 1, 0)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -566,11 +591,18 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     val selected = points.firstOrNull { it.capturedAt.toEpochMilli() == selectedAt } ?: points.last()
     val selectedIndex = points.indexOf(selected)
     val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B), Color(0xFFC58CF0), Color(0xFF80C4A0))
-    val selectedTotal = selected.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
+    val percentages = points.map { point ->
+        val total = point.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        assetTypes.associateWith { assetType ->
+            if (total.signum() == 0) BigDecimal.ZERO else (point.values[assetType] ?: BigDecimal.ZERO)
+                .divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+        }
+    }
+    val axis = percentageAxis(percentages.flatMap { it.values })
+    val selectedPercentages = percentages[selectedIndex]
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         assetTypes.forEachIndexed { index, assetType ->
-            val value = selected.values[assetType] ?: BigDecimal.ZERO
-            val percentage = if (selectedTotal.signum() == 0) BigDecimal.ZERO else value.divide(selectedTotal, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+            val percentage = selectedPercentages.getValue(assetType)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(color = colors[index % colors.size], shape = RoundedCornerShape(50)) { Spacer(Modifier.size(10.dp)) }
                 Spacer(Modifier.width(8.dp))
@@ -581,8 +613,8 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     }
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth().height(190.dp)) {
-        Column(Modifier.width(38.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
-            Tiny("100%"); Tiny("75%"); Tiny("50%"); Tiny("25%"); Tiny("0%")
+        Column(Modifier.width(44.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
+            axis.ticks.asReversed().forEach { tick -> Tiny(ltrValue(percentageLabel(tick))) }
         }
         Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 6.dp).pointerInput(points) {
             detectTapGestures { tap ->
@@ -592,30 +624,26 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
         }) {
             val left = 4.dp.toPx(); val right = size.width - 4.dp.toPx(); val top = 4.dp.toPx(); val bottom = size.height - 4.dp.toPx()
             fun xAt(index: Int) = left + (right - left) * index / (points.size - 1).toFloat()
-            fun yAt(percentage: BigDecimal) = bottom - percentage.toFloat() / 100f * (bottom - top)
-            (0..4).forEach { index ->
-                val y = top + (bottom - top) * index / 4f
+            fun yAt(percentage: BigDecimal) = bottom - (percentage.toFloat() - axis.lower) / (axis.upper - axis.lower) * (bottom - top)
+            axis.ticks.forEach { tick ->
+                val y = yAt(BigDecimal.valueOf(tick.toDouble()))
                 drawLine(Muted.copy(alpha = .2f), androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y))
             }
             assetTypes.forEachIndexed { typeIndex, assetType ->
                 val path = Path()
-                points.forEachIndexed { index, point ->
-                    val total = point.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
-                    val value = point.values[assetType] ?: BigDecimal.ZERO
-                    val percentage = if (total.signum() == 0) BigDecimal.ZERO else value.divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+                percentages.forEachIndexed { index, pointPercentages ->
+                    val percentage = pointPercentages.getValue(assetType)
                     if (index == 0) path.moveTo(xAt(index), yAt(percentage)) else path.lineTo(xAt(index), yAt(percentage))
                 }
                 drawPath(path, colors[typeIndex % colors.size], style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
-                val total = selected.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
-                val value = selected.values[assetType] ?: BigDecimal.ZERO
-                val percentage = if (total.signum() == 0) BigDecimal.ZERO else value.divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+                val percentage = selectedPercentages.getValue(assetType)
                 val center = androidx.compose.ui.geometry.Offset(xAt(selectedIndex), yAt(percentage))
                 drawCircle(colors[typeIndex % colors.size].copy(alpha = .22f), 12.dp.toPx(), center)
                 drawCircle(colors[typeIndex % colors.size], 5.dp.toPx(), center)
             }
         }
     }
-    Row(Modifier.fillMaxWidth().padding(start = 38.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(Modifier.fillMaxWidth().padding(start = 44.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Tiny(dateFormat.format(points.first().capturedAt)); Tiny(dateFormat.format(points.last().capturedAt))
     }
 }
