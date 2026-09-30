@@ -15,6 +15,8 @@
     <string name="total_portfolio_value">Total portfolio value</string>
     <string name="portfolio_value_history">Portfolio value history</string>
     <string name="portfolio_history_empty">Save at least two valuation snapshots to display a chart.</string>
+    <string name="asset_type_percentage_history">Asset type percentage history</string>
+    <string name="asset_type_history_empty">Save at least two valuation snapshots to display allocation history.</string>
     <string name="chart_1_day">1D</string>
     <string name="chart_1_week">1W</string>
     <string name="chart_1_month">1M</string>

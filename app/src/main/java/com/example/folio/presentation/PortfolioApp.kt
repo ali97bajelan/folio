@@ -33,6 +33,7 @@ import androidx.navigation.compose.*
 import com.example.folio.R
 import com.example.folio.data.AssetDetail
 import com.example.folio.data.AssetRow
+import com.example.folio.data.AssetTypeHistoryPoint
 import com.example.folio.data.DashboardData
 import com.example.folio.data.PortfolioHistoryPoint
 import com.example.folio.data.local.*
@@ -534,7 +535,90 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
 @Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
-@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add)}}
+@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val history by vm.assetTypeHistory.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){if(rows.isNotEmpty()){PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)};Spacer(Modifier.height(14.dp))};SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add)}}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
+    var range by rememberSaveable { mutableStateOf(HistoryRange.ALL) }
+    var selectedAt by rememberSaveable { mutableStateOf<Long?>(null) }
+    val now = remember(history) { Instant.now() }
+    val points = remember(history, range) {
+        history.filter { range.duration?.let { duration -> !it.capturedAt.isBefore(now.minus(duration)) } ?: true }
+    }
+    Text(stringResource(R.string.asset_type_percentage_history), fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        HistoryRange.entries.forEach { item ->
+            FilterChip(selected = range == item, onClick = { range = item }, label = { Text(when (item) {
+                HistoryRange.DAY -> stringResource(R.string.chart_1_day); HistoryRange.WEEK -> stringResource(R.string.chart_1_week)
+                HistoryRange.MONTH -> stringResource(R.string.chart_1_month); HistoryRange.ALL -> stringResource(R.string.chart_all_time)
+            }) })
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    if (points.size < 2) {
+        Tiny(stringResource(R.string.asset_type_history_empty))
+        return
+    }
+    val assetTypes = points.flatMap { it.values.keys }.distinct()
+        .sortedByDescending { assetType -> points.last().values[assetType] ?: BigDecimal.ZERO }
+    val selected = points.firstOrNull { it.capturedAt.toEpochMilli() == selectedAt } ?: points.last()
+    val selectedIndex = points.indexOf(selected)
+    val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B), Color(0xFFC58CF0), Color(0xFF80C4A0))
+    val selectedTotal = selected.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        assetTypes.forEachIndexed { index, assetType ->
+            val value = selected.values[assetType] ?: BigDecimal.ZERO
+            val percentage = if (selectedTotal.signum() == 0) BigDecimal.ZERO else value.divide(selectedTotal, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = colors[index % colors.size], shape = RoundedCornerShape(50)) { Spacer(Modifier.size(10.dp)) }
+                Spacer(Modifier.width(8.dp))
+                Text(typeLabel(assetType), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(ltrValue(formattedNumber(percentage, "%", 1, 0)), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    Row(Modifier.fillMaxWidth().height(190.dp)) {
+        Column(Modifier.width(38.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
+            Tiny("100%"); Tiny("75%"); Tiny("50%"); Tiny("25%"); Tiny("0%")
+        }
+        Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 6.dp).pointerInput(points) {
+            detectTapGestures { tap ->
+                val fraction = (tap.x / size.width).coerceIn(0f, 1f)
+                selectedAt = points[(fraction * (points.size - 1) + .5f).toInt()].capturedAt.toEpochMilli()
+            }
+        }) {
+            val left = 4.dp.toPx(); val right = size.width - 4.dp.toPx(); val top = 4.dp.toPx(); val bottom = size.height - 4.dp.toPx()
+            fun xAt(index: Int) = left + (right - left) * index / (points.size - 1).toFloat()
+            fun yAt(percentage: BigDecimal) = bottom - percentage.toFloat() / 100f * (bottom - top)
+            (0..4).forEach { index ->
+                val y = top + (bottom - top) * index / 4f
+                drawLine(Muted.copy(alpha = .2f), androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y))
+            }
+            assetTypes.forEachIndexed { typeIndex, assetType ->
+                val path = Path()
+                points.forEachIndexed { index, point ->
+                    val total = point.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
+                    val value = point.values[assetType] ?: BigDecimal.ZERO
+                    val percentage = if (total.signum() == 0) BigDecimal.ZERO else value.divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+                    if (index == 0) path.moveTo(xAt(index), yAt(percentage)) else path.lineTo(xAt(index), yAt(percentage))
+                }
+                drawPath(path, colors[typeIndex % colors.size], style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
+                val total = selected.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
+                val value = selected.values[assetType] ?: BigDecimal.ZERO
+                val percentage = if (total.signum() == 0) BigDecimal.ZERO else value.divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
+                val center = androidx.compose.ui.geometry.Offset(xAt(selectedIndex), yAt(percentage))
+                drawCircle(colors[typeIndex % colors.size].copy(alpha = .22f), 12.dp.toPx(), center)
+                drawCircle(colors[typeIndex % colors.size], 5.dp.toPx(), center)
+            }
+        }
+    }
+    Row(Modifier.fillMaxWidth().padding(start = 38.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Tiny(dateFormat.format(points.first().capturedAt)); Tiny(dateFormat.format(points.last().capturedAt))
+    }
+}
 @Composable
 private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Unit) {
     val transactions by vm.transactions.collectAsState()

@@ -56,6 +56,12 @@ class MainViewModel(
         repo.portfolioSnapshots.map { Unit },
     ).map { repo.portfolioHistory() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val assetTypeHistory = merge(
+        refresh.map { Unit },
+        repo.assets.map { Unit },
+        repo.valuations.map { Unit },
+    ).map { repo.assetTypeHistory() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     fun asset(id: Long) = repo.asset(id)
     fun assetTagIds(id: Long) = repo.assetTagIds(id)
     fun detail(id: Long) = repo.detail(id)

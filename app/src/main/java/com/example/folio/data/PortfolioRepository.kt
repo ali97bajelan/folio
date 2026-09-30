@@ -170,6 +170,28 @@ class PortfolioRepository(private val dao: PortfolioDao) {
             .sortedBy(PortfolioHistoryPoint::capturedAt)
     }
 
+    /**
+     * Groups each valuation snapshot by the asset's class so allocation changes
+     * can be shown as a percentage history chart.
+     */
+    suspend fun assetTypeHistory(): List<AssetTypeHistoryPoint> {
+        val typesByAssetId = dao.allAssets().associate { it.id to it.assetType }
+        return dao.valuations()
+            .groupBy(AssetValuationEntity::capturedAt)
+            .mapNotNull { (capturedAt, valuations) ->
+                val values = valuations
+                    .mapNotNull { valuation ->
+                        val assetType = typesByAssetId[valuation.assetId] ?: return@mapNotNull null
+                        valuation.tomanValue?.let { assetType to it }
+                    }
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues { (_, values) -> values.fold(BigDecimal.ZERO, BigDecimal::add) }
+                    .filterValues { it.signum() > 0 }
+                values.takeIf { it.isNotEmpty() }?.let { AssetTypeHistoryPoint(capturedAt, it) }
+            }
+            .sortedBy(AssetTypeHistoryPoint::capturedAt)
+    }
+
     suspend fun saveSnapshots(now: Instant = Instant.now()) {
         val allAssets = dao.allAssets()
         val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
@@ -229,6 +251,11 @@ data class PortfolioHistoryPoint(
     val capturedAt: Instant,
     val tomanValue: BigDecimal,
     val usdValue: BigDecimal,
+)
+
+data class AssetTypeHistoryPoint(
+    val capturedAt: Instant,
+    val values: Map<String, BigDecimal>,
 )
 
 data class AssetDetail(
