@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">folio</string>
+    <string name="app_name">Folio</string>
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_assets">Assets</string>
     <string name="nav_transactions">Transactions</string>
     <string name="nav_more">More</string>
     <string name="dashboard_title">Dashboard</string>
-    <string name="refresh_prices">Refresh prices</string>
+    <string name="refresh_prices">Prices</string>
     <string name="add_transaction">Add transaction</string>
     <string name="add_asset">Add asset</string>
     <string name="update_price">Update price</string>

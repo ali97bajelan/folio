@@ -5,7 +5,7 @@
     <string name="nav_transactions">تراکنش‌ها</string>
     <string name="nav_more">بیشتر</string>
     <string name="dashboard_title">داشبورد</string>
-    <string name="refresh_prices">بروزرسانی قیمت</string>
+    <string name="refresh_prices">قیمت</string>
     <string name="add_transaction">افزودن تراکنش</string>
     <string name="add_asset">افزودن دارایی</string>
     <string name="update_price">بروزرسانی قیمت</string>
