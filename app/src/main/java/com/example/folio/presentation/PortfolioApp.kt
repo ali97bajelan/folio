@@ -53,6 +53,8 @@ private val Blue = Color(0xFF668FFC)
 private val Aqua = Color(0xFF76D8B0)
 private val Muted = Color(0xFF8F9CB1)
 private val Danger = Color(0xFFF47783)
+private val AppShape = RoundedCornerShape(16.dp)
+private val PillShape = RoundedCornerShape(50)
 private val dateFormat = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm")
     .withLocale(Locale.US)
@@ -138,6 +140,13 @@ fun PortfolioApp(
             surface = Panel,
             background = Navy,
             error = Danger,
+        ),
+        shapes = Shapes(
+            extraSmall = AppShape,
+            small = AppShape,
+            medium = AppShape,
+            large = AppShape,
+            extraLarge = AppShape,
         ),
     ) {
         Scaffold(
@@ -257,7 +266,7 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
     }
 }
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun Page(title:String,subtitle:String=stringResource(R.string.personal_wealth),action:(@Composable () -> Unit)?=null,content:@Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp)) {
+@Composable private fun Page(title:String,subtitle:String=stringResource(R.string.personal_wealth),actionAlignment: Alignment.Horizontal = Alignment.End,action:(@Composable () -> Unit)?=null,content:@Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp)) {
     var headerWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Box(Modifier.fillMaxWidth().onSizeChanged { headerWidthPx = it.width }) {
@@ -275,22 +284,22 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
                 heading()
                 if (action != null) {
                     Spacer(Modifier.height(8.dp))
-                    FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.End),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
+                    FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,actionAlignment),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
                 }
             }
         } else {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 heading()
-                if (action != null) FlowRow(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.End),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
+                if (action != null) FlowRow(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(12.dp,actionAlignment),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
             }
         }
     }
     Spacer(Modifier.height(20.dp))
     content()
 }
-@Composable private fun PanelCard(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit)=Card(modifier,colors=CardDefaults.cardColors(containerColor=PanelHi),shape=RoundedCornerShape(12.dp)){Column(Modifier.padding(16.dp),content=content)}
+@Composable private fun PanelCard(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit)=Card(modifier,colors=CardDefaults.cardColors(containerColor=PanelHi),shape=AppShape){Column(Modifier.padding(16.dp),content=content)}
 @Composable private fun Tiny(t:String)=Text(t,color=Muted,style=MaterialTheme.typography.labelSmall)
-@Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=RoundedCornerShape(5.dp)){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
+@Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=PillShape){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
 
 @Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val dash by vm.dashboard.collectAsState();val history by vm.portfolioHistory.collectAsState();var displayCurrency by rememberSaveable{mutableStateOf("IRT")};Page(stringResource(R.string.dashboard_title),action={TextButton(vm::refreshPrices){Text("↻ ${stringResource(R.string.refresh_prices)}")};TextButton(addTx){Text("+ ${stringResource(R.string.transaction)}")};Button(addAsset){Text("+ ${stringResource(R.string.asset)}")}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AllocationCakeChart(dash.rows,displayCurrency)}}}
 
@@ -346,7 +355,7 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
                 val percentage = slice.value.divide(total, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal("100"))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = colors[index % colors.size], shape = RoundedCornerShape(50)) {
+                    Surface(color = colors[index % colors.size], shape = PillShape) {
                         Spacer(Modifier.size(10.dp))
                     }
                     Spacer(Modifier.width(8.dp))
@@ -399,7 +408,7 @@ private fun PortfolioValue(
     )
 
     Spacer(Modifier.height(16.dp))
-    Surface(color = Panel.copy(alpha = .72f), shape = RoundedCornerShape(10.dp)) {
+    Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -423,7 +432,7 @@ private fun PortfolioValue(
 
     if (dash.missing > 0) {
         Spacer(Modifier.height(12.dp))
-        Surface(color = Danger.copy(alpha = .14f), shape = RoundedCornerShape(6.dp)) {
+        Surface(color = Danger.copy(alpha = .14f), shape = AppShape) {
             Text(
                 stringResource(R.string.assets_waiting_for_price, dash.missing),
                 color = Danger,
@@ -436,13 +445,13 @@ private fun PortfolioValue(
 
 @Composable
 private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
-    Surface(color = Panel.copy(alpha = .72f), shape = RoundedCornerShape(9.dp)) {
+    Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
         Row(Modifier.padding(3.dp)) {
             listOf("IRT", "USD").forEach { option ->
                 val selected = currency == option
                 Surface(
                     color = if (selected) Aqua.copy(alpha = .18f) else Color.Transparent,
-                    shape = RoundedCornerShape(7.dp),
+                    shape = AppShape,
                     modifier = Modifier.clickable { onCurrencyChange(option) },
                 ) {
                     Text(
@@ -527,7 +536,7 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
             Surface(
                 modifier = Modifier.align(Alignment.TopStart).offset(x = tooltipX).padding(top = 2.dp),
                 color = Panel,
-                shape = RoundedCornerShape(6.dp),
+                shape = AppShape,
             ) { Text(chartValue(selected.second, currency), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal=6.dp, vertical=3.dp), maxLines = 1) }
         }
     }
@@ -535,7 +544,7 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
 @Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
-@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val history by vm.assetTypeHistory.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));rows.forEach{AssetRowItem(it,open);HorizontalDivider(color=Color.White.copy(.06f))};if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add) else {Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)}}}}
+@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsState();val history by vm.assetTypeHistory.collectAsState();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),actionAlignment=Alignment.Start,action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add) else {PanelCard(Modifier.fillMaxWidth()){rows.forEachIndexed{index,item->AssetRowItem(item,open);if(index<rows.lastIndex)HorizontalDivider(color=Color.White.copy(.06f))}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)}}}}
 
 private data class PercentageAxis(val lower: Float, val upper: Float, val ticks: List<Float>)
 
@@ -604,7 +613,7 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
         assetTypes.forEachIndexed { index, assetType ->
             val percentage = selectedPercentages.getValue(assetType)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = colors[index % colors.size], shape = RoundedCornerShape(50)) { Spacer(Modifier.size(10.dp)) }
+                Surface(color = colors[index % colors.size], shape = PillShape) { Spacer(Modifier.size(10.dp)) }
                 Spacer(Modifier.width(8.dp))
                 Text(typeLabel(assetType), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(ltrValue(formattedNumber(percentage, "%", 1, 0)), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
@@ -655,6 +664,7 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
 
     Page(
         stringResource(R.string.nav_transactions),
+        actionAlignment = Alignment.Start,
         action = { Button(add) { Text(stringResource(R.string.add_transaction)) } },
     ) {
         if (transactions.isEmpty()) {
@@ -666,23 +676,29 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
             )
         }
 
-        transactions.forEach { transaction ->
-            val isPurchase = transaction.transactionType == "BUY"
-            val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
-            val assetSymbol = assetsById[transaction.assetId]?.symbol
-                ?: stringResource(R.string.empty_value)
+        if (transactions.isNotEmpty()) {
+            PanelCard(Modifier.fillMaxWidth()) {
+                transactions.forEachIndexed { index, transaction ->
+                    val isPurchase = transaction.transactionType == "BUY"
+                    val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
+                    val assetSymbol = assetsById[transaction.assetId]?.symbol
+                        ?: stringResource(R.string.empty_value)
 
-            ListItem(
-                modifier = Modifier.fillMaxWidth().clickable { edit(transaction.id) },
-                headlineContent = { Text("$transactionLabel · $assetSymbol") },
-                supportingContent = {
-                    Text("${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}")
-                },
-                trailingContent = {
-                    Pill(transactionLabel, if (isPurchase) Aqua else Danger)
-                },
-            )
-            HorizontalDivider(color = Color.White.copy(alpha = .06f))
+                    ListItem(
+                        modifier = Modifier.fillMaxWidth().clickable { edit(transaction.id) },
+                        headlineContent = { Text("$transactionLabel · $assetSymbol") },
+                        supportingContent = {
+                            Text("${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}")
+                        },
+                        trailingContent = {
+                            Pill(transactionLabel, if (isPurchase) Aqua else Danger)
+                        },
+                    )
+                    if (index < transactions.lastIndex) {
+                        HorizontalDivider(color = Color.White.copy(alpha = .06f))
+                    }
+                }
+            }
         }
     }
 }
