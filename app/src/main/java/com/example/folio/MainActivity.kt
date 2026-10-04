@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         val languagePreferences = LanguagePreferences(applicationContext)
         // Apply the saved locale before Compose reads any string resources.
         languagePreferences.set(languagePreferences.current())
-        PriceRefreshWorker.schedule(applicationContext)
+        PriceRefreshWorker.refreshOnAppOpen(applicationContext)
         val db = Room.databaseBuilder(applicationContext, PortfolioDatabase::class.java, "folio.db")
             .addMigrations(PortfolioDatabase.MIGRATION_1_2, PortfolioDatabase.MIGRATION_2_3)
             // PriceRefreshWorker opens the same file separately.  Notify this

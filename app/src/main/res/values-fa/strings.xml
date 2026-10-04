@@ -25,6 +25,19 @@
     <string name="active_assets">دارایی فعال</string>
     <string name="entire_portfolio">در تمام پرتفوی</string>
     <string name="last_updated">آخرین بروزرسانی</string>
+    <string name="last_updated_just_now">همین حالا</string>
+    <plurals name="last_updated_minutes_ago">
+        <item quantity="one">%1$d دقیقه پیش</item>
+        <item quantity="other">%1$d دقیقه پیش</item>
+    </plurals>
+    <plurals name="last_updated_hours_ago">
+        <item quantity="one">%1$d ساعت پیش</item>
+        <item quantity="other">%1$d ساعت پیش</item>
+    </plurals>
+    <plurals name="last_updated_days_ago">
+        <item quantity="one">%1$d روز پیش</item>
+        <item quantity="other">%1$d روز پیش</item>
+    </plurals>
     <string name="prices_available_offline">قیمت‌ها آفلاین می‌مانند</string>
     <string name="refreshing_provider_prices">در حال بروزرسانی قیمت‌های %1$s…</string>
     <string name="language">زبان</string>
@@ -58,4 +71,6 @@
     <string name="add_transaction_title">ثبت تراکنش</string><string name="edit_transaction_title">ویرایش تراکنش</string><string name="select_asset">انتخاب دارایی</string><string name="price_per_unit">قیمت هر واحد (اختیاری)</string><string name="fee">کارمزد (اختیاری)</string><string name="transaction_currency">ارز تراکنش</string><string name="notes">یادداشت</string><string name="price">قیمت</string><string name="currency">ارز</string><string name="price_snapshot_hint">ذخیرهٔ قیمت، اسنپ‌شات ارزش‌گذاری آفلاین را نیز ثبت می‌کند.</string><string name="save">ذخیره</string><string name="add">افزودن</string><string name="no_entries">هنوز موردی ثبت نشده است</string>
     <string name="type_fixed_income">درآمد ثابت</string><string name="type_usd">دلار</string><string name="type_crypto">رمزارز</string><string name="type_iran_stock">سهام ایران</string><string name="type_us_stock">سهام جهانی</string><string name="type_gold">طلا</string><string name="type_silver">نقره</string><string name="type_manual">دستی</string>
     <string name="error_name_required">نام الزامی است</string><string name="error_symbol_required">نماد الزامی است</string><string name="error_market_selection_required">برای قیمت بازار، ارائه‌دهنده و نماد بازار را انتخاب کنید</string><string name="error_asset_required">دارایی را انتخاب کنید</string><string name="error_quantity_positive">تعداد باید بزرگ‌تر از صفر باشد</string><string name="error_price_invalid">قیمت معتبر وارد کنید</string>
+    <string name="error_fee_invalid">کارمزد معتبر و غیرمنفی وارد کنید</string>
+    <string name="error_opening_quantity_required">برای قیمت یا محل نگهداری اولیه، تعداد اولیه را وارد کنید</string>
 </resources>

@@ -22,7 +22,7 @@ object HoldingService {
     fun byLocation(transactions: List<TransactionEntity>): Map<Long?, BigDecimal> =
         transactions.groupBy(TransactionEntity::locationId)
             .mapValues { (_, items) -> quantityAt(items) }
-            .filterValues { it != ZERO }
+            .filterValues { it.signum() != 0 }
 
     fun timelineIsValid(transactions: List<TransactionEntity>): Boolean {
         var quantity = ZERO
@@ -49,7 +49,7 @@ object CostBasisService {
                 quantity = newQuantity
             } else {
                 quantity -= transaction.quantity
-                if (quantity == ZERO) average = null
+                if (quantity.signum() == 0) average = null
             }
         }
         return CostBasis(quantity, average)
@@ -101,7 +101,7 @@ object PortfolioValuationService {
         usdIrt: BigDecimal?,
     ): BigDecimal? {
         val quantity = HoldingService.quantityAt(transactions, moment)
-        if (quantity == ZERO) return ZERO
+        if (quantity.signum() == 0) return ZERO
         val price = (if (moment == null) PricingService.latest(prices) else PricingService.at(prices, moment))
             ?: return null
         return CurrencyConversionService.convert(quantity * price.price, price.currency, target, usdIrt)

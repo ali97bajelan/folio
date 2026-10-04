@@ -4,11 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.Operation
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.folio.data.local.AssetEntity
@@ -150,7 +149,16 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         val capturedAt = Instant.now()
 
         val valuations = dao.activeAssets().mapNotNull { asset ->
-            val source = dao.prices(asset.id).firstOrNull() ?: return@mapNotNull null
+            // Derived quotes must never become the source of a later FX conversion.
+            val source = dao.prices(asset.id).firstOrNull { quote ->
+                if (asset.pricingMode == "MANUAL") {
+                    quote.provider.equals("MANUAL", ignoreCase = true)
+                } else {
+                    quote.provider.equals(asset.priceProvider, ignoreCase = true) &&
+                        quote.providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
+                        !quote.provider.equals("CALCULATED", ignoreCase = true)
+                }
+            } ?: return@mapNotNull null
             val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return@mapNotNull null
             dao.insertPrice(counterpart.copy(assetId = asset.id))
             val (usdtPrice, tomanPrice) = valuationPrices(source, usdIrt)
@@ -180,7 +188,10 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         val fxAsset = assets.firstOrNull {
             it.symbol.uppercase() in aliases || it.providerSymbol.uppercase() in setOf("USDTIRT", "USDT-RLS")
         } ?: return null
-        return dao.prices(fxAsset.id).firstOrNull { it.currency.equals("IRT", ignoreCase = true) }?.price
+        return dao.prices(fxAsset.id).firstOrNull {
+            it.currency.equals("IRT", ignoreCase = true) &&
+                !it.provider.equals("CALCULATED", ignoreCase = true)
+        }?.price
     }
 
     private fun convertedPrice(source: AssetPriceEntity, usdIrt: BigDecimal, capturedAt: Instant): AssetPriceEntity? {
@@ -240,32 +251,26 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     companion object {
         private const val DATABASE_NAME = "folio.db"
         private const val PERIODIC_WORK_NAME = "folio-price-refresh"
-        private const val IMMEDIATE_WORK_NAME = "folio-price-refresh-now"
+        internal const val IMMEDIATE_WORK_NAME = "folio-price-refresh-now"
         private val PROVIDERS = listOf("NOBITEX", "ABANTETHER", "TSETMC", "RAHAVARD")
         private const val CONVERSION_SCALE = 20
 
-        fun schedule(context: Context) {
-            val request = PeriodicWorkRequestBuilder<PriceRefreshWorker>(6, TimeUnit.HOURS)
-                .setConstraints(networkConstraints())
-                .build()
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                PERIODIC_WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                request,
-            )
+        /** Refreshes once when the app opens and removes the previous periodic schedule. */
+        fun refreshOnAppOpen(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK_NAME)
+            refreshNow(context)
         }
 
-        /** Enqueues an immediate refresh and returns its id so callers can await its completion. */
-        fun refreshNow(context: Context): java.util.UUID {
+        /** Callers can await enqueueing, then observe the actual work by its unique name. */
+        fun refreshNow(context: Context): Operation {
             val request = OneTimeWorkRequestBuilder<PriceRefreshWorker>()
                 .setConstraints(networkConstraints())
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(
+            return WorkManager.getInstance(context).enqueueUniqueWork(
                 IMMEDIATE_WORK_NAME,
                 ExistingWorkPolicy.KEEP,
                 request,
             )
-            return request.id
         }
 
         private fun networkConstraints() = Constraints.Builder()

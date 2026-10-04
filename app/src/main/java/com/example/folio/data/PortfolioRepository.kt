@@ -17,10 +17,17 @@ import com.example.folio.domain.PortfolioValuationService
 import com.example.folio.domain.PricingService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.time.Instant
 
-class PortfolioRepository(private val dao: PortfolioDao) {
+class PortfolioRepository(
+    private val dao: PortfolioDao,
+    private val calculationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+) {
     val assets: Flow<List<AssetEntity>> = dao.observeAssets()
     val tags = dao.observeTags()
     val locations = dao.observeLocations()
@@ -73,7 +80,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
         )
     }
 
-    suspend fun saveTransaction(item: TransactionEntity) {
+    suspend fun saveTransaction(item: TransactionEntity): Unit = withContext(calculationDispatcher) {
         validateTransaction(item)
         val existing = dao.transactions(item.assetId).filter { it.id != item.id }
         require(HoldingService.timelineIsValid(existing + item)) {
@@ -83,6 +90,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
             dao.insertTransaction(item)
         } else {
             val existing = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
+            require(item.assetId == existing.assetId) { "An existing transaction cannot be moved to another asset." }
             dao.updateTransaction(item.copy(createdAt = existing.createdAt, updatedAt = Instant.now()))
         }
     }
@@ -103,9 +111,9 @@ class PortfolioRepository(private val dao: PortfolioDao) {
         asset?.let {
             AssetDetail(it, items, prices, CostBasisService.current(items), HoldingService.byLocation(items))
         }
-    }
+    }.flowOn(calculationDispatcher)
 
-    suspend fun dashboard(): DashboardData {
+    suspend fun dashboard(): DashboardData = withContext(calculationDispatcher) {
         val allAssets = dao.allAssets()
         val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
         val latestPrices = pricesByAsset.mapValues { (_, prices) -> PricingService.latest(prices) }
@@ -133,7 +141,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
         // can react to an in-progress quote refresh, but the headline changes
         // only when that refresh has committed its complete valuation point.
         val latestSnapshot = dao.latestPortfolioSnapshot()
-        return DashboardData(
+        DashboardData(
             rows = rows,
             tomanTotal = latestSnapshot?.tomanValue ?: liveTomanTotal,
             usdTotal = latestSnapshot?.usdtValue ?: liveUsdTotal,
@@ -148,7 +156,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
      * valuations saved in one refresh share a capture time, which makes that
      * timestamp the natural point for the portfolio performance chart.
      */
-    suspend fun portfolioHistory(): List<PortfolioHistoryPoint> {
+    suspend fun portfolioHistory(): List<PortfolioHistoryPoint> = withContext(calculationDispatcher) {
         val snapshots = dao.portfolioSnapshots()
         // Preserve chart history captured by app versions before the total
         // snapshot table existed. New total snapshots override a legacy point
@@ -164,7 +172,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
                     .fold(BigDecimal.ZERO, BigDecimal::add),
             )
         }
-        return (legacy + snapshots.map { PortfolioHistoryPoint(it.capturedAt, it.tomanValue, it.usdtValue) })
+        (legacy + snapshots.map { PortfolioHistoryPoint(it.capturedAt, it.tomanValue, it.usdtValue) })
             .associateBy(PortfolioHistoryPoint::capturedAt)
             .values
             .sortedBy(PortfolioHistoryPoint::capturedAt)
@@ -174,9 +182,9 @@ class PortfolioRepository(private val dao: PortfolioDao) {
      * Groups each valuation snapshot by the asset's class so allocation changes
      * can be shown as a percentage history chart.
      */
-    suspend fun assetTypeHistory(): List<AssetTypeHistoryPoint> {
+    suspend fun assetTypeHistory(): List<AssetTypeHistoryPoint> = withContext(calculationDispatcher) {
         val typesByAssetId = dao.allAssets().associate { it.id to it.assetType }
-        return dao.valuations()
+        dao.valuations()
             .groupBy(AssetValuationEntity::capturedAt)
             .mapNotNull { (capturedAt, valuations) ->
                 val values = valuations
@@ -192,7 +200,7 @@ class PortfolioRepository(private val dao: PortfolioDao) {
             .sortedBy(AssetTypeHistoryPoint::capturedAt)
     }
 
-    suspend fun saveSnapshots(now: Instant = Instant.now()) {
+    suspend fun saveSnapshots(now: Instant = Instant.now()) = withContext(calculationDispatcher) {
         val allAssets = dao.allAssets()
         val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
         val usdIrt = CurrencyConversionService.usdIrt(allAssets) {

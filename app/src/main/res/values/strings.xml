@@ -25,6 +25,19 @@
     <string name="active_assets">Active assets</string>
     <string name="entire_portfolio">Across your portfolio</string>
     <string name="last_updated">Last updated</string>
+    <string name="last_updated_just_now">Just now</string>
+    <plurals name="last_updated_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="last_updated_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="last_updated_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <string name="prices_available_offline">Prices remain available offline</string>
     <string name="refreshing_provider_prices">Refreshing %1$s prices…</string>
     <string name="language">Language</string>
@@ -123,4 +136,6 @@
     <string name="error_asset_required">Select an asset</string>
     <string name="error_quantity_positive">Quantity must be greater than zero</string>
     <string name="error_price_invalid">Enter a valid price</string>
+    <string name="error_fee_invalid">Enter a valid nonnegative fee</string>
+    <string name="error_opening_quantity_required">Enter an opening quantity when specifying its cost or location</string>
 </resources>
