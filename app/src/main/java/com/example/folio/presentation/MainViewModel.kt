@@ -1,5 +1,6 @@
 package com.example.folio.presentation
 
+import com.example.folio.PortfolioCodes
 import android.content.Context
 import android.content.res.Configuration
 import java.util.Locale
@@ -20,6 +21,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -30,6 +33,8 @@ class MainViewModel(
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
     private val languagePreferences = LanguagePreferences(appContext)
+    private val locationPreferences = appContext.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+    private val locationSeedMutex = Mutex()
     private fun localizedString(resource: Int): String {
         val configuration = Configuration(appContext.resources.configuration)
         configuration.setLocale(Locale.forLanguageTag(languagePreferences.current().tag))
@@ -86,7 +91,12 @@ class MainViewModel(
         defaultLocations = names
         viewModelScope.launch {
             try {
-                repo.seedDefaultLocations(names)
+                locationSeedMutex.withLock {
+                    if (!locationPreferences.getBoolean("default_locations_seeded", false)) {
+                        repo.seedDefaultLocations(names)
+                        locationPreferences.edit().putBoolean("default_locations_seeded", true).apply()
+                    }
+                }
                 locationsNeedRetry = false
             } catch (e: CancellationException) {
                 throw e
@@ -189,8 +199,8 @@ class MainViewModel(
         if (q != null) require(q > BigDecimal.ZERO) { localizedString(R.string.error_quantity_positive) }
         require(average == null || average >= BigDecimal.ZERO) { localizedString(R.string.error_price_invalid) }
         val opening = q?.let {
-            TransactionEntity(assetId = 0, transactionType = "BUY", quantity = it, pricePerUnit = average,
-                transactionCurrency = asset.manualPriceCurrency.ifBlank { "IRT" }, locationId = locationId,
+            TransactionEntity(assetId = 0, transactionType = PortfolioCodes.BUY, quantity = it, pricePerUnit = average,
+                transactionCurrency = asset.manualPriceCurrency.ifBlank { PortfolioCodes.IRT }, locationId = locationId,
                 executedAt = Instant.now(), notes = "Initial position")
         }
         repo.saveAssetWithOpening(asset, tags, opening)
@@ -207,7 +217,7 @@ class MainViewModel(
         save(onError, { _: Unit -> done() }) { repo.deleteTransaction(item); repo.saveSnapshots() }
     fun savePrice(assetId: Long, price: String, currency: String, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =
         save(onError, { _: Unit -> done() }) {
-            repo.savePrice(AssetPriceEntity(assetId = assetId, price = BigDecimal(price), currency = currency, provider = "MANUAL", capturedAt = Instant.now()))
+            repo.savePrice(AssetPriceEntity(assetId = assetId, price = BigDecimal(price), currency = currency, provider = PortfolioCodes.MANUAL, capturedAt = Instant.now()))
             repo.saveSnapshots()
         }
     fun saveTag(name: String, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =

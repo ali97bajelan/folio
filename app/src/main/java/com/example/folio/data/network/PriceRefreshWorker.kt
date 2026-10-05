@@ -1,5 +1,6 @@
 package com.example.folio.data.network
 
+import com.example.folio.PortfolioCodes
 import android.content.Context
 import androidx.room.withTransaction
 import androidx.work.Constraints
@@ -35,7 +36,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
 
         PROVIDERS.forEach { provider ->
             refreshProvider(dao, client, provider, activeAssets.filter { asset ->
-                asset.pricingMode == "MARKET" && asset.priceProvider.equals(provider, ignoreCase = true)
+                asset.pricingMode == PortfolioCodes.MARKET && asset.priceProvider.equals(provider, ignoreCase = true)
             })
         }
         saveBothCurrencyPricesAndValuations(dao, client)
@@ -48,16 +49,16 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         provider: String,
         assets: List<AssetEntity>,
     ) {
-        val refresh = ProviderRefreshEntity(provider = provider, startedAt = Instant.now(), status = "SUCCESS")
+        val refresh = ProviderRefreshEntity(provider = provider, startedAt = Instant.now(), status = PortfolioCodes.SUCCESS)
         val refreshId = dao.insertRefresh(refresh)
         // Download once, including when the request fails, and skip empty providers.
-        val abanCatalogue = if (provider == "ABANTETHER" && assets.isNotEmpty()) {
+        val abanCatalogue = if (provider == PortfolioCodes.ABANTETHER && assets.isNotEmpty()) {
             runCatching { ProviderParsers.abanCatalogue(requestBody(client, provider, ABAN_CATALOGUE_URL)) }
                 .onFailure { if (it is CancellationException) throw it }
         } else null
         val failures = assets.mapNotNull { asset ->
             runCatching {
-                val result = if (provider == "ABANTETHER") {
+                val result = if (provider == PortfolioCodes.ABANTETHER) {
                     ProviderParsers.aban(asset.providerSymbol, requireNotNull(abanCatalogue).getOrThrow())
                 } else {
                     fetch(client, asset)
@@ -77,9 +78,9 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
                 .exceptionOrNull()?.let { "${asset.symbol}: ${it.message ?: "unavailable"}" }
         }
         val status = when {
-            failures.isEmpty() -> "SUCCESS"
-            failures.size == assets.size -> "FAILED"
-            else -> "PARTIAL"
+            failures.isEmpty() -> PortfolioCodes.SUCCESS
+            failures.size == assets.size -> PortfolioCodes.FAILED
+            else -> PortfolioCodes.PARTIAL
         }
         dao.updateRefresh(
             refresh.copy(
@@ -94,12 +95,12 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     private suspend fun fetch(client: OkHttpClient, asset: AssetEntity): PriceResult {
         val provider = asset.priceProvider.uppercase()
         val url = when (provider) {
-            "NOBITEX" -> ProviderParsers.marketParts(asset.providerSymbol).let { (base, quote) ->
+            PortfolioCodes.NOBITEX -> ProviderParsers.marketParts(asset.providerSymbol).let { (base, quote) ->
                 "https://apiv2.nobitex.ir/market/stats?srcCurrency=$base&dstCurrency=$quote"
             }
-            "ABANTETHER" -> ABAN_CATALOGUE_URL
-            "TSETMC" -> "https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/${asset.providerSymbol}"
-            "RAHAVARD" -> {
+            PortfolioCodes.ABANTETHER -> ABAN_CATALOGUE_URL
+            PortfolioCodes.TSETMC -> "https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/${asset.providerSymbol}"
+            PortfolioCodes.RAHAVARD -> {
                 if (asset.providerSymbol.isBlank() || !asset.providerSymbol.all(Char::isDigit)) {
                     throw PricingException.Unsupported("Rahavard requires a numeric entity ID.")
                 }
@@ -109,10 +110,10 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         }
         val body = requestBody(client, provider, url)
         return when (provider) {
-            "NOBITEX" -> ProviderParsers.nobitex(asset.providerSymbol, body)
-            "ABANTETHER" -> ProviderParsers.aban(asset.providerSymbol, body)
-            "TSETMC" -> ProviderParsers.tsetmc(asset.providerSymbol, body)
-            "RAHAVARD" -> ProviderParsers.rahavard(asset.providerSymbol, body)
+            PortfolioCodes.NOBITEX -> ProviderParsers.nobitex(asset.providerSymbol, body)
+            PortfolioCodes.ABANTETHER -> ProviderParsers.aban(asset.providerSymbol, body)
+            PortfolioCodes.TSETMC -> ProviderParsers.tsetmc(asset.providerSymbol, body)
+            PortfolioCodes.RAHAVARD -> ProviderParsers.rahavard(asset.providerSymbol, body)
             else -> error("Provider was validated above")
         }
     }
@@ -120,7 +121,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     private suspend fun requestBody(client: OkHttpClient, provider: String, url: String): String {
         val request = Request.Builder()
             .url(url)
-            .header("Accept", if (provider == "RAHAVARD") "application/json, text/plain, */*" else "application/json")
+            .header("Accept", if (provider == PortfolioCodes.RAHAVARD) "application/json, text/plain, */*" else "application/json")
             .header("User-Agent", userAgentFor(provider))
             .applyProviderHeaders(provider)
             .build()
@@ -153,12 +154,12 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             val valuations = dao.activeAssets().mapNotNull { asset ->
                 // Derived quotes must never become the source of a later FX conversion.
                 val source = dao.prices(asset.id).firstOrNull { quote ->
-                    if (asset.pricingMode == "MANUAL") {
-                        quote.provider.equals("MANUAL", ignoreCase = true)
+                    if (asset.pricingMode == PortfolioCodes.MANUAL) {
+                        quote.provider.equals(PortfolioCodes.MANUAL, ignoreCase = true)
                     } else {
                         quote.provider.equals(asset.priceProvider, ignoreCase = true) &&
                             quote.providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
-                            !quote.provider.equals("CALCULATED", ignoreCase = true)
+                            !quote.provider.equals(PortfolioCodes.CALCULATED, ignoreCase = true)
                     }
                 } ?: return@mapNotNull null
                 val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return@mapNotNull null
@@ -179,8 +180,8 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     private fun usdtIrtAsset() = AssetEntity(
         name = "USDT / IRT",
         symbol = "USDTIRT",
-        assetType = "USD",
-        priceProvider = "NOBITEX",
+        assetType = PortfolioCodes.USD,
+        priceProvider = PortfolioCodes.NOBITEX,
         providerSymbol = "USDTIRT",
     )
 
@@ -188,13 +189,13 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         dao: com.example.folio.data.local.PortfolioDao,
         assets: List<AssetEntity>,
     ): BigDecimal? {
-        val aliases = setOf("USD_IRT", "USDTIRT", "USDT_IRT", "USDT")
+        val aliases = setOf("USD_IRT", "USDTIRT", "USDT_IRT", PortfolioCodes.USDT)
         val fxAsset = assets.firstOrNull {
             it.symbol.uppercase() in aliases || it.providerSymbol.uppercase() in setOf("USDTIRT", "USDT-RLS")
         } ?: return null
         return dao.prices(fxAsset.id).firstOrNull {
-            it.currency.equals("IRT", ignoreCase = true) &&
-                !it.provider.equals("CALCULATED", ignoreCase = true)
+            it.currency.equals(PortfolioCodes.IRT, ignoreCase = true) &&
+                !it.provider.equals(PortfolioCodes.CALCULATED, ignoreCase = true)
         }?.price
     }
 
@@ -203,12 +204,12 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         val targetCurrency: String
         val converted: BigDecimal
         when (sourceCurrency) {
-            "IRT" -> {
-                targetCurrency = "USDT"
+            PortfolioCodes.IRT -> {
+                targetCurrency = PortfolioCodes.USDT
                 converted = source.price.divide(usdIrt, CONVERSION_SCALE, RoundingMode.HALF_UP)
             }
-            "USD", "USDT" -> {
-                targetCurrency = "IRT"
+            PortfolioCodes.USD, PortfolioCodes.USDT -> {
+                targetCurrency = PortfolioCodes.IRT
                 converted = source.price.multiply(usdIrt)
             }
             else -> return null
@@ -217,7 +218,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             assetId = 0,
             price = converted,
             currency = targetCurrency,
-            provider = "CALCULATED",
+            provider = PortfolioCodes.CALCULATED,
             providerSymbol = source.providerSymbol,
             capturedAt = capturedAt,
         )
@@ -225,20 +226,20 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
 
     /** Returns the USDT and toman unit prices from either side of a market pair. */
     private fun valuationPrices(source: AssetPriceEntity, usdIrt: BigDecimal): Pair<BigDecimal, BigDecimal> = when (source.currency.uppercase()) {
-        "IRT" -> source.price.divide(usdIrt, CONVERSION_SCALE, RoundingMode.HALF_UP) to source.price
-        "USD", "USDT" -> source.price to source.price.multiply(usdIrt)
+        PortfolioCodes.IRT -> source.price.divide(usdIrt, CONVERSION_SCALE, RoundingMode.HALF_UP) to source.price
+        PortfolioCodes.USD, PortfolioCodes.USDT -> source.price to source.price.multiply(usdIrt)
         else -> error("Unsupported valuation currency: ${source.currency}")
     }
 
     private fun Request.Builder.applyProviderHeaders(provider: String) = apply {
         when (provider) {
-            "NOBITEX" -> {
+            PortfolioCodes.NOBITEX -> {
                 header("Referer", "https://nobitex.ir/")
                 header("Origin", "https://nobitex.ir")
                 header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
                 header("Pragma", "no-cache")
             }
-            "RAHAVARD" -> {
+            PortfolioCodes.RAHAVARD -> {
                 header("Referer", "https://rahavard365.com/")
                 header("Application-Name", "rahavard")
                 header("Platform", "web")
@@ -247,8 +248,8 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     }
 
     private fun userAgentFor(provider: String): String = when (provider) {
-        "NOBITEX" -> "Mozilla/5.0 (Android; Folio)"
-        "RAHAVARD" -> "Mozilla/5.0 (compatible; AssetsDashboard/1.0)"
+        PortfolioCodes.NOBITEX -> "Mozilla/5.0 (Android; Folio)"
+        PortfolioCodes.RAHAVARD -> "Mozilla/5.0 (compatible; AssetsDashboard/1.0)"
         else -> "Folio Android"
     }
 
@@ -260,7 +261,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             .build()
         private const val PERIODIC_WORK_NAME = "folio-price-refresh"
         internal const val IMMEDIATE_WORK_NAME = "folio-price-refresh-now"
-        private val PROVIDERS = listOf("NOBITEX", "ABANTETHER", "TSETMC", "RAHAVARD")
+        private val PROVIDERS = listOf(PortfolioCodes.NOBITEX, PortfolioCodes.ABANTETHER, PortfolioCodes.TSETMC, PortfolioCodes.RAHAVARD)
         private const val CONVERSION_SCALE = 20
 
         /** Refreshes once when the app opens and removes the previous periodic schedule. */

@@ -1,5 +1,6 @@
 package com.example.folio.data.network
 
+import com.example.folio.PortfolioCodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -57,10 +58,10 @@ object InstrumentSearch {
         if (term.isBlank()) return@withContext emptyList()
 
         when (provider.uppercase()) {
-            "NOBITEX" -> searchNobitex(term)
-            "ABANTETHER" -> searchAbanTether(term)
-            "TSETMC" -> searchTsetmc(term)
-            "RAHAVARD" -> searchRahavard(term, assetType)
+            PortfolioCodes.NOBITEX -> searchNobitex(term)
+            PortfolioCodes.ABANTETHER -> searchAbanTether(term)
+            PortfolioCodes.TSETMC -> searchTsetmc(term)
+            PortfolioCodes.RAHAVARD -> searchRahavard(term, assetType)
             else -> emptyList()
         }
     }
@@ -145,7 +146,7 @@ object InstrumentSearch {
         if (parts.size != 2 || parts[0] != sourceCurrency) return null
 
         val base = parts[0]
-        val quote = if (parts[1] == "rls") "IRT" else parts[1].uppercase()
+        val quote = if (parts[1] == "rls") PortfolioCodes.IRT else parts[1].uppercase()
         val displayBase = base.uppercase()
         return Instrument(
             providerSymbol = "$base$quote".uppercase(),
@@ -217,11 +218,11 @@ object InstrumentSearch {
             listOf("طلا", "نقره", "gold", "silver").any(word::contains)
         }
         val preferredType = mapOf(
-            "GOLD" to "کالا",
-            "SILVER" to "کالا",
-            "CRYPTO" to "رمز ارز",
-            "IRAN_STOCK" to "سهام",
-            "US_STOCK" to "سهام",
+            PortfolioCodes.GOLD to "کالا",
+            PortfolioCodes.SILVER to "کالا",
+            PortfolioCodes.CRYPTO to "رمز ارز",
+            PortfolioCodes.IRAN_STOCK to "سهام",
+            PortfolioCodes.US_STOCK to "سهام",
         )[assetType]
 
         return results.objects()

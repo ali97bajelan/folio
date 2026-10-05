@@ -1,5 +1,6 @@
 package com.example.folio.presentation
 
+import com.example.folio.PortfolioCodes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.selection.selectable
@@ -136,7 +137,7 @@ private fun lastUpdatedText(updatedAt: Instant?, calculatedAt: Instant): String 
     val (divisor, label, places) = when {
         value.abs() >= BigDecimal("1000000000") -> Triple(BigDecimal("1000000000"), "B", 2)
         value.abs() >= BigDecimal("1000000") -> Triple(BigDecimal("1000000"), "M", 1)
-        else -> return number(value, "IRT", 0)
+        else -> return number(value, PortfolioCodes.IRT, 0)
     }
     // Financial notation stays identical in Persian and English.  Let the
     // formatter omit insignificant trailing zeros: 1.20 B -> 1.2 B, 1.00 B -> 1 B.
@@ -144,27 +145,27 @@ private fun lastUpdatedText(updatedAt: Instant?, calculatedAt: Instant): String 
 }
 
 @Composable private fun money(value: BigDecimal?, currency: String) =
-    if (currency == "IRT") compact(value) else number(value, currency)
+    if (currency == PortfolioCodes.IRT) compact(value) else number(value, currency)
 
-@Composable private fun wholeUsd(value: BigDecimal?) = number(value?.setScale(0, RoundingMode.HALF_UP), "USD", places = 0)
+@Composable private fun wholeUsd(value: BigDecimal?) = number(value?.setScale(0, RoundingMode.HALF_UP), PortfolioCodes.USD, places = 0)
 
 @Composable private fun typeLabel(value: String) = when (value) {
-    "FIXED_INCOME" -> stringResource(R.string.type_fixed_income)
-    "USD" -> stringResource(R.string.type_usd)
-    "CRYPTO" -> stringResource(R.string.type_crypto)
-    "IRAN_STOCK" -> stringResource(R.string.type_iran_stock)
-    "US_STOCK" -> stringResource(R.string.type_us_stock)
-    "GOLD" -> stringResource(R.string.type_gold)
-    "SILVER" -> stringResource(R.string.type_silver)
-    "MANUAL" -> stringResource(R.string.type_manual)
+    PortfolioCodes.FIXED_INCOME -> stringResource(R.string.type_fixed_income)
+    PortfolioCodes.USD -> stringResource(R.string.type_usd)
+    PortfolioCodes.CRYPTO -> stringResource(R.string.type_crypto)
+    PortfolioCodes.IRAN_STOCK -> stringResource(R.string.type_iran_stock)
+    PortfolioCodes.US_STOCK -> stringResource(R.string.type_us_stock)
+    PortfolioCodes.GOLD -> stringResource(R.string.type_gold)
+    PortfolioCodes.SILVER -> stringResource(R.string.type_silver)
+    PortfolioCodes.MANUAL -> stringResource(R.string.type_manual)
     else -> value
 }
 
 private fun defaultProviderFor(assetType: String) = when (assetType) {
-    "IRAN_STOCK" -> "TSETMC"
-    "US_STOCK" -> "ABANTETHER"
-    "GOLD", "SILVER" -> "RAHAVARD"
-    else -> "NOBITEX"
+    PortfolioCodes.IRAN_STOCK -> PortfolioCodes.TSETMC
+    PortfolioCodes.US_STOCK -> PortfolioCodes.ABANTETHER
+    PortfolioCodes.GOLD, PortfolioCodes.SILVER -> PortfolioCodes.RAHAVARD
+    else -> PortfolioCodes.NOBITEX
 }
 
 private fun NavBackStackEntry.longArgument(name: String): Long? =
@@ -360,7 +361,7 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
 @Composable private fun Tiny(t:String)=Text(t,color=Muted,style=MaterialTheme.typography.labelSmall)
 @Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=PillShape){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
 
-@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle();val dash by vm.dashboard.collectAsStateWithLifecycle();val history by vm.portfolioHistory.collectAsStateWithLifecycle();val dashboardLoadedAt=remember(dash){Instant.now()};var displayCurrency by rememberSaveable{mutableStateOf("IRT")};Page(stringResource(R.string.dashboard_title),action={Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton(vm::refreshPrices,Modifier.weight(1f),enabled=!isRefreshing,contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.Refresh,contentDescription=null,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(stringResource(R.string.refresh_prices),maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addTx,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.transaction)}",maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addAsset,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.asset)}",maxLines=1,overflow=TextOverflow.Ellipsis)}}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency,dashboardLoadedAt){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AllocationCakeChart(dash.rows,displayCurrency)}}}
+@Composable private fun Dashboard(vm:MainViewModel,open:(Long)->Unit,addAsset:()->Unit,addTx:()->Unit){val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle();val dash by vm.dashboard.collectAsStateWithLifecycle();val history by vm.portfolioHistory.collectAsStateWithLifecycle();val dashboardLoadedAt=remember(dash){Instant.now()};var displayCurrency by rememberSaveable{mutableStateOf(PortfolioCodes.IRT)};Page(stringResource(R.string.dashboard_title),action={Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton(vm::refreshPrices,Modifier.weight(1f),enabled=!isRefreshing,contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.Refresh,contentDescription=null,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(stringResource(R.string.refresh_prices),maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addTx,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.transaction)}",maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addAsset,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.asset)}",maxLines=1,overflow=TextOverflow.Ellipsis)}}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency,dashboardLoadedAt){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AllocationCakeChart(dash.rows,displayCurrency)}}}
 
 private data class AllocationSlice(val assetType: String, val value: BigDecimal)
 
@@ -368,7 +369,7 @@ private data class AllocationSlice(val assetType: String, val value: BigDecimal)
 private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
     val slices = rows.groupBy { it.asset.assetType }
         .map { (assetType, typeRows) ->
-            val value = if (currency == "USD") {
+            val value = if (currency == PortfolioCodes.USD) {
                 typeRows.mapNotNull { it.usdValue }.fold(BigDecimal.ZERO, BigDecimal::add)
             } else {
                 typeRows.mapNotNull { it.tomanValue }.fold(BigDecimal.ZERO, BigDecimal::add)
@@ -420,8 +421,8 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Text(typeLabel(slice.assetType), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val allocationValue = if (currency == "USD") {
-                            formattedNumber(slice.value, "USD", 0, 0)
+                        val allocationValue = if (currency == PortfolioCodes.USD) {
+                            formattedNumber(slice.value, PortfolioCodes.USD, 0, 0)
                         } else {
                             compact(slice.value)
                         }
@@ -448,11 +449,11 @@ private fun PortfolioValue(
         CurrencySelector(currency, onCurrencyChange)
     }
 
-    val total = if (currency == "USD") dash.usdTotal else dash.tomanTotal
-    val alternateTotal = if (currency == "USD") compact(dash.tomanTotal) else wholeUsd(dash.usdTotal)
+    val total = if (currency == PortfolioCodes.USD) dash.usdTotal else dash.tomanTotal
+    val alternateTotal = if (currency == PortfolioCodes.USD) compact(dash.tomanTotal) else wholeUsd(dash.usdTotal)
     Spacer(Modifier.height(14.dp))
     Text(
-        if (currency == "USD") wholeUsd(total) else compact(total),
+        if (currency == PortfolioCodes.USD) wholeUsd(total) else compact(total),
         style = MaterialTheme.typography.headlineLarge,
         fontWeight = FontWeight.Bold,
         maxLines = 1,
@@ -507,7 +508,7 @@ private fun PortfolioValue(
 private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
     Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
         Row(Modifier.padding(3.dp).selectableGroup()) {
-            listOf("IRT", "USD").forEach { option ->
+            listOf(PortfolioCodes.IRT, PortfolioCodes.USD).forEach { option ->
                 val selected = currency == option
                 Surface(
                     color = if (selected) Aqua.copy(alpha = .18f) else Color.Transparent,
@@ -631,7 +632,7 @@ private fun chartNavigation(
 
 private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1)), WEEK(Duration.ofDays(7)), MONTH(Duration.ofDays(30)), ALL(null) }
 @Composable private fun chartValue(value: BigDecimal, currency: String) =
-    if (currency == "USD") wholeUsd(value) else compact(value)
+    if (currency == PortfolioCodes.USD) wholeUsd(value) else compact(value)
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:String) {
     var range by rememberSaveable { mutableStateOf(HistoryRange.DAY) }
@@ -639,7 +640,7 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
     val now = remember(history) { Instant.now() }
     val points = remember(history, range, currency) {
         history.filter { range.duration?.let { duration -> !it.capturedAt.isBefore(now.minus(duration)) } ?: true }
-            .map { it.capturedAt to if (currency == "USD") it.usdValue else it.tomanValue }
+            .map { it.capturedAt to if (currency == PortfolioCodes.USD) it.usdValue else it.tomanValue }
     }
     Text(stringResource(R.string.portfolio_value_history), fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
@@ -707,7 +708,7 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
     Row(Modifier.fillMaxWidth().padding(start=72.dp), horizontalArrangement=Arrangement.SpaceBetween) { Tiny(dateFormat.format(points.first().first)); Tiny(dateFormat.format(points.last().first)) }
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
-@Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
+@Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit==PortfolioCodes.GRAM)" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
 private enum class AssetFilter { ALL, ACTIVE, INACTIVE }
 
 @Composable
@@ -890,7 +891,7 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
         if (transactions.isNotEmpty()) {
             PanelCard(Modifier.fillMaxWidth()) {
                 transactions.forEachIndexed { index, transaction ->
-                    val isPurchase = transaction.transactionType == "BUY"
+                    val isPurchase = transaction.transactionType == PortfolioCodes.BUY
                     val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
                     val assetSymbol = assetsById[transaction.assetId]?.symbol
                         ?: stringResource(R.string.empty_value)
@@ -917,7 +918,7 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
 @Composable private fun AssetDetailScreen(vm:MainViewModel,id:Long,edit:()->Unit,price:()->Unit,tx:()->Unit,back:()->Unit){val x by remember(vm,id){vm.detail(id)}.collectAsStateWithLifecycle(initialValue=null);val locs by vm.locations.collectAsStateWithLifecycle();val dashboard by vm.dashboard.collectAsStateWithLifecycle();var confirm by remember{mutableStateOf(false)};
     var deleting by remember(vm,id){mutableStateOf(false)}
     var deleteError by remember(vm,id){mutableStateOf("")}
-    val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.assetRows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode=="MANUAL")Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(
+    val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.assetRows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode==PortfolioCodes.MANUAL)Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(
         onDismissRequest={if(!deleting)confirm=false},
         title={Text(stringResource(R.string.delete_asset_title))},
         text={Column{Text(stringResource(R.string.delete_asset_message));if(deleteError.isNotBlank())Text(deleteError,color=Danger)}},
@@ -933,19 +934,19 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
             colors=ButtonDefaults.buttonColors(containerColor=Danger),
         ){Text(stringResource(R.string.delete))}},
         dismissButton={TextButton(onClick={confirm=false},enabled=!deleting){Text(stringResource(R.string.cancel))}},
-    );Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(tx){Text("+ ${stringResource(R.string.transaction)}")};OutlinedButton({confirm=true}){Text(stringResource(R.string.delete),color=Danger)}};Spacer(Modifier.height(14.dp));AssetMetrics(d,row?.tomanValue,row?.usdValue);Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_details),fontWeight=FontWeight.Bold);DetailLine(stringResource(R.string.symbol),d.asset.symbol);DetailLine(stringResource(R.string.type),typeLabel(d.asset.assetType));DetailLine(stringResource(R.string.pricing),if(d.asset.pricingMode=="MANUAL")stringResource(R.string.manual) else stringResource(R.string.market_provider,d.asset.priceProvider));DetailLine(stringResource(R.string.last_price),d.prices.firstOrNull()?.let{money(it.price,it.currency)}?:stringResource(R.string.unavailable))};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.holdings_by_location),fontWeight=FontWeight.Bold);d.byLocation.forEach{(loc,q)->DetailLine(loc?.let{key->locs.firstOrNull{it.id==key}?.name}?:stringResource(R.string.no_location),detailQuantity(q))};if(d.byLocation.isEmpty())Tiny(stringResource(R.string.no_holdings))};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_transactions),fontWeight=FontWeight.Bold);d.transactions.forEach{t->ListItem(headlineContent={Text(if(t.transactionType=="BUY")stringResource(R.string.buy) else stringResource(R.string.sell))},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(t.transactionCurrency)});HorizontalDivider(color=Color.White.copy(.06f))}}}
+    );Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(tx){Text("+ ${stringResource(R.string.transaction)}")};OutlinedButton({confirm=true}){Text(stringResource(R.string.delete),color=Danger)}};Spacer(Modifier.height(14.dp));AssetMetrics(d,row?.tomanValue,row?.usdValue);Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_details),fontWeight=FontWeight.Bold);DetailLine(stringResource(R.string.symbol),d.asset.symbol);DetailLine(stringResource(R.string.type),typeLabel(d.asset.assetType));DetailLine(stringResource(R.string.pricing),if(d.asset.pricingMode==PortfolioCodes.MANUAL)stringResource(R.string.manual) else stringResource(R.string.market_provider,d.asset.priceProvider));DetailLine(stringResource(R.string.last_price),d.prices.firstOrNull()?.let{money(it.price,it.currency)}?:stringResource(R.string.unavailable))};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.holdings_by_location),fontWeight=FontWeight.Bold);d.byLocation.forEach{(loc,q)->DetailLine(loc?.let{key->locs.firstOrNull{it.id==key}?.name}?:stringResource(R.string.no_location),detailQuantity(q))};if(d.byLocation.isEmpty())Tiny(stringResource(R.string.no_holdings))};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_transactions),fontWeight=FontWeight.Bold);d.transactions.forEach{t->ListItem(headlineContent={Text(if(t.transactionType==PortfolioCodes.BUY)stringResource(R.string.buy) else stringResource(R.string.sell))},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(t.transactionCurrency)});HorizontalDivider(color=Color.White.copy(.06f))}}}
 @Composable private fun AssetMetrics(d:AssetDetail,tomanValue:BigDecimal?,usdtValue:BigDecimal?) {
     var metricsWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Box(Modifier.fillMaxWidth().onSizeChanged { metricsWidthPx = it.width }) {
-        val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),choiceLabel(d.asset.unit),modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)}
+        val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),choiceLabel(d.asset.unit),modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,PortfolioCodes.USDT),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)}
         if (with(density) { metricsWidthPx.toDp() } < 480.dp) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.fillMaxWidth()) }
         else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.weight(1f)) }
     }
 }
 @Composable private fun DetailLine(a:String,b:String)=Row(Modifier.fillMaxWidth().padding(top=9.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){Text(a,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))}
 
-@Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else remember(vm,id){vm.asset(id)}.collectAsStateWithLifecycle(initialValue=null));val tagIds by (if(id==null) remember{mutableStateOf<List<Long>?>(emptyList())} else remember(vm,id){vm.assetTagIds(id)}.collectAsStateWithLifecycle(initialValue=null));val tags by vm.tags.collectAsStateWithLifecycle();val locations by vm.locations.collectAsStateWithLifecycle();val results by vm.instrumentResults.collectAsStateWithLifecycle();val searchError by vm.instrumentSearchError.collectAsStateWithLifecycle();var name by rememberSaveable(id){mutableStateOf("")};var symbol by rememberSaveable(id){mutableStateOf("")};var type by rememberSaveable(id){mutableStateOf("CRYPTO")};var unit by rememberSaveable(id){mutableStateOf("UNIT")};var mode by rememberSaveable(id){mutableStateOf("MARKET")};var provider by rememberSaveable(id){mutableStateOf("NOBITEX")};var providerSymbol by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf("IRT")};var active by rememberSaveable(id){mutableStateOf(true)};var selected by rememberSaveable(id,stateSaver=listSaver<Set<Long>,Long>(save={it.toList()},restore={it.toSet()})){mutableStateOf(setOf<Long>())};var openingLocation by rememberSaveable(id){mutableStateOf(0L)};var openingQuantity by rememberSaveable(id){mutableStateOf("")};var openingAverage by rememberSaveable(id){mutableStateOf("")};var error by rememberSaveable(id){mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);var assetInitialized by rememberSaveable(id){mutableStateOf(id==null)};var tagsInitialized by rememberSaveable(id){mutableStateOf(id==null)};LaunchedEffect(old){if(!assetInitialized)old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;assetInitialized=true}};LaunchedEffect(tagIds){if(!tagsInitialized)tagIds?.let{selected=it.toSet();tagsInitialized=true}};LaunchedEffect(mode,provider,name,type){if(mode=="MARKET"&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};if(!assetInitialized||!tagsInitialized)return Page(stringResource(R.string.edit_asset_title)){Tiny(stringResource(R.string.loading))};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,enabled=!isSaving&&(id==null||old!=null),done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode=="MANUAL")"MANUAL" else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode=="MARKET"&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),onError={error=it},done=done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf("CRYPTO","USD","IRAN_STOCK","US_STOCK","GOLD","SILVER","FIXED_INCOME","MANUAL"),render={typeLabel(it)}){type=it;if(id==null){provider=defaultProviderFor(it);providerSymbol=""}};Choice(stringResource(R.string.unit),unit,listOf("UNIT","GRAM"),render={choiceLabel(it)}){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf("MANUAL","MARKET"),render={choiceLabel(it)}){mode=it};if(mode=="MARKET"){Choice(stringResource(R.string.provider),provider,listOf("NOBITEX","ABANTETHER","TSETMC","RAHAVARD"),render={choiceLabel(it)}){if(provider!=it){provider=it;providerSymbol="";vm.clearInstrumentSearch()}};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf("IRT","USD","USDT")){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
+@Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else remember(vm,id){vm.asset(id)}.collectAsStateWithLifecycle(initialValue=null));val tagIds by (if(id==null) remember{mutableStateOf<List<Long>?>(emptyList())} else remember(vm,id){vm.assetTagIds(id)}.collectAsStateWithLifecycle(initialValue=null));val tags by vm.tags.collectAsStateWithLifecycle();val locations by vm.locations.collectAsStateWithLifecycle();val results by vm.instrumentResults.collectAsStateWithLifecycle();val searchError by vm.instrumentSearchError.collectAsStateWithLifecycle();var name by rememberSaveable(id){mutableStateOf("")};var symbol by rememberSaveable(id){mutableStateOf("")};var type by rememberSaveable(id){mutableStateOf(PortfolioCodes.CRYPTO)};var unit by rememberSaveable(id){mutableStateOf(PortfolioCodes.UNIT)};var mode by rememberSaveable(id){mutableStateOf(PortfolioCodes.MARKET)};var provider by rememberSaveable(id){mutableStateOf(PortfolioCodes.NOBITEX)};var providerSymbol by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf(PortfolioCodes.IRT)};var active by rememberSaveable(id){mutableStateOf(true)};var selected by rememberSaveable(id,stateSaver=listSaver<Set<Long>,Long>(save={it.toList()},restore={it.toSet()})){mutableStateOf(setOf<Long>())};var openingLocation by rememberSaveable(id){mutableStateOf(0L)};var openingQuantity by rememberSaveable(id){mutableStateOf("")};var openingAverage by rememberSaveable(id){mutableStateOf("")};var error by rememberSaveable(id){mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);var assetInitialized by rememberSaveable(id){mutableStateOf(id==null)};var tagsInitialized by rememberSaveable(id){mutableStateOf(id==null)};LaunchedEffect(old){if(!assetInitialized)old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;assetInitialized=true}};LaunchedEffect(tagIds){if(!tagsInitialized)tagIds?.let{selected=it.toSet();tagsInitialized=true}};LaunchedEffect(mode,provider,name,type){if(mode==PortfolioCodes.MARKET&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};if(!assetInitialized||!tagsInitialized)return Page(stringResource(R.string.edit_asset_title)){Tiny(stringResource(R.string.loading))};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,enabled=!isSaving&&(id==null||old!=null),done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode==PortfolioCodes.MANUAL)PortfolioCodes.MANUAL else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode==PortfolioCodes.MARKET&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),onError={error=it},done=done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf(PortfolioCodes.CRYPTO,PortfolioCodes.USD,PortfolioCodes.IRAN_STOCK,PortfolioCodes.US_STOCK,PortfolioCodes.GOLD,PortfolioCodes.SILVER,PortfolioCodes.FIXED_INCOME,PortfolioCodes.MANUAL),render={typeLabel(it)}){type=it;if(id==null){provider=defaultProviderFor(it);providerSymbol=""}};Choice(stringResource(R.string.unit),unit,listOf(PortfolioCodes.UNIT,PortfolioCodes.GRAM),render={choiceLabel(it)}){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf(PortfolioCodes.MANUAL,PortfolioCodes.MARKET),render={choiceLabel(it)}){mode=it};if(mode==PortfolioCodes.MARKET){Choice(stringResource(R.string.provider),provider,listOf(PortfolioCodes.NOBITEX,PortfolioCodes.ABANTETHER,PortfolioCodes.TSETMC,PortfolioCodes.RAHAVARD),render={choiceLabel(it)}){if(provider!=it){provider=it;providerSymbol="";vm.clearInstrumentSearch()}};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf(PortfolioCodes.IRT,PortfolioCodes.USD,PortfolioCodes.USDT)){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
 
 @Composable
 private fun TransactionForm(
@@ -961,11 +962,11 @@ private fun TransactionForm(
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
 
     var assetId by rememberSaveable(editId, fixedAsset) { mutableLongStateOf(fixedAsset ?: 0L) }
-    var transactionType by rememberSaveable(editId, fixedAsset) { mutableStateOf("BUY") }
+    var transactionType by rememberSaveable(editId, fixedAsset) { mutableStateOf(PortfolioCodes.BUY) }
     var quantity by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
     var price by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
     var fee by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
-    var currency by rememberSaveable(editId, fixedAsset) { mutableStateOf("IRT") }
+    var currency by rememberSaveable(editId, fixedAsset) { mutableStateOf(PortfolioCodes.IRT) }
     var locationId by rememberSaveable(editId, fixedAsset) { mutableStateOf(0L) }
     var notes by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
     var error by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
@@ -1060,8 +1061,8 @@ private fun TransactionForm(
         Choice(
             label = stringResource(R.string.type),
             selected = transactionType,
-            options = listOf("BUY", "SELL"),
-            render = { if (it == "BUY") buyLabel else sellLabel },
+            options = listOf(PortfolioCodes.BUY, PortfolioCodes.SELL),
+            render = { if (it == PortfolioCodes.BUY) buyLabel else sellLabel },
             select = { transactionType = it },
         )
         Field(stringResource(R.string.quantity), quantity) { quantity = it }
@@ -1070,7 +1071,7 @@ private fun TransactionForm(
         Choice(
             label = stringResource(R.string.transaction_currency),
             selected = currency,
-            options = listOf("IRT", "USD", "USDT"),
+            options = listOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT),
             select = { currency = it },
         )
         Choice(
@@ -1086,7 +1087,7 @@ private fun TransactionForm(
         Field(stringResource(R.string.notes), notes) { notes = it }
     }
 }
-@Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf("IRT")};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf("IRT","USD","USDT")){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
+@Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf(PortfolioCodes.IRT)};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf(PortfolioCodes.IRT,PortfolioCodes.USD,PortfolioCodes.USDT)){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
 @Composable private fun Settings(tags:()->Unit,locations:()->Unit,languagePreferences: LanguagePreferences) {
     var language by remember { mutableStateOf(languagePreferences.current()) }
     Page(stringResource(R.string.nav_more)) {
@@ -1151,11 +1152,11 @@ private fun Locations(vm: MainViewModel) {
 @Composable private fun Field(label:String,value:String,hint:String="",change:(String)->Unit){OutlinedTextField(value,change,Modifier.fillMaxWidth().padding(bottom=10.dp),label={Text(label)},placeholder={if(hint.isNotBlank())Text(hint)},singleLine=label != stringResource(R.string.notes))}
 @Composable
 private fun choiceLabel(value: String): String = when (value) {
-    "CRYPTO", "USD", "IRAN_STOCK", "US_STOCK", "GOLD", "SILVER", "FIXED_INCOME", "MANUAL" -> typeLabel(value)
-    "UNIT" -> stringResource(R.string.unit_count)
-    "GRAM" -> stringResource(R.string.unit_gram)
-    "MARKET" -> stringResource(R.string.pricing_market)
-    "ABANTETHER" -> "Aban Tether"
+    PortfolioCodes.CRYPTO, PortfolioCodes.USD, PortfolioCodes.IRAN_STOCK, PortfolioCodes.US_STOCK, PortfolioCodes.GOLD, PortfolioCodes.SILVER, PortfolioCodes.FIXED_INCOME, PortfolioCodes.MANUAL -> typeLabel(value)
+    PortfolioCodes.UNIT -> stringResource(R.string.unit_count)
+    PortfolioCodes.GRAM -> stringResource(R.string.unit_gram)
+    PortfolioCodes.MARKET -> stringResource(R.string.pricing_market)
+    PortfolioCodes.ABANTETHER -> "Aban Tether"
     else -> value
 }
 

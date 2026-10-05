@@ -1,5 +1,6 @@
 package com.example.folio.data.network
 
+import com.example.folio.PortfolioCodes
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -26,7 +27,7 @@ object ProviderParsers {
             ?: throw PricingException.Invalid("Nobitex returned an unexpected market response.")
         val price = validPrice(rawPrice, "Nobitex")
         val isRial = quote == "rls"
-        return PriceResult(if (isRial) price.divide(BigDecimal.TEN) else price, if (isRial) "IRT" else quote.uppercase(), "NOBITEX", symbol.uppercase())
+        return PriceResult(if (isRial) price.divide(BigDecimal.TEN) else price, if (isRial) PortfolioCodes.IRT else quote.uppercase(), PortfolioCodes.NOBITEX, symbol.uppercase())
     }
 
     fun tsetmc(symbol: String, body: String): PriceResult {
@@ -35,7 +36,7 @@ object ProviderParsers {
             ?: throw PricingException.Invalid("TSETMC returned an unexpected quote response.")
         val rawPrice = quote.opt("pClosing") ?: quote.opt("pDrCotVal")
             ?: throw PricingException.Invalid("TSETMC returned an invalid closing price.")
-        return PriceResult(validPrice(rawPrice.toString(), "TSETMC").divide(BigDecimal.TEN), "IRT", "TSETMC", symbol)
+        return PriceResult(validPrice(rawPrice.toString(), PortfolioCodes.TSETMC).divide(BigDecimal.TEN), PortfolioCodes.IRT, PortfolioCodes.TSETMC, symbol)
     }
 
     fun aban(symbol: String, body: String): PriceResult = aban(symbol, abanCatalogue(body))
@@ -58,7 +59,7 @@ object ProviderParsers {
             ?: throw PricingException.Unsupported("No active Aban Tether asset exists for $symbol.")
         val buy = validPrice(coin.optString("price_buy"), "Aban Tether")
         val sell = validPrice(coin.optString("price_sell"), "Aban Tether")
-        return PriceResult(buy.add(sell).divide(BigDecimal("2")), "IRT", "ABANTETHER", symbol.uppercase())
+        return PriceResult(buy.add(sell).divide(BigDecimal("2")), PortfolioCodes.IRT, PortfolioCodes.ABANTETHER, symbol.uppercase())
     }
 
     fun rahavard(symbol: String, body: String): PriceResult {
@@ -70,7 +71,7 @@ object ProviderParsers {
         val rawPrice = header.optString("real_close_price").ifBlank { trade.optString("close_price") }
         val timestamp = header.optString("end_date_time").ifBlank { trade.optString("end_date_time") }
         return PriceResult(
-            validPrice(rawPrice, "Rahavard").divide(BigDecimal.TEN), "IRT", "RAHAVARD", symbol,
+            validPrice(rawPrice, "Rahavard").divide(BigDecimal.TEN), PortfolioCodes.IRT, PortfolioCodes.RAHAVARD, symbol,
             runCatching { OffsetDateTime.parse(timestamp).toInstant() }.getOrElse { Instant.now() },
         )
     }

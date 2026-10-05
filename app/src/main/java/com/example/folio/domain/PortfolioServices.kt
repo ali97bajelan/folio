@@ -1,5 +1,6 @@
 package com.example.folio.domain
 
+import com.example.folio.PortfolioCodes
 import com.example.folio.data.local.AssetEntity
 import com.example.folio.data.local.AssetPriceEntity
 import com.example.folio.data.local.TransactionEntity
@@ -8,7 +9,7 @@ import java.math.RoundingMode
 import java.time.Instant
 
 private val ZERO = BigDecimal.ZERO
-private val DOLLAR_CURRENCIES = setOf("USD", "USDT")
+private val DOLLAR_CURRENCIES = setOf(PortfolioCodes.USD, PortfolioCodes.USDT)
 
 data class CostBasis(val quantity: BigDecimal, val average: BigDecimal?)
 data class PortfolioTotal(val value: BigDecimal, val missingPrices: Int)
@@ -34,7 +35,7 @@ object HoldingService {
     }
 
     private fun signedQuantity(transaction: TransactionEntity): BigDecimal =
-        if (transaction.transactionType == "BUY") transaction.quantity else transaction.quantity.negate()
+        if (transaction.transactionType == PortfolioCodes.BUY) transaction.quantity else transaction.quantity.negate()
 }
 
 object CostBasisService {
@@ -42,7 +43,7 @@ object CostBasisService {
         var quantity = ZERO
         var average: BigDecimal? = null
         transactions.sortedWith(compareBy<TransactionEntity> { it.executedAt }.thenBy { it.id }).forEach { transaction ->
-            if (transaction.transactionType == "BUY") {
+            if (transaction.transactionType == PortfolioCodes.BUY) {
                 val cost = transaction.quantity * (transaction.pricePerUnit ?: ZERO) + (transaction.fee ?: ZERO)
                 val newQuantity = quantity + transaction.quantity
                 average = (quantity * (average ?: ZERO) + cost).divide(newQuantity, 20, RoundingMode.HALF_UP)
@@ -72,21 +73,21 @@ object PricingService {
 
 object CurrencyConversionService {
     fun usdIrt(assets: List<AssetEntity>, priceFor: (AssetEntity) -> AssetPriceEntity?): BigDecimal? {
-        val aliases = setOf("USD_IRT", "USDTIRT", "USDT_IRT", "USDT")
+        val aliases = setOf("USD_IRT", "USDTIRT", "USDT_IRT", PortfolioCodes.USDT)
         val fxAsset = assets.firstOrNull {
             it.symbol.uppercase() in aliases || it.providerSymbol.uppercase() in setOf("USDTIRT", "USDT-RLS")
         } ?: return null
         // A USDT/IRT asset now deliberately has two saved quotes.  The exchange
         // rate must always be read from its IRT quote rather than the derived
         // 1-USDT quote.
-        return priceFor(fxAsset)?.takeIf { it.currency.equals("IRT", ignoreCase = true) }?.price
+        return priceFor(fxAsset)?.takeIf { it.currency.equals(PortfolioCodes.IRT, ignoreCase = true) }?.price
     }
 
     fun convert(amount: BigDecimal, source: String, target: String, rate: BigDecimal?): BigDecimal? = when {
         source == target || (source in DOLLAR_CURRENCIES && target in DOLLAR_CURRENCIES) -> amount
         rate == null -> null
-        source == "IRT" && target in DOLLAR_CURRENCIES -> amount.divide(rate, 20, RoundingMode.HALF_UP)
-        source in DOLLAR_CURRENCIES && target == "IRT" -> amount * rate
+        source == PortfolioCodes.IRT && target in DOLLAR_CURRENCIES -> amount.divide(rate, 20, RoundingMode.HALF_UP)
+        source in DOLLAR_CURRENCIES && target == PortfolioCodes.IRT -> amount * rate
         else -> null
     }
 }

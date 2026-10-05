@@ -1,5 +1,6 @@
 package com.example.folio.data
 
+import com.example.folio.PortfolioCodes
 import androidx.room.withTransaction
 import com.example.folio.data.local.PortfolioDatabase
 import com.example.folio.data.local.hasSamePricingAs
@@ -149,7 +150,7 @@ class PortfolioRepository(
         val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
         val latestPrices = pricesByAsset.mapValues { (_, prices) -> PricingService.latest(prices) }
         val usdIrt = CurrencyConversionService.usdIrt(allAssets) {
-            PricingService.latest(pricesByAsset[it.id].orEmpty(), "IRT")
+            PricingService.latest(pricesByAsset[it.id].orEmpty(), PortfolioCodes.IRT)
         }
         val assetRows = allAssets.map { asset ->
             val items = dao.transactions(asset.id)
@@ -161,8 +162,8 @@ class PortfolioRepository(
                 // A transaction changes the holding immediately.  Calculate the
                 // live values from that holding and the newest stored quote
                 // rather than showing an older valuation snapshot.
-                tomanValue = PortfolioValuationService.assetValue(asset, items, prices, "IRT", null, usdIrt),
-                usdValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt),
+                tomanValue = PortfolioValuationService.assetValue(asset, items, prices, PortfolioCodes.IRT, null, usdIrt),
+                usdValue = PortfolioValuationService.assetValue(asset, items, prices, PortfolioCodes.USD, null, usdIrt),
             )
         }.sortedWith(compareByDescending<AssetRow> { it.tomanValue != null }.thenByDescending { it.tomanValue })
         val rows = assetRows.filter { it.asset.isActive }
@@ -238,12 +239,12 @@ class PortfolioRepository(
             val allAssets = dao.allAssets()
             val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
             val usdIrt = CurrencyConversionService.usdIrt(allAssets) {
-                PricingService.latest(pricesByAsset[it.id].orEmpty(), "IRT")
+                PricingService.latest(pricesByAsset[it.id].orEmpty(), PortfolioCodes.IRT)
             }
             val valuations = dao.activeAssets().map { asset ->
                 val items = dao.transactions(asset.id)
                 val prices = pricesByAsset[asset.id].orEmpty()
-                AssetValuationEntity(assetId = asset.id, quantity = HoldingService.quantityAt(items), usdtValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt), tomanValue = PortfolioValuationService.assetValue(asset, items, prices, "IRT", null, usdIrt), capturedAt = now)
+                AssetValuationEntity(assetId = asset.id, quantity = HoldingService.quantityAt(items), usdtValue = PortfolioValuationService.assetValue(asset, items, prices, PortfolioCodes.USD, null, usdIrt), tomanValue = PortfolioValuationService.assetValue(asset, items, prices, PortfolioCodes.IRT, null, usdIrt), capturedAt = now)
             }
             dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
                 usdtValue = valuations.mapNotNull(AssetValuationEntity::usdtValue).fold(BigDecimal.ZERO, BigDecimal::add),
@@ -256,9 +257,9 @@ class PortfolioRepository(
     private fun validateAsset(asset: AssetEntity) {
         require(asset.name.isNotBlank()) { "Name is required." }
         require(asset.symbol.isNotBlank()) { "Symbol is required." }
-        require(asset.pricingMode in setOf("MANUAL", "MARKET")) { "Pricing mode must be manual or market." }
-        if (asset.pricingMode == "MARKET") {
-            require(asset.priceProvider.isNotBlank() && asset.priceProvider != "MANUAL") {
+        require(asset.pricingMode in setOf(PortfolioCodes.MANUAL, PortfolioCodes.MARKET)) { "Pricing mode must be manual or market." }
+        if (asset.pricingMode == PortfolioCodes.MARKET) {
+            require(asset.priceProvider.isNotBlank() && asset.priceProvider != PortfolioCodes.MANUAL) {
                 "Choose a market-price provider."
             }
             require(asset.providerSymbol.isNotBlank()) { "Choose a provider market." }
@@ -266,7 +267,7 @@ class PortfolioRepository(
     }
 
     private fun validateTransaction(item: TransactionEntity) {
-        require(item.transactionType in setOf("BUY", "SELL")) { "Transaction type must be buy or sell." }
+        require(item.transactionType in setOf(PortfolioCodes.BUY, PortfolioCodes.SELL)) { "Transaction type must be buy or sell." }
         require(item.quantity > BigDecimal.ZERO) { "Quantity must be greater than zero." }
         require(item.pricePerUnit == null || item.pricePerUnit >= BigDecimal.ZERO) { "Price cannot be negative." }
         require(item.fee == null || item.fee >= BigDecimal.ZERO) { "Fee cannot be negative." }
