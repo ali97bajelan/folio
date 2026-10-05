@@ -1,10 +1,12 @@
 package com.example.folio.data
 
+import androidx.room.withTransaction
+import com.example.folio.data.local.PortfolioDatabase
+import com.example.folio.data.local.hasSamePricingAs
 import com.example.folio.data.local.AssetEntity
 import com.example.folio.data.local.AssetPriceEntity
 import com.example.folio.data.local.AssetTagCrossRef
 import com.example.folio.data.local.AssetValuationEntity
-import com.example.folio.data.local.PortfolioDao
 import com.example.folio.data.local.TagEntity
 import com.example.folio.data.local.LocationEntity
 import com.example.folio.data.local.PortfolioSnapshotEntity
@@ -25,9 +27,10 @@ import java.math.BigDecimal
 import java.time.Instant
 
 class PortfolioRepository(
-    private val dao: PortfolioDao,
+    private val database: PortfolioDatabase,
     private val calculationDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    private val dao = database.dao()
     val assets: Flow<List<AssetEntity>> = dao.observeAssets()
     val tags = dao.observeTags()
     val locations = dao.observeLocations()
@@ -40,18 +43,35 @@ class PortfolioRepository(
     fun asset(id: Long) = dao.observeAsset(id)
     fun assetTagIds(id: Long) = dao.observeAssetTagIds(id)
 
-    suspend fun saveAsset(asset: AssetEntity, tagIds: List<Long> = emptyList()): Long {
+    suspend fun saveAsset(asset: AssetEntity, tagIds: List<Long> = emptyList()): Long = database.withTransaction {
         validateAsset(asset)
         val assetId = if (asset.id == 0L) {
             dao.insertAsset(asset)
         } else {
             val existing = requireNotNull(dao.asset(asset.id)) { "Asset no longer exists." }
+            if (!asset.hasSamePricingAs(existing)) dao.deletePricesForAsset(asset.id)
             dao.updateAsset(asset.copy(createdAt = existing.createdAt, updatedAt = Instant.now()))
             asset.id
         }
         dao.clearAssetTags(assetId)
         dao.insertAssetTags(tagIds.distinct().map { AssetTagCrossRef(assetId = assetId, tagId = it) })
-        return assetId
+        assetId
+    }
+
+    suspend fun saveAssetWithOpening(
+        asset: AssetEntity,
+        tagIds: List<Long>,
+        opening: TransactionEntity?,
+    ): Long = withContext(calculationDispatcher) {
+        require(asset.id == 0L) { "Opening holdings are only supported for new assets." }
+        validateAsset(asset)
+        opening?.let(::validateTransaction)
+        database.withTransaction {
+            val assetId = saveAsset(asset, tagIds)
+            if (opening != null) saveTransaction(opening.copy(assetId = assetId))
+            saveSnapshots()
+            assetId
+        }
     }
 
     suspend fun deleteAsset(asset: AssetEntity) = dao.deleteAssetAndTransactions(asset)
@@ -82,20 +102,31 @@ class PortfolioRepository(
 
     suspend fun saveTransaction(item: TransactionEntity): Unit = withContext(calculationDispatcher) {
         validateTransaction(item)
-        val existing = dao.transactions(item.assetId).filter { it.id != item.id }
-        require(HoldingService.timelineIsValid(existing + item)) {
-            "This change would create a negative holding at some point in the timeline."
-        }
-        if (item.id == 0L) {
-            dao.insertTransaction(item)
-        } else {
-            val existing = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
-            require(item.assetId == existing.assetId) { "An existing transaction cannot be moved to another asset." }
-            dao.updateTransaction(item.copy(createdAt = existing.createdAt, updatedAt = Instant.now()))
+        database.withTransaction {
+            val existing = dao.transactions(item.assetId).filter { it.id != item.id }
+            require(HoldingService.timelineIsValid(existing + item)) {
+                "This change would create a negative holding at some point in the timeline."
+            }
+            if (item.id == 0L) {
+                dao.insertTransaction(item)
+            } else {
+                val persisted = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
+                require(item.assetId == persisted.assetId) { "An existing transaction cannot be moved to another asset." }
+                dao.updateTransaction(item.copy(createdAt = persisted.createdAt, updatedAt = Instant.now()))
+            }
         }
     }
 
-    suspend fun deleteTransaction(item: TransactionEntity) = dao.deleteTransaction(item)
+    suspend fun deleteTransaction(item: TransactionEntity): Unit = withContext(calculationDispatcher) {
+        database.withTransaction {
+            val persisted = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
+            val remaining = dao.transactions(persisted.assetId).filter { it.id != persisted.id }
+            require(HoldingService.timelineIsValid(remaining)) {
+                "Deleting this transaction would create a negative holding in the timeline."
+            }
+            dao.deleteTransaction(persisted)
+        }
+    }
 
     suspend fun savePrice(item: AssetPriceEntity): Long {
         require(item.price > BigDecimal.ZERO) { "Price must be greater than zero." }
@@ -120,7 +151,7 @@ class PortfolioRepository(
         val usdIrt = CurrencyConversionService.usdIrt(allAssets) {
             PricingService.latest(pricesByAsset[it.id].orEmpty(), "IRT")
         }
-        val rows = dao.activeAssets().map { asset ->
+        val assetRows = allAssets.map { asset ->
             val items = dao.transactions(asset.id)
             val prices = pricesByAsset[asset.id].orEmpty()
             AssetRow(
@@ -134,6 +165,7 @@ class PortfolioRepository(
                 usdValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt),
             )
         }.sortedWith(compareByDescending<AssetRow> { it.tomanValue != null }.thenByDescending { it.tomanValue })
+        val rows = assetRows.filter { it.asset.isActive }
 
         val liveTomanTotal = rows.mapNotNull(AssetRow::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add)
         val liveUsdTotal = rows.mapNotNull(AssetRow::usdValue).fold(BigDecimal.ZERO, BigDecimal::add)
@@ -143,6 +175,7 @@ class PortfolioRepository(
         val latestSnapshot = dao.latestPortfolioSnapshot()
         DashboardData(
             rows = rows,
+            assetRows = assetRows,
             tomanTotal = latestSnapshot?.tomanValue ?: liveTomanTotal,
             usdTotal = latestSnapshot?.usdtValue ?: liveUsdTotal,
             missing = rows.count { it.tomanValue == null },
@@ -201,21 +234,23 @@ class PortfolioRepository(
     }
 
     suspend fun saveSnapshots(now: Instant = Instant.now()) = withContext(calculationDispatcher) {
-        val allAssets = dao.allAssets()
-        val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
-        val usdIrt = CurrencyConversionService.usdIrt(allAssets) {
-            PricingService.latest(pricesByAsset[it.id].orEmpty(), "IRT")
+        database.withTransaction {
+            val allAssets = dao.allAssets()
+            val pricesByAsset = allAssets.associate { it.id to dao.prices(it.id) }
+            val usdIrt = CurrencyConversionService.usdIrt(allAssets) {
+                PricingService.latest(pricesByAsset[it.id].orEmpty(), "IRT")
+            }
+            val valuations = dao.activeAssets().map { asset ->
+                val items = dao.transactions(asset.id)
+                val prices = pricesByAsset[asset.id].orEmpty()
+                AssetValuationEntity(assetId = asset.id, quantity = HoldingService.quantityAt(items), usdtValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt), tomanValue = PortfolioValuationService.assetValue(asset, items, prices, "IRT", null, usdIrt), capturedAt = now)
+            }
+            dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
+                usdtValue = valuations.mapNotNull(AssetValuationEntity::usdtValue).fold(BigDecimal.ZERO, BigDecimal::add),
+                tomanValue = valuations.mapNotNull(AssetValuationEntity::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add),
+                capturedAt = now,
+            ))
         }
-        val valuations = dao.activeAssets().map { asset ->
-            val items = dao.transactions(asset.id)
-            val prices = pricesByAsset[asset.id].orEmpty()
-            AssetValuationEntity(assetId = asset.id, quantity = HoldingService.quantityAt(items), usdtValue = PortfolioValuationService.assetValue(asset, items, prices, "USD", null, usdIrt), tomanValue = PortfolioValuationService.assetValue(asset, items, prices, "IRT", null, usdIrt), capturedAt = now)
-        }
-        dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
-            usdtValue = valuations.mapNotNull(AssetValuationEntity::usdtValue).fold(BigDecimal.ZERO, BigDecimal::add),
-            tomanValue = valuations.mapNotNull(AssetValuationEntity::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add),
-            capturedAt = now,
-        ))
     }
 
     private fun validateAsset(asset: AssetEntity) {
@@ -253,6 +288,7 @@ data class DashboardData(
     val usdTotal: BigDecimal,
     val missing: Int,
     val updatedAt: Instant? = null,
+    val assetRows: List<AssetRow> = rows,
 )
 
 data class PortfolioHistoryPoint(

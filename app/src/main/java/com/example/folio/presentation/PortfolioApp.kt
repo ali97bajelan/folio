@@ -1,6 +1,9 @@
 package com.example.folio.presentation
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,12 +16,25 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -161,6 +177,16 @@ fun PortfolioApp(
 ) {
     val viewModel: MainViewModel = viewModel(factory = factory)
     val navigationController = rememberNavController()
+    val snackbarHost = remember { SnackbarHostState() }
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val retryLabel = stringResource(R.string.retry)
+    LaunchedEffect(error) {
+        error?.let {
+            if (snackbarHost.showSnackbar(it, actionLabel = retryLabel, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                viewModel.retry()
+            } else viewModel.clearError()
+        }
+    }
     val entry by navigationController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route ?: "dashboard"
 
@@ -182,6 +208,7 @@ fun PortfolioApp(
     ) {
         Scaffold(
             containerColor = Navy,
+            snackbarHost = { SnackbarHost(snackbarHost) },
             bottomBar = {
                 AppNavigationBar(
                     currentRoute = currentRoute,
@@ -232,7 +259,8 @@ fun PortfolioApp(
                     Manage(
                         stringResource(R.string.tags),
                         viewModel.tags.collectAsStateWithLifecycle().value.map { it.name },
-                        viewModel::saveTag,
+                        save = { name, onError, done -> viewModel.saveTag(name, onError, done) },
+                        enabled = !viewModel.isSaving.collectAsStateWithLifecycle().value,
                     )
                 }
                 composable("locations") { Locations(viewModel) }
@@ -466,7 +494,7 @@ private fun PortfolioValue(
         Spacer(Modifier.height(12.dp))
         Surface(color = Danger.copy(alpha = .14f), shape = AppShape) {
             Text(
-                stringResource(R.string.assets_waiting_for_price, dash.missing),
+                pluralStringResource(R.plurals.assets_waiting_for_price, dash.missing, dash.missing),
                 color = Danger,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
@@ -478,25 +506,127 @@ private fun PortfolioValue(
 @Composable
 private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
     Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
-        Row(Modifier.padding(3.dp)) {
+        Row(Modifier.padding(3.dp).selectableGroup()) {
             listOf("IRT", "USD").forEach { option ->
                 val selected = currency == option
                 Surface(
                     color = if (selected) Aqua.copy(alpha = .18f) else Color.Transparent,
                     shape = AppShape,
-                    modifier = Modifier.clickable { onCurrencyChange(option) },
+                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .selectable(selected = selected, role = Role.RadioButton) { onCurrencyChange(option) },
                 ) {
-                    Text(
+                    Box(contentAlignment = Alignment.Center) { Text(
                         option,
                         color = if (selected) Aqua else Muted,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    )
+                    ) }
                 }
             }
         }
     }
+}
+
+private fun timelineFractions(times: List<Instant>): List<Float> {
+    val start = times.first().toEpochMilli()
+    val span = times.last().toEpochMilli() - start
+    if (span <= 0L) return List(times.size) { .5f }
+    return times.map { ((it.toEpochMilli() - start).toDouble() / span).toFloat() }
+}
+
+/** Preserve each series' highs and lows in every horizontal pixel bucket. */
+private fun plotIndices(series: List<List<Float>>, fractions: List<Float>, width: Int): List<Int> {
+    if (fractions.size <= width * 2) return fractions.indices.toList()
+    val buckets = fractions.indices.groupBy { (fractions[it] * width).toInt() }
+    return buildSet {
+        add(0); add(fractions.lastIndex)
+        buckets.values.forEach { indices ->
+            series.forEach { values ->
+                add(indices.minBy { values[it] })
+                add(indices.maxBy { values[it] })
+            }
+        }
+    }.sorted()
+}
+
+@Composable
+private fun TimeSeriesCanvas(
+    series: List<List<Float>>,
+    fractions: List<Float>,
+    selectedIndex: Int,
+    lower: Float,
+    upper: Float,
+    ticks: List<Float>,
+    colors: List<Color>,
+    modifier: Modifier,
+) {
+    val selection = rememberUpdatedState(selectedIndex)
+    val drawing = remember(series, fractions, lower, upper, ticks, colors) {
+        Modifier.drawWithCache {
+            val left = 4.dp.toPx()
+            val right = size.width - left
+            val top = 6.dp.toPx()
+            val bottom = size.height - top
+            val span = (upper - lower).coerceAtLeast(.0001f)
+            fun x(index: Int) = left + (right - left) * fractions[index]
+            fun y(value: Float) = bottom - (value - lower) / span * (bottom - top)
+            val indices = plotIndices(series, fractions, (right - left).toInt().coerceAtLeast(1))
+            val paths = series.map { values ->
+                Path().apply {
+                    indices.forEachIndexed { index, point ->
+                        if (index == 0) moveTo(x(point), y(values[point]))
+                        else lineTo(x(point), y(values[point]))
+                    }
+                }
+            }
+            onDrawBehind {
+                ticks.forEach { tick ->
+                    drawLine(Muted.copy(alpha = .2f), Offset(left, y(tick)), Offset(right, y(tick)))
+                }
+                paths.forEachIndexed { index, path ->
+                    val color = colors[index % colors.size]
+                    drawPath(path, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+                    val point = selection.value
+                    val center = Offset(x(point), y(series[index][point]))
+                    drawCircle(color.copy(alpha = .22f), 12.dp.toPx(), center)
+                    drawCircle(color, 5.dp.toPx(), center)
+                }
+            }
+        }
+    }
+    Spacer(modifier.then(drawing))
+}
+
+@Composable
+private fun chartNavigation(
+    summary: String,
+    times: List<Instant>,
+    selectedIndex: Int,
+    select: (Long) -> Unit,
+): Modifier {
+    val previous = stringResource(R.string.chart_previous_point)
+    val next = stringResource(R.string.chart_next_point)
+    fun move(index: Int): Boolean {
+        if (index !in times.indices) return false
+        select(times[index].toEpochMilli())
+        return true
+    }
+    return Modifier.semantics {
+        contentDescription = summary
+        customActions = buildList {
+            if (selectedIndex > 0) add(CustomAccessibilityAction(previous) { move(selectedIndex - 1) })
+            if (selectedIndex < times.lastIndex) add(CustomAccessibilityAction(next) { move(selectedIndex + 1) })
+        }
+    }.onKeyEvent {
+        if (it.type != KeyEventType.KeyDown) false else when (it.key) {
+            Key.DirectionLeft -> move(selectedIndex - 1)
+            Key.DirectionRight -> move(selectedIndex + 1)
+            Key.MoveHome -> move(0)
+            Key.MoveEnd -> move(times.lastIndex)
+            else -> false
+        }
+    }.focusable()
 }
 
 private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1)), WEEK(Duration.ofDays(7)), MONTH(Duration.ofDays(30)), ALL(null) }
@@ -525,14 +655,21 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
     if (points.size < 2) { Tiny(stringResource(R.string.portfolio_history_empty)); return }
     val first = points.first().second
     val last = points.last().second
-    val change = last.subtract(first)
-    val percentChange = first.takeIf { it.compareTo(BigDecimal.ZERO) != 0 }?.let { change.divide(it, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100")) }
-    val values = points.map { it.second }
-    val low = values.minOrNull()!!
-    val high = values.maxOrNull()!!
-    val midpoint = low.add(high).divide(BigDecimal("2"))
+    val change = remember(first, last) { last.subtract(first) }
+    val percentChange = remember(first, change) { first.takeIf { it.signum() != 0 }?.let { change.divide(it, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100")) } }
+    val values = remember(points) { points.map { it.second } }
+    val low = remember(values) { values.minOrNull()!! }
+    val high = remember(values) { values.maxOrNull()!! }
+    val midpoint = remember(low, high) { low.add(high).divide(BigDecimal("2")) }
+    val series = remember(values, low, high) {
+        val span = high.subtract(low).takeIf { it.signum() > 0 } ?: BigDecimal.ONE
+        listOf(values.map { it.subtract(low).divide(span, 8, RoundingMode.HALF_UP).toFloat() })
+    }
     val selected = points.firstOrNull { it.first.toEpochMilli() == selectedAt } ?: points.last()
     val selectedIndex = points.indexOf(selected)
+    val times = remember(points) { points.map { it.first } }
+    val timeFractions = remember(times) { timelineFractions(times) }
+    val chartInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text((if (change.signum() >= 0) "+" else "") + chartValue(change, currency), color = if (change.signum() >= 0) Aqua else Danger, fontWeight = FontWeight.SemiBold)
         percentChange?.let { Text("(${if (it.signum() >= 0) "+" else ""}${formattedNumber(it, "%", 1, 1)})", color = if (change.signum() >= 0) Aqua else Danger, style = MaterialTheme.typography.labelMedium) }
@@ -545,26 +682,21 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
         val density = LocalDensity.current
         Box(Modifier.weight(1f).fillMaxHeight().onSizeChanged { chartWidthPx = it.width }) {
             val tooltipWidth = 96.dp
-            val selectedFraction = selectedIndex.toFloat() / (points.size - 1).toFloat()
+            val selectedFraction = timeFractions[selectedIndex]
             val tooltipX = with(density) {
                 ((chartWidthPx - tooltipWidth.roundToPx()).coerceAtLeast(0) * selectedFraction).toDp()
             }
-            Canvas(Modifier.fillMaxSize().padding(vertical=10.dp).pointerInput(points) {
-                detectTapGestures { tap ->
-                    val fraction = (tap.x / size.width).coerceIn(0f, 1f)
-                    selectedAt = points[(fraction * (points.size - 1) + .5f).toInt()].first.toEpochMilli()
-                }
-            }) {
-            val span = high.subtract(low).takeIf { it.compareTo(BigDecimal.ZERO) > 0 } ?: BigDecimal.ONE
-            val left = 4.dp.toPx(); val right = size.width - 4.dp.toPx(); val top = 6.dp.toPx(); val bottom = size.height - 6.dp.toPx(); val middle = (top + bottom) / 2
-            drawLine(Muted.copy(alpha=.2f), androidx.compose.ui.geometry.Offset(left, top), androidx.compose.ui.geometry.Offset(right, top)); drawLine(Muted.copy(alpha=.2f), androidx.compose.ui.geometry.Offset(left, middle), androidx.compose.ui.geometry.Offset(right, middle)); drawLine(Muted.copy(alpha=.2f), androidx.compose.ui.geometry.Offset(left, bottom), androidx.compose.ui.geometry.Offset(right, bottom))
-            fun xAt(index: Int) = left + (right - left) * index / (points.size - 1).toFloat()
-            fun yAt(value: BigDecimal) = bottom - (value.subtract(low).toFloat() / span.toFloat()) * (bottom - top)
-            val path = Path(); points.forEachIndexed { index, (_, value) -> if (index == 0) path.moveTo(xAt(index), yAt(value)) else path.lineTo(xAt(index), yAt(value)) }
-            drawPath(path, Blue, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            val selectedX = xAt(selectedIndex); val selectedY = yAt(selected.second)
-            drawCircle(Aqua, 5.dp.toPx(), center = androidx.compose.ui.geometry.Offset(selectedX, selectedY))
-            }
+            val summary = "${stringResource(R.string.portfolio_value_history)} · ${dateFormat.format(selected.first)} · ${chartValue(selected.second, currency)}"
+            TimeSeriesCanvas(series, timeFractions, selectedIndex, 0f, 1f, listOf(0f, .5f, 1f), listOf(Blue),
+                Modifier.fillMaxSize().padding(vertical = 10.dp)
+                    .then(chartNavigation(summary, times, selectedIndex) { selectedAt = it })
+                    .pointerInput(points) {
+                        detectTapGestures { tap ->
+                            val fraction = ((tap.x - chartInsetPx) / (size.width - 2 * chartInsetPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                            val nearest = timeFractions.indices.minByOrNull { kotlin.math.abs(timeFractions[it] - fraction) }!!
+                            selectedAt = points[nearest].first.toEpochMilli()
+                        }
+                    })
             Surface(
                 modifier = Modifier.align(Alignment.TopStart).offset(x = tooltipX).padding(top = 2.dp),
                 color = Panel,
@@ -576,7 +708,58 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 }
 @Composable private fun Metric(a:String,b:String,c:String,m:Modifier)=PanelCard(m){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
 @Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit=="GRAM")" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
-@Composable private fun Assets(vm:MainViewModel,open:(Long)->Unit,add:()->Unit){val data by vm.dashboard.collectAsStateWithLifecycle();val history by vm.assetTypeHistory.collectAsStateWithLifecycle();val valueOrder=stringResource(R.string.sort_value);val nameOrder=stringResource(R.string.sort_name);val quantityOrder=stringResource(R.string.sort_quantity);var order by remember{mutableStateOf(valueOrder)};val rows=remember(data.rows,order){when(order){nameOrder->data.rows.sortedBy{it.asset.name.lowercase()};quantityOrder->data.rows.sortedByDescending{it.quantity};else->data.rows}};Page(stringResource(R.string.nav_assets),actionAlignment=Alignment.Start,action={Button(add){Text(stringResource(R.string.add_asset))}}){SingleChoiceRow(order,listOf(valueOrder,nameOrder,quantityOrder)){order=it};Spacer(Modifier.height(10.dp));if(rows.isEmpty())Empty(title=stringResource(R.string.assets_empty_title),copy=stringResource(R.string.assets_empty_copy),action=add) else {PanelCard(Modifier.fillMaxWidth()){rows.forEachIndexed{index,item->AssetRowItem(item,open);if(index<rows.lastIndex)HorizontalDivider(color=Color.White.copy(.06f))}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AssetTypeHistoryChart(history)}}}}
+private enum class AssetFilter { ALL, ACTIVE, INACTIVE }
+
+@Composable
+private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
+    val data by vm.dashboard.collectAsStateWithLifecycle()
+    val history by vm.assetTypeHistory.collectAsStateWithLifecycle()
+    val valueOrder = stringResource(R.string.sort_value)
+    val nameOrder = stringResource(R.string.sort_name)
+    val quantityOrder = stringResource(R.string.sort_quantity)
+    var order by remember { mutableStateOf(valueOrder) }
+    var filter by rememberSaveable { mutableStateOf(AssetFilter.ALL) }
+    val rows = remember(data.assetRows, order, filter) {
+        val visible = data.assetRows.filter {
+            when (filter) {
+                AssetFilter.ALL -> true
+                AssetFilter.ACTIVE -> it.asset.isActive
+                AssetFilter.INACTIVE -> !it.asset.isActive
+            }
+        }
+        when (order) {
+            nameOrder -> visible.sortedBy { it.asset.name.lowercase() }
+            quantityOrder -> visible.sortedByDescending { it.quantity }
+            else -> visible
+        }
+    }
+    Page(stringResource(R.string.nav_assets), actionAlignment = Alignment.Start,
+        action = { Button(add) { Text(stringResource(R.string.add_asset)) } }) {
+        SingleChoiceRow(filter, AssetFilter.entries.toList(), render = {
+            stringResource(when (it) {
+                AssetFilter.ALL -> R.string.assets_filter_all
+                AssetFilter.ACTIVE -> R.string.assets_filter_active
+                AssetFilter.INACTIVE -> R.string.assets_filter_inactive
+            })
+        }) { filter = it }
+        SingleChoiceRow(order, listOf(valueOrder, nameOrder, quantityOrder)) { order = it }
+        Spacer(Modifier.height(10.dp))
+        if (rows.isEmpty()) {
+            Empty(title = stringResource(R.string.assets_empty_title),
+                copy = stringResource(R.string.assets_empty_copy), action = add)
+        } else {
+            PanelCard(Modifier.fillMaxWidth()) {
+                rows.forEachIndexed { index, item ->
+                    AssetRowItem(item, open)
+                    if (!item.asset.isActive) Tiny(stringResource(R.string.assets_filter_inactive))
+                    if (index < rows.lastIndex) HorizontalDivider(color = Color.White.copy(.06f))
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        PanelCard(Modifier.fillMaxWidth()) { AssetTypeHistoryChart(history) }
+    }
+}
 
 private data class PercentageAxis(val lower: Float, val upper: Float, val ticks: List<Float>)
 
@@ -627,19 +810,29 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
         Tiny(stringResource(R.string.asset_type_history_empty))
         return
     }
-    val assetTypes = points.flatMap { it.values.keys }.distinct()
-        .sortedByDescending { assetType -> points.last().values[assetType] ?: BigDecimal.ZERO }
+    val assetTypes = remember(points) {
+        points.flatMap { it.values.keys }.distinct()
+            .sortedByDescending { assetType -> points.last().values[assetType] ?: BigDecimal.ZERO }
+    }
     val selected = points.firstOrNull { it.capturedAt.toEpochMilli() == selectedAt } ?: points.last()
     val selectedIndex = points.indexOf(selected)
+    val times = remember(points) { points.map { it.capturedAt } }
+    val timeFractions = remember(times) { timelineFractions(times) }
+    val chartInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
     val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B), Color(0xFFC58CF0), Color(0xFF80C4A0))
-    val percentages = points.map { point ->
+    val percentages = remember(points, assetTypes) { points.map { point ->
         val total = point.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
         assetTypes.associateWith { assetType ->
             if (total.signum() == 0) BigDecimal.ZERO else (point.values[assetType] ?: BigDecimal.ZERO)
                 .divide(total, 6, RoundingMode.HALF_UP).multiply(BigDecimal("100"))
         }
     }
-    val axis = percentageAxis(percentages.flatMap { it.values })
+    }
+    val axis = remember(percentages) { percentageAxis(percentages.flatMap { it.values }) }
+    val axisLabels = remember(axis) { axis.ticks.asReversed().map { ltrValue(percentageLabel(it)) } }
+    val series = remember(percentages, assetTypes) {
+        assetTypes.map { type -> percentages.map { it.getValue(type).toFloat() } }
+    }
     val selectedPercentages = percentages[selectedIndex]
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         assetTypes.forEachIndexed { index, assetType ->
@@ -655,34 +848,20 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     Spacer(Modifier.height(12.dp))
     Row(Modifier.fillMaxWidth().height(190.dp)) {
         Column(Modifier.width(44.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
-            axis.ticks.asReversed().forEach { tick -> Tiny(ltrValue(percentageLabel(tick))) }
+            axisLabels.forEach { Tiny(it) }
         }
-        Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 6.dp).pointerInput(points) {
-            detectTapGestures { tap ->
-                val fraction = (tap.x / size.width).coerceIn(0f, 1f)
-                selectedAt = points[(fraction * (points.size - 1) + .5f).toInt()].capturedAt.toEpochMilli()
-            }
-        }) {
-            val left = 4.dp.toPx(); val right = size.width - 4.dp.toPx(); val top = 4.dp.toPx(); val bottom = size.height - 4.dp.toPx()
-            fun xAt(index: Int) = left + (right - left) * index / (points.size - 1).toFloat()
-            fun yAt(percentage: BigDecimal) = bottom - (percentage.toFloat() - axis.lower) / (axis.upper - axis.lower) * (bottom - top)
-            axis.ticks.forEach { tick ->
-                val y = yAt(BigDecimal.valueOf(tick.toDouble()))
-                drawLine(Muted.copy(alpha = .2f), androidx.compose.ui.geometry.Offset(left, y), androidx.compose.ui.geometry.Offset(right, y))
-            }
-            assetTypes.forEachIndexed { typeIndex, assetType ->
-                val path = Path()
-                percentages.forEachIndexed { index, pointPercentages ->
-                    val percentage = pointPercentages.getValue(assetType)
-                    if (index == 0) path.moveTo(xAt(index), yAt(percentage)) else path.lineTo(xAt(index), yAt(percentage))
-                }
-                drawPath(path, colors[typeIndex % colors.size], style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
-                val percentage = selectedPercentages.getValue(assetType)
-                val center = androidx.compose.ui.geometry.Offset(xAt(selectedIndex), yAt(percentage))
-                drawCircle(colors[typeIndex % colors.size].copy(alpha = .22f), 12.dp.toPx(), center)
-                drawCircle(colors[typeIndex % colors.size], 5.dp.toPx(), center)
-            }
-        }
+        val labels = assetTypes.map { type -> "${typeLabel(type)} ${percentageLabel(selectedPercentages.getValue(type).toFloat())}" }
+        val summary = "${stringResource(R.string.asset_type_percentage_history)} · ${dateFormat.format(selected.capturedAt)} · ${labels.joinToString(", ") }"
+        TimeSeriesCanvas(series, timeFractions, selectedIndex, axis.lower, axis.upper, axis.ticks, colors,
+            Modifier.weight(1f).fillMaxHeight().padding(vertical = 6.dp)
+                .then(chartNavigation(summary, times, selectedIndex) { selectedAt = it })
+                .pointerInput(points) {
+                    detectTapGestures { tap ->
+                        val fraction = ((tap.x - chartInsetPx) / (size.width - 2 * chartInsetPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                        val nearest = timeFractions.indices.minByOrNull { kotlin.math.abs(timeFractions[it] - fraction) }!!
+                        selectedAt = points[nearest].capturedAt.toEpochMilli()
+                    }
+                })
     }
     Row(Modifier.fillMaxWidth().padding(start = 44.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Tiny(dateFormat.format(points.first().capturedAt)); Tiny(dateFormat.format(points.last().capturedAt))
@@ -738,7 +917,7 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
 @Composable private fun AssetDetailScreen(vm:MainViewModel,id:Long,edit:()->Unit,price:()->Unit,tx:()->Unit,back:()->Unit){val x by remember(vm,id){vm.detail(id)}.collectAsStateWithLifecycle(initialValue=null);val locs by vm.locations.collectAsStateWithLifecycle();val dashboard by vm.dashboard.collectAsStateWithLifecycle();var confirm by remember{mutableStateOf(false)};
     var deleting by remember(vm,id){mutableStateOf(false)}
     var deleteError by remember(vm,id){mutableStateOf("")}
-    val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.rows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode=="MANUAL")Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(
+    val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.assetRows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode=="MANUAL")Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(
         onDismissRequest={if(!deleting)confirm=false},
         title={Text(stringResource(R.string.delete_asset_title))},
         text={Column{Text(stringResource(R.string.delete_asset_message));if(deleteError.isNotBlank())Text(deleteError,color=Danger)}},
@@ -759,14 +938,14 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
     var metricsWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Box(Modifier.fillMaxWidth().onSizeChanged { metricsWidthPx = it.width }) {
-        val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),d.asset.unit,modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)}
+        val cards:@Composable (Modifier)->Unit={modifier->Metric(stringResource(R.string.quantity),detailQuantity(d.costBasis.quantity),choiceLabel(d.asset.unit),modifier);Metric(stringResource(R.string.value_irt),compact(tomanValue),"",modifier);Metric(stringResource(R.string.value_usdt),number(usdtValue,"USDT"),"",modifier);Metric(stringResource(R.string.average_cost),number(d.costBasis.average),"",modifier)}
         if (with(density) { metricsWidthPx.toDp() } < 480.dp) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.fillMaxWidth()) }
         else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.weight(1f)) }
     }
 }
 @Composable private fun DetailLine(a:String,b:String)=Row(Modifier.fillMaxWidth().padding(top=9.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){Text(a,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))}
 
-@Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else remember(vm,id){vm.asset(id)}.collectAsStateWithLifecycle(initialValue=null));val tagIds by (if(id==null) remember{mutableStateOf(emptyList<Long>())} else remember(vm,id){vm.assetTagIds(id)}.collectAsStateWithLifecycle(initialValue=emptyList()));val tags by vm.tags.collectAsStateWithLifecycle();val locations by vm.locations.collectAsStateWithLifecycle();val results by vm.instrumentResults.collectAsStateWithLifecycle();val searchError by vm.instrumentSearchError.collectAsStateWithLifecycle();var name by remember{mutableStateOf("")};var symbol by remember{mutableStateOf("")};var type by remember{mutableStateOf("CRYPTO")};var unit by remember{mutableStateOf("UNIT")};var mode by remember{mutableStateOf("MARKET")};var provider by remember{mutableStateOf("NOBITEX")};var providerSymbol by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var active by remember{mutableStateOf(true)};var selected by remember{mutableStateOf(setOf<Long>())};var openingLocation by remember{mutableStateOf(0L)};var openingQuantity by remember{mutableStateOf("")};var openingAverage by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);LaunchedEffect(old,tagIds){old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;selected=tagIds.toSet()}};LaunchedEffect(id,type){if(id==null){provider=defaultProviderFor(type);providerSymbol=""}};LaunchedEffect(mode,provider,name,type){if(mode=="MARKET"&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,enabled=!isSaving,done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode=="MANUAL")"MANUAL" else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode=="MARKET"&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf("CRYPTO","USD","IRAN_STOCK","US_STOCK","GOLD","SILVER","FIXED_INCOME","MANUAL")){type=it};Choice(stringResource(R.string.unit),unit,listOf("UNIT","GRAM")){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf("MANUAL","MARKET")){mode=it};if(mode=="MARKET"){Choice(stringResource(R.string.provider),provider,listOf("NOBITEX","ABANTETHER","TSETMC","RAHAVARD")){provider=it};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf("IRT","USD","USDT")){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
+@Composable private fun AssetForm(vm:MainViewModel,id:Long?=null,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();val old by (if(id==null) remember{mutableStateOf<AssetEntity?>(null)} else remember(vm,id){vm.asset(id)}.collectAsStateWithLifecycle(initialValue=null));val tagIds by (if(id==null) remember{mutableStateOf<List<Long>?>(emptyList())} else remember(vm,id){vm.assetTagIds(id)}.collectAsStateWithLifecycle(initialValue=null));val tags by vm.tags.collectAsStateWithLifecycle();val locations by vm.locations.collectAsStateWithLifecycle();val results by vm.instrumentResults.collectAsStateWithLifecycle();val searchError by vm.instrumentSearchError.collectAsStateWithLifecycle();var name by rememberSaveable(id){mutableStateOf("")};var symbol by rememberSaveable(id){mutableStateOf("")};var type by rememberSaveable(id){mutableStateOf("CRYPTO")};var unit by rememberSaveable(id){mutableStateOf("UNIT")};var mode by rememberSaveable(id){mutableStateOf("MARKET")};var provider by rememberSaveable(id){mutableStateOf("NOBITEX")};var providerSymbol by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf("IRT")};var active by rememberSaveable(id){mutableStateOf(true)};var selected by rememberSaveable(id,stateSaver=listSaver<Set<Long>,Long>(save={it.toList()},restore={it.toSet()})){mutableStateOf(setOf<Long>())};var openingLocation by rememberSaveable(id){mutableStateOf(0L)};var openingQuantity by rememberSaveable(id){mutableStateOf("")};var openingAverage by rememberSaveable(id){mutableStateOf("")};var error by rememberSaveable(id){mutableStateOf("")};val noLocation=stringResource(R.string.no_location);val nameRequired=stringResource(R.string.error_name_required);val symbolRequired=stringResource(R.string.error_symbol_required);val marketRequired=stringResource(R.string.error_market_selection_required);var assetInitialized by rememberSaveable(id){mutableStateOf(id==null)};var tagsInitialized by rememberSaveable(id){mutableStateOf(id==null)};LaunchedEffect(old){if(!assetInitialized)old?.let{a->name=a.name;symbol=a.symbol;type=a.assetType;unit=a.unit;mode=a.pricingMode;provider=a.priceProvider;providerSymbol=a.providerSymbol;currency=a.manualPriceCurrency;active=a.isActive;assetInitialized=true}};LaunchedEffect(tagIds){if(!tagsInitialized)tagIds?.let{selected=it.toSet();tagsInitialized=true}};LaunchedEffect(mode,provider,name,type){if(mode=="MARKET"&&name.trim().length>=2)vm.searchInstruments(provider,name,type) else vm.clearInstrumentSearch()};if(!assetInitialized||!tagsInitialized)return Page(stringResource(R.string.edit_asset_title)){Tiny(stringResource(R.string.loading))};FormPage(if(id==null)stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),error,enabled=!isSaving&&(id==null||old!=null),done={val asset=AssetEntity(id?:0,name,symbol.uppercase(),type,unit,mode,if(mode=="MANUAL")"MANUAL" else provider,providerSymbol,currency,active);if(name.isBlank())error=nameRequired else if(symbol.isBlank())error=symbolRequired else if(mode=="MARKET"&&(provider.isBlank()||providerSymbol.isBlank()))error=marketRequired else if(id==null)vm.saveAssetWithOpening(asset,selected.toList(),openingQuantity,openingAverage,openingLocation.takeIf{it!=0L},{error=it}){done()} else vm.saveAsset(asset,selected.toList(),onError={error=it},done=done)}){Field(stringResource(R.string.name),name){name=it;if(symbol.isBlank())symbol=it.uppercase().replace(' ','-')};Field(stringResource(R.string.symbol),symbol){symbol=it};Choice(stringResource(R.string.asset_type),type,listOf("CRYPTO","USD","IRAN_STOCK","US_STOCK","GOLD","SILVER","FIXED_INCOME","MANUAL"),render={typeLabel(it)}){type=it;if(id==null){provider=defaultProviderFor(it);providerSymbol=""}};Choice(stringResource(R.string.unit),unit,listOf("UNIT","GRAM"),render={choiceLabel(it)}){unit=it};Choice(stringResource(R.string.pricing_method),mode,listOf("MANUAL","MARKET"),render={choiceLabel(it)}){mode=it};if(mode=="MARKET"){Choice(stringResource(R.string.provider),provider,listOf("NOBITEX","ABANTETHER","TSETMC","RAHAVARD"),render={choiceLabel(it)}){if(provider!=it){provider=it;providerSymbol="";vm.clearInstrumentSearch()}};Text(stringResource(R.string.suggested_markets),fontWeight=FontWeight.SemiBold);if(searchError!=null)Text(searchError!!,color=Danger);if(results.isEmpty()&&name.trim().length>=2&&searchError==null)Tiny(stringResource(R.string.searching_or_empty));results.forEach{item->ListItem(modifier=Modifier.fillMaxWidth().clickable{providerSymbol=item.providerSymbol;symbol=item.assetSymbol;vm.clearInstrumentSearch()},headlineContent={Text("${item.symbol} · ${item.name}")},supportingContent={Text(item.meta)});HorizontalDivider(color=Color.White.copy(.06f))};Field(stringResource(R.string.provider_symbol),providerSymbol,stringResource(R.string.provider_symbol_hint)){providerSymbol=it}}else Choice(stringResource(R.string.manual_price_currency),currency,listOf("IRT","USD","USDT")){currency=it};if(id==null){Text(stringResource(R.string.opening_holding),fontWeight=FontWeight.SemiBold);Tiny(stringResource(R.string.opening_holding_hint));Choice(stringResource(R.string.location),openingLocation.toString(),listOf("0")+locations.map{it.id.toString()},render={ v->if(v=="0")noLocation else locations.firstOrNull{it.id.toString()==v}?.name?:noLocation}){openingLocation=it.toLong()};Field(stringResource(R.string.opening_quantity),openingQuantity,stringResource(R.string.optional)){openingQuantity=it};Field(stringResource(R.string.average_purchase_price),openingAverage,stringResource(R.string.optional)){openingAverage=it}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(active,{active=it});Text(stringResource(R.string.asset_is_active))};Text(stringResource(R.string.tags),fontWeight=FontWeight.SemiBold);tags.forEach{ tag->Row(Modifier.fillMaxWidth().toggleable(tag.id in selected){selected=if(tag.id in selected)selected-tag.id else selected+tag.id},verticalAlignment=Alignment.CenterVertically){Checkbox(tag.id in selected,null);Text(tag.name)}}}}
 
 @Composable
 private fun TransactionForm(
@@ -781,15 +960,15 @@ private fun TransactionForm(
     val existingTransaction = transactions.firstOrNull { it.id == editId }
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
 
-    var assetId by remember { mutableLongStateOf(fixedAsset ?: 0L) }
-    var transactionType by remember { mutableStateOf("BUY") }
-    var quantity by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var fee by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf("IRT") }
-    var locationId by remember { mutableStateOf(0L) }
-    var notes by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf("") }
+    var assetId by rememberSaveable(editId, fixedAsset) { mutableLongStateOf(fixedAsset ?: 0L) }
+    var transactionType by rememberSaveable(editId, fixedAsset) { mutableStateOf("BUY") }
+    var quantity by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
+    var price by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
+    var fee by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
+    var currency by rememberSaveable(editId, fixedAsset) { mutableStateOf("IRT") }
+    var locationId by rememberSaveable(editId, fixedAsset) { mutableStateOf(0L) }
+    var notes by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
+    var error by rememberSaveable(editId, fixedAsset) { mutableStateOf("") }
 
     val noLocation = stringResource(R.string.no_location)
     val selectAsset = stringResource(R.string.select_asset)
@@ -800,8 +979,9 @@ private fun TransactionForm(
     val buyLabel = stringResource(R.string.buy)
     val sellLabel = stringResource(R.string.sell)
 
-    LaunchedEffect(existingTransaction, fixedAsset) {
-        if (existingTransaction != null) {
+    var initialized by rememberSaveable(editId, fixedAsset) { mutableStateOf(editId == null) }
+    LaunchedEffect(existingTransaction) {
+        if (!initialized && existingTransaction != null) {
             val transaction = existingTransaction
             assetId = transaction.assetId
             transactionType = transaction.transactionType
@@ -811,9 +991,12 @@ private fun TransactionForm(
             currency = transaction.transactionCurrency
             locationId = transaction.locationId ?: 0L
             notes = transaction.notes
-        } else if (editId == null) {
-            assetId = fixedAsset ?: 0L
+            initialized = true
         }
+    }
+
+    if (!initialized) return Page(stringResource(R.string.edit_transaction_title)) {
+        Tiny(stringResource(R.string.loading))
     }
 
     FormPage(
@@ -821,7 +1004,7 @@ private fun TransactionForm(
             if (editId == null) R.string.add_transaction_title else R.string.edit_transaction_title,
         ),
         error = error,
-        enabled = !isSaving,
+        enabled = !isSaving && (editId == null || existingTransaction != null),
         done = {
             val parsedQuantity = quantity.trim().toBigDecimalOrNull()
             val parsedPrice = price.trim().toBigDecimalOrNull()
@@ -903,7 +1086,7 @@ private fun TransactionForm(
         Field(stringResource(R.string.notes), notes) { notes = it }
     }
 }
-@Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by remember{mutableStateOf("")};var currency by remember{mutableStateOf("IRT")};var error by remember{mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf("IRT","USD","USDT")){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
+@Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf("IRT")};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf("IRT","USD","USDT")){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
 @Composable private fun Settings(tags:()->Unit,locations:()->Unit,languagePreferences: LanguagePreferences) {
     var language by remember { mutableStateOf(languagePreferences.current()) }
     Page(stringResource(R.string.nav_more)) {
@@ -925,13 +1108,60 @@ private fun TransactionForm(
         Spacer(Modifier.height(20.dp));Tiny(stringResource(R.string.local_data_hint))
     }
 }
-@Composable private fun Manage(title:String,entries:List<String>,save:(String)->Unit){var text by remember{mutableStateOf("")};FormPage(title,"",button=stringResource(R.string.add),done={if(text.isNotBlank()){save(text);text=""}}){Field(stringResource(R.string.name),text){text=it};entries.forEach{DetailLine(it,"")};if(entries.isEmpty())Tiny(stringResource(R.string.no_entries))}}
-@Composable private fun Locations(vm:MainViewModel){val entries by vm.locations.collectAsStateWithLifecycle();var name by remember{mutableStateOf("")};var notes by remember{mutableStateOf("")};FormPage(stringResource(R.string.locations),"",button=stringResource(R.string.add),done={if(name.isNotBlank()){vm.saveLocation(name,notes);name="";notes=""}}){Field(stringResource(R.string.name),name){name=it};Field(stringResource(R.string.notes),notes){notes=it};entries.forEach{DetailLine(it.name,it.notes)}}}
+@Composable
+private fun Manage(
+    title: String,
+    entries: List<String>,
+    save: (String, (String) -> Unit, () -> Unit) -> Unit,
+    enabled: Boolean,
+) {
+    var text by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf("") }
+    FormPage(title, error, button = stringResource(R.string.add), enabled = enabled, done = {
+        if (text.isNotBlank()) {
+            error = ""
+            save(text, { error = it }) { text = "" }
+        }
+    }) {
+        Field(stringResource(R.string.name), text) { text = it }
+        entries.forEach { DetailLine(it, "") }
+        if (entries.isEmpty()) Tiny(stringResource(R.string.no_entries))
+    }
+}
+
+@Composable
+private fun Locations(vm: MainViewModel) {
+    val entries by vm.locations.collectAsStateWithLifecycle()
+    val isSaving by vm.isSaving.collectAsStateWithLifecycle()
+    var name by rememberSaveable { mutableStateOf("") }
+    var notes by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf("") }
+    FormPage(stringResource(R.string.locations), error, button = stringResource(R.string.add), enabled = !isSaving, done = {
+        if (name.isNotBlank()) {
+            error = ""
+            vm.saveLocation(name, notes, onError = { error = it }) { name = ""; notes = "" }
+        }
+    }) {
+        Field(stringResource(R.string.name), name) { name = it }
+        Field(stringResource(R.string.notes), notes) { notes = it }
+        entries.forEach { DetailLine(it.name, it.notes) }
+    }
+}
 @Composable private fun FormPage(title:String,error:String,button:String?=null,enabled:Boolean=true,done:()->Unit,content:@Composable ColumnScope.()->Unit)=Page(title){PanelCard(Modifier.fillMaxWidth()){content();if(error.isNotBlank())Text(error,color=Danger);Spacer(Modifier.height(14.dp));Button(done,Modifier.align(Alignment.End),enabled=enabled){Text(button ?: stringResource(R.string.save))}}}
 @Composable private fun Field(label:String,value:String,hint:String="",change:(String)->Unit){OutlinedTextField(value,change,Modifier.fillMaxWidth().padding(bottom=10.dp),label={Text(label)},placeholder={if(hint.isNotBlank())Text(hint)},singleLine=label != stringResource(R.string.notes))}
-@OptIn(ExperimentalMaterial3Api::class) @Composable private fun Choice(label:String,selected:String,options:List<String>,render:(String)->String={it},select:(String)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded,{expanded=it},Modifier.fillMaxWidth().padding(bottom=10.dp)){OutlinedTextField(render(selected),{},Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded)});ExposedDropdownMenu(expanded,{expanded=false}){options.forEach{o->DropdownMenuItem({Text(render(o))},{select(o);expanded=false})}}}}
-@Composable private fun SingleChoiceRow(selected:String,values:List<String>,select:(String)->Unit)=Row{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(v)},Modifier.padding(end=6.dp))}}
-@Composable private fun <T> SingleChoiceRow(selected:T,values:List<T>,render:@Composable (T)->String,select:(T)->Unit)=Row{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(render(v))},Modifier.padding(end=6.dp))}}
+@Composable
+private fun choiceLabel(value: String): String = when (value) {
+    "CRYPTO", "USD", "IRAN_STOCK", "US_STOCK", "GOLD", "SILVER", "FIXED_INCOME", "MANUAL" -> typeLabel(value)
+    "UNIT" -> stringResource(R.string.unit_count)
+    "GRAM" -> stringResource(R.string.unit_gram)
+    "MARKET" -> stringResource(R.string.pricing_market)
+    "ABANTETHER" -> "Aban Tether"
+    else -> value
+}
+
+@OptIn(ExperimentalMaterial3Api::class) @Composable private fun Choice(label:String,selected:String,options:List<String>,render:@Composable (String)->String={it},select:(String)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded,{expanded=it},Modifier.fillMaxWidth().padding(bottom=10.dp)){OutlinedTextField(render(selected),{},Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded)});ExposedDropdownMenu(expanded,{expanded=false}){options.forEach{o->DropdownMenuItem({Text(render(o))},{select(o);expanded=false})}}}}
+@OptIn(ExperimentalLayoutApi::class) @Composable private fun SingleChoiceRow(selected:String,values:List<String>,select:(String)->Unit)=FlowRow{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(v)},Modifier.padding(end=6.dp))}}
+@OptIn(ExperimentalLayoutApi::class) @Composable private fun <T> SingleChoiceRow(selected:T,values:List<T>,render:@Composable (T)->String,select:(T)->Unit)=FlowRow{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(render(v))},Modifier.padding(end=6.dp))}}
 @Composable
 private fun Empty(
     title: String,

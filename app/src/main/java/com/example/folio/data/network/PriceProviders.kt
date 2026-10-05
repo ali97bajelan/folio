@@ -38,12 +38,24 @@ object ProviderParsers {
         return PriceResult(validPrice(rawPrice.toString(), "TSETMC").divide(BigDecimal.TEN), "IRT", "TSETMC", symbol)
     }
 
-    fun aban(symbol: String, body: String): PriceResult {
+    fun aban(symbol: String, body: String): PriceResult = aban(symbol, abanCatalogue(body))
+
+    internal fun abanCatalogue(body: String): Map<String, JSONObject> {
         val coins = JSONObject(body).optJSONArray("data")
             ?: throw PricingException.Invalid("Aban Tether returned an unexpected coin response.")
-        val coin = (0 until coins.length()).asSequence().map(coins::getJSONObject).firstOrNull {
-            it.optString("symbol").equals(symbol, ignoreCase = true) && it.optBoolean("is_active")
-        } ?: throw PricingException.Unsupported("No active Aban Tether asset exists for $symbol.")
+        return buildMap {
+            for (index in 0 until coins.length()) {
+                val coin = coins.getJSONObject(index)
+                if (coin.optBoolean("is_active")) {
+                    putIfAbsent(coin.optString("symbol").uppercase(), coin)
+                }
+            }
+        }
+    }
+
+    internal fun aban(symbol: String, catalogue: Map<String, JSONObject>): PriceResult {
+        val coin = catalogue[symbol.uppercase()]
+            ?: throw PricingException.Unsupported("No active Aban Tether asset exists for $symbol.")
         val buy = validPrice(coin.optString("price_buy"), "Aban Tether")
         val sell = validPrice(coin.optString("price_sell"), "Aban Tether")
         return PriceResult(buy.add(sell).divide(BigDecimal("2")), "IRT", "ABANTETHER", symbol.uppercase())

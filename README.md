@@ -44,9 +44,13 @@ Folio schedules a best-effort refresh every six hours when the device has a netw
 
 ### Requirements
 
-- Android Studio with JDK 11 support
+- Android Studio with JDK 24, matching `gradle/gradle-daemon-jvm.properties`
 - Android SDK 35
 - An Android 9 (API 28) or newer device/emulator
+
+AGP requires at least JDK 17; this project's Gradle daemon selects JDK 24.
+Java and Kotlin bytecode still target Java 11. CI and command-line builds
+should make JDK 24 available to Gradle.
 
 ### Run from Android Studio
 
@@ -62,6 +66,11 @@ Folio schedules a best-effort refresh every six hours when the device has a netw
 ```
 
 The debug APK is produced under `app/build/outputs/apk/debug/`.
+
+Release builds use optimized R8 defaults and the project rules in
+`app/src/main/keepRules/rules.keep`. Room exports the current database schema
+to `app/schemas/`; retain these files in version control when the schema changes.
+Schemas for database versions 1 and 2 were not exported by earlier releases.
 
 ## Architecture
 

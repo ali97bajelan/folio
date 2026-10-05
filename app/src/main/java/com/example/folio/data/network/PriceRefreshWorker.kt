@@ -1,7 +1,7 @@
 package com.example.folio.data.network
 
 import android.content.Context
-import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -13,7 +13,7 @@ import androidx.work.WorkerParameters
 import com.example.folio.data.local.AssetEntity
 import com.example.folio.data.local.AssetPriceEntity
 import com.example.folio.data.local.AssetValuationEntity
-import com.example.folio.data.local.PortfolioDatabase
+import com.example.folio.FolioApplication
 import com.example.folio.data.local.PortfolioSnapshotEntity
 import com.example.folio.data.local.ProviderRefreshEntity
 import com.example.folio.domain.HoldingService
@@ -21,6 +21,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -29,28 +30,16 @@ import okhttp3.Request
 /** Best-effort, public-network enhancement. Failed calls never remove cached prices. */
 class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val database = Room.databaseBuilder(applicationContext, PortfolioDatabase::class.java, DATABASE_NAME)
-            .addMigrations(PortfolioDatabase.MIGRATION_1_2, PortfolioDatabase.MIGRATION_2_3)
-            .enableMultiInstanceInvalidation()
-            .build()
-        try {
-            val dao = database.dao()
-            val client = OkHttpClient.Builder()
-                .connectTimeout(3, TimeUnit.SECONDS)
-                .readTimeout(8, TimeUnit.SECONDS)
-                .build()
-            val activeAssets = dao.activeAssets()
+        val dao = (applicationContext as FolioApplication).database.dao()
+        val activeAssets = dao.activeAssets()
 
-            PROVIDERS.forEach { provider ->
-                refreshProvider(dao, client, provider, activeAssets.filter { asset ->
-                    asset.pricingMode == "MARKET" && asset.priceProvider.equals(provider, ignoreCase = true)
-                })
-            }
-            saveBothCurrencyPricesAndValuations(dao, client)
-            Result.success()
-        } finally {
-            database.close()
+        PROVIDERS.forEach { provider ->
+            refreshProvider(dao, client, provider, activeAssets.filter { asset ->
+                asset.pricingMode == "MARKET" && asset.priceProvider.equals(provider, ignoreCase = true)
+            })
         }
+        saveBothCurrencyPricesAndValuations(dao, client)
+        Result.success()
     }
 
     private suspend fun refreshProvider(
@@ -61,10 +50,20 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     ) {
         val refresh = ProviderRefreshEntity(provider = provider, startedAt = Instant.now(), status = "SUCCESS")
         val refreshId = dao.insertRefresh(refresh)
+        // Download once, including when the request fails, and skip empty providers.
+        val abanCatalogue = if (provider == "ABANTETHER" && assets.isNotEmpty()) {
+            runCatching { ProviderParsers.abanCatalogue(requestBody(client, provider, ABAN_CATALOGUE_URL)) }
+                .onFailure { if (it is CancellationException) throw it }
+        } else null
         val failures = assets.mapNotNull { asset ->
             runCatching {
-                val result = fetch(client, asset)
-                dao.insertPrice(
+                val result = if (provider == "ABANTETHER") {
+                    ProviderParsers.aban(asset.providerSymbol, requireNotNull(abanCatalogue).getOrThrow())
+                } else {
+                    fetch(client, asset)
+                }
+                dao.insertPriceForConfiguration(
+                    asset,
                     AssetPriceEntity(
                         assetId = asset.id,
                         price = result.price,
@@ -74,7 +73,8 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
                         capturedAt = result.fetchedAt,
                     ),
                 )
-            }.exceptionOrNull()?.let { "${asset.symbol}: ${it.message ?: "unavailable"}" }
+            }.onFailure { if (it is CancellationException) throw it }
+                .exceptionOrNull()?.let { "${asset.symbol}: ${it.message ?: "unavailable"}" }
         }
         val status = when {
             failures.isEmpty() -> "SUCCESS"
@@ -91,13 +91,13 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
         )
     }
 
-    private fun fetch(client: OkHttpClient, asset: AssetEntity): PriceResult {
+    private suspend fun fetch(client: OkHttpClient, asset: AssetEntity): PriceResult {
         val provider = asset.priceProvider.uppercase()
         val url = when (provider) {
             "NOBITEX" -> ProviderParsers.marketParts(asset.providerSymbol).let { (base, quote) ->
                 "https://apiv2.nobitex.ir/market/stats?srcCurrency=$base&dstCurrency=$quote"
             }
-            "ABANTETHER" -> "https://api.abantether.com/api/v2/manager/coins"
+            "ABANTETHER" -> ABAN_CATALOGUE_URL
             "TSETMC" -> "https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceInfo/${asset.providerSymbol}"
             "RAHAVARD" -> {
                 if (asset.providerSymbol.isBlank() || !asset.providerSymbol.all(Char::isDigit)) {
@@ -107,6 +107,17 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             }
             else -> throw PricingException.Unsupported("Unsupported price provider: $provider")
         }
+        val body = requestBody(client, provider, url)
+        return when (provider) {
+            "NOBITEX" -> ProviderParsers.nobitex(asset.providerSymbol, body)
+            "ABANTETHER" -> ProviderParsers.aban(asset.providerSymbol, body)
+            "TSETMC" -> ProviderParsers.tsetmc(asset.providerSymbol, body)
+            "RAHAVARD" -> ProviderParsers.rahavard(asset.providerSymbol, body)
+            else -> error("Provider was validated above")
+        }
+    }
+
+    private suspend fun requestBody(client: OkHttpClient, provider: String, url: String): String {
         val request = Request.Builder()
             .url(url)
             .header("Accept", if (provider == "RAHAVARD") "application/json, text/plain, */*" else "application/json")
@@ -114,18 +125,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             .applyProviderHeaders(provider)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw PricingException.Unavailable("HTTP ${response.code}")
-            val body = response.body?.string()
-                ?: throw PricingException.Invalid("The provider returned an empty response.")
-            return when (provider) {
-                "NOBITEX" -> ProviderParsers.nobitex(asset.providerSymbol, body)
-                "ABANTETHER" -> ProviderParsers.aban(asset.providerSymbol, body)
-                "TSETMC" -> ProviderParsers.tsetmc(asset.providerSymbol, body)
-                "RAHAVARD" -> ProviderParsers.rahavard(asset.providerSymbol, body)
-                else -> error("Provider was validated above")
-            }
-        }
+        return client.newCall(request).awaitBody()
     }
 
     /**
@@ -143,33 +143,37 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
 
         // Do not depend on the user having created a separate USDTIRT asset.
         // Nobitex is the canonical source for this conversion used by the app.
-        val usdIrt = runCatching { fetch(client, usdtIrtAsset()).price }.getOrNull()
-            ?: storedUsdIrt(dao, assets)
-            ?: return
-        val capturedAt = Instant.now()
+        val fetchedUsdIrt = runCatching { fetch(client, usdtIrtAsset()).price }
+            .onFailure { if (it is CancellationException) throw it }.getOrNull()
+        val database = (applicationContext as FolioApplication).database
+        database.withTransaction {
+            val usdIrt = fetchedUsdIrt ?: storedUsdIrt(dao, dao.allAssets()) ?: return@withTransaction
+            val capturedAt = Instant.now()
 
-        val valuations = dao.activeAssets().mapNotNull { asset ->
-            // Derived quotes must never become the source of a later FX conversion.
-            val source = dao.prices(asset.id).firstOrNull { quote ->
-                if (asset.pricingMode == "MANUAL") {
-                    quote.provider.equals("MANUAL", ignoreCase = true)
-                } else {
-                    quote.provider.equals(asset.priceProvider, ignoreCase = true) &&
-                        quote.providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
-                        !quote.provider.equals("CALCULATED", ignoreCase = true)
-                }
-            } ?: return@mapNotNull null
-            val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return@mapNotNull null
-            dao.insertPrice(counterpart.copy(assetId = asset.id))
-            val (usdtPrice, tomanPrice) = valuationPrices(source, usdIrt)
-            val quantity = HoldingService.quantityAt(dao.transactions(asset.id))
-            AssetValuationEntity(assetId = asset.id, quantity = quantity, usdtValue = quantity.multiply(usdtPrice), tomanValue = quantity.multiply(tomanPrice), capturedAt = capturedAt)
+            val valuations = dao.activeAssets().mapNotNull { asset ->
+                // Derived quotes must never become the source of a later FX conversion.
+                val source = dao.prices(asset.id).firstOrNull { quote ->
+                    if (asset.pricingMode == "MANUAL") {
+                        quote.provider.equals("MANUAL", ignoreCase = true)
+                    } else {
+                        quote.provider.equals(asset.priceProvider, ignoreCase = true) &&
+                            quote.providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
+                            !quote.provider.equals("CALCULATED", ignoreCase = true)
+                    }
+                } ?: return@mapNotNull null
+                val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return@mapNotNull null
+                dao.insertPriceForConfiguration(asset, counterpart.copy(assetId = asset.id))
+                    ?: return@mapNotNull null
+                val (usdtPrice, tomanPrice) = valuationPrices(source, usdIrt)
+                val quantity = HoldingService.quantityAt(dao.transactions(asset.id))
+                AssetValuationEntity(assetId = asset.id, quantity = quantity, usdtValue = quantity.multiply(usdtPrice), tomanValue = quantity.multiply(tomanPrice), capturedAt = capturedAt)
+            }
+            dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
+                usdtValue = valuations.map { it.usdtValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
+                tomanValue = valuations.map { it.tomanValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
+                capturedAt = capturedAt,
+            ))
         }
-        dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
-            usdtValue = valuations.map { it.usdtValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
-            tomanValue = valuations.map { it.tomanValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
-            capturedAt = capturedAt,
-        ))
     }
 
     private fun usdtIrtAsset() = AssetEntity(
@@ -249,7 +253,11 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     }
 
     companion object {
-        private const val DATABASE_NAME = "folio.db"
+        private const val ABAN_CATALOGUE_URL = "https://api.abantether.com/api/v2/manager/coins"
+        private val client = OkHttpClient.Builder()
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .build()
         private const val PERIODIC_WORK_NAME = "folio-price-refresh"
         internal const val IMMEDIATE_WORK_NAME = "folio-price-refresh-now"
         private val PROVIDERS = listOf("NOBITEX", "ABANTETHER", "TSETMC", "RAHAVARD")

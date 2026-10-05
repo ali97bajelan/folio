@@ -21,7 +21,7 @@
     <string name="chart_1_week">۱ هفته</string>
     <string name="chart_1_month">۱ ماه</string>
     <string name="chart_all_time">همه</string>
-    <string name="assets_waiting_for_price">%1$d دارایی در انتظار قیمت</string>
+
     <string name="active_assets">دارایی فعال</string>
     <string name="entire_portfolio">در تمام پرتفوی</string>
     <string name="last_updated">آخرین بروزرسانی</string>
@@ -59,7 +59,7 @@
     <string name="unavailable">نامشخص</string><string name="empty_value">—</string>
     <string name="dashboard_empty_title">هنوز دارایی ندارید</string><string name="dashboard_empty_copy">اولین دارایی خود را اضافه کنید تا وضعیت پرتفوی نمایش داده شود.</string>
     <string name="asset_values_unavailable">نامشخص</string><string name="sort_value">ارزش</string><string name="sort_name">نام</string><string name="sort_quantity">تعداد</string>
-    <string name="assets_empty_title">دارایی فعالی نیست</string><string name="assets_empty_copy">یک دارایی ایجاد کنید.</string>
+    <string name="assets_empty_title">دارایی مطابق با فیلتر وجود ندارد</string><string name="assets_empty_copy">یک دارایی ایجاد کنید.</string>
     <string name="transactions_empty_title">تراکنشی ندارید</string><string name="transactions_empty_copy">خرید و فروش‌ها منبع اصلی موجودی هستند.</string>
     <string name="buy">خرید</string><string name="sell">فروش</string><string name="loading">در حال بارگذاری…</string><string name="edit">ویرایش</string>
     <string name="delete_asset_title">حذف دارایی؟</string><string name="delete_asset_message">همهٔ تراکنش‌ها و قیمت‌های این دارایی حذف می‌شوند.</string><string name="delete">حذف</string><string name="cancel">لغو</string>
@@ -73,4 +73,26 @@
     <string name="error_name_required">نام الزامی است</string><string name="error_symbol_required">نماد الزامی است</string><string name="error_market_selection_required">برای قیمت بازار، ارائه‌دهنده و نماد بازار را انتخاب کنید</string><string name="error_asset_required">دارایی را انتخاب کنید</string><string name="error_quantity_positive">تعداد باید بزرگ‌تر از صفر باشد</string><string name="error_price_invalid">قیمت معتبر وارد کنید</string>
     <string name="error_fee_invalid">کارمزد معتبر و غیرمنفی وارد کنید</string>
     <string name="error_opening_quantity_required">برای قیمت یا محل نگهداری اولیه، تعداد اولیه را وارد کنید</string>
+    <string name="assets_filter_all">همه</string>
+    <string name="assets_filter_active">فعال</string>
+    <string name="assets_filter_inactive">غیرفعال</string>
+    <string name="retry">تلاش دوباره</string>
+    <string name="chart_previous_point">اسنپ‌شات قبلی</string>
+    <string name="chart_next_point">اسنپ‌شات بعدی</string>
+    <string name="unit_count">عدد</string>
+    <string name="unit_gram">گرم</string>
+    <string name="pricing_market">بازار</string>
+    <string name="error_duplicate_or_invalid_reference">این نام یا نماد قبلاً استفاده شده، یا رکورد انتخاب‌شده دیگر موجود نیست.</string>
+    <string name="error_storage">دسترسی به داده‌های ذخیره‌شده ممکن نیست. دوباره تلاش کنید.</string>
+    <string name="error_record_missing">این رکورد دیگر موجود نیست.</string>
+    <string name="error_transaction_asset_locked">دارایی یک تراکنش موجود قابل تغییر نیست.</string>
+    <string name="error_negative_holding">این تغییر باعث منفی شدن موجودی می‌شود.</string>
+    <string name="error_operation">عملیات انجام نشد. دوباره تلاش کنید.</string>
+    <string name="error_loading">بارگذاری داده‌های ذخیره‌شده ممکن نیست. در حال تلاش دوباره…</string>
+    <string name="error_refresh">تازه‌سازی قیمت‌ها ممکن نیست. دوباره تلاش کنید.</string>
+    <string name="error_search">جست‌وجوی بازار در دسترس نیست. دوباره تلاش کنید.</string>
+    <plurals name="assets_waiting_for_price">
+        <item quantity="one">%1$d دارایی منتظر قیمت است</item>
+        <item quantity="other">%1$d دارایی منتظر قیمت هستند</item>
+    </plurals>
 </resources>

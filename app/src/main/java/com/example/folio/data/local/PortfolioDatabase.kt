@@ -34,6 +34,14 @@ data class PortfolioSnapshotEntity(@PrimaryKey(autoGenerate = true) val id: Long
 @Entity(tableName = "portfolio_providerrefresh", indices = [Index(value = ["provider", "started_at"])])
 data class ProviderRefreshEntity(@PrimaryKey(autoGenerate = true) val id: Long = 0, val provider: String, @ColumnInfo(name = "started_at") val startedAt: Instant, @ColumnInfo(name = "finished_at") val finishedAt: Instant? = null, val status: String, @ColumnInfo(name = "error_message") val errorMessage: String = "")
 
+fun AssetEntity.hasSamePricingAs(other: AssetEntity): Boolean =
+    pricingMode == other.pricingMode && if (pricingMode == "MANUAL") {
+        manualPriceCurrency.equals(other.manualPriceCurrency, ignoreCase = true)
+    } else {
+        priceProvider.equals(other.priceProvider, ignoreCase = true) &&
+            providerSymbol.equals(other.providerSymbol, ignoreCase = true)
+    }
+
 @Dao interface PortfolioDao {
     @Query("SELECT * FROM portfolio_asset ORDER BY name") fun observeAssets(): Flow<List<AssetEntity>>
     @Query("SELECT * FROM portfolio_asset WHERE id=:id") fun observeAsset(id: Long): Flow<AssetEntity?>
@@ -68,6 +76,14 @@ data class ProviderRefreshEntity(@PrimaryKey(autoGenerate = true) val id: Long =
     @Query("SELECT * FROM portfolio_assetprice WHERE asset_id=:assetId ORDER BY captured_at DESC, id DESC") fun observePrices(assetId: Long): Flow<List<AssetPriceEntity>>
     @Query("SELECT * FROM portfolio_assetprice") fun observeAllPrices(): Flow<List<AssetPriceEntity>>
     @Insert suspend fun insertPrice(price: AssetPriceEntity): Long
+    @Query("DELETE FROM portfolio_assetprice WHERE asset_id=:assetId") suspend fun deletePricesForAsset(assetId: Long)
+    /** Discard responses fetched before the user changed the market selection. */
+    @Transaction
+    suspend fun insertPriceForConfiguration(expectedAsset: AssetEntity, price: AssetPriceEntity): Long? {
+        val current = asset(expectedAsset.id) ?: return null
+        if (!current.hasSamePricingAs(expectedAsset)) return null
+        return insertPrice(price)
+    }
     @Query("SELECT * FROM portfolio_providerrefresh ORDER BY started_at DESC LIMIT 20") fun observeRefreshes(): Flow<List<ProviderRefreshEntity>>
     @Insert suspend fun insertRefresh(refresh: ProviderRefreshEntity): Long
     @Update suspend fun updateRefresh(refresh: ProviderRefreshEntity)

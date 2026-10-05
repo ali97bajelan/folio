@@ -19,14 +19,26 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildTypes { release { isMinifyEnabled = true
-                           isShrinkResources = true } }
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "src/main/keepRules/rules.keep",
+            )
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions { jvmTarget = "11" }
     buildFeatures { compose = true; buildConfig = true }
+}
+
+ksp {
+    arg("room.schemaLocation", file("schemas").path)
 }
 
 dependencies {
@@ -46,10 +58,7 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.work.runtime)
-    implementation(libs.retrofit)
-    implementation(libs.converter.moshi)
     implementation(libs.okhttp)
-    implementation(libs.moshi.kotlin)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation("org.json:json:20240303")

@@ -21,7 +21,7 @@
     <string name="chart_1_week">1W</string>
     <string name="chart_1_month">1M</string>
     <string name="chart_all_time">All</string>
-    <string name="assets_waiting_for_price">%1$d assets waiting for a price</string>
+
     <string name="active_assets">Active assets</string>
     <string name="entire_portfolio">Across your portfolio</string>
     <string name="last_updated">Last updated</string>
@@ -64,7 +64,7 @@
     <string name="sort_value">Value</string>
     <string name="sort_name">Name</string>
     <string name="sort_quantity">Quantity</string>
-    <string name="assets_empty_title">No active assets</string>
+    <string name="assets_empty_title">No matching assets</string>
     <string name="assets_empty_copy">Create an asset to get started.</string>
     <string name="transactions_empty_title">No transactions</string>
     <string name="transactions_empty_copy">Buys and sells are the source of truth for holdings.</string>
@@ -138,4 +138,26 @@
     <string name="error_price_invalid">Enter a valid price</string>
     <string name="error_fee_invalid">Enter a valid nonnegative fee</string>
     <string name="error_opening_quantity_required">Enter an opening quantity when specifying its cost or location</string>
+    <string name="assets_filter_all">All</string>
+    <string name="assets_filter_active">Active</string>
+    <string name="assets_filter_inactive">Inactive</string>
+    <string name="retry">Retry</string>
+    <string name="chart_previous_point">Previous snapshot</string>
+    <string name="chart_next_point">Next snapshot</string>
+    <string name="unit_count">Units</string>
+    <string name="unit_gram">Grams</string>
+    <string name="pricing_market">Market</string>
+    <string name="error_duplicate_or_invalid_reference">That name or symbol is already used, or a selected record is no longer available.</string>
+    <string name="error_storage">Unable to access saved data. Please retry.</string>
+    <string name="error_record_missing">This record no longer exists.</string>
+    <string name="error_transaction_asset_locked">An existing transaction cannot be moved to another asset.</string>
+    <string name="error_negative_holding">This change would make the holding negative.</string>
+    <string name="error_operation">The operation failed. Please retry.</string>
+    <string name="error_loading">Unable to load saved data. Retrying…</string>
+    <string name="error_refresh">Unable to refresh prices. Please retry.</string>
+    <string name="error_search">Instrument search is unavailable. Please retry.</string>
+    <plurals name="assets_waiting_for_price">
+        <item quantity="one">%1$d asset waiting for a price</item>
+        <item quantity="other">%1$d assets waiting for a price</item>
+    </plurals>
 </resources>

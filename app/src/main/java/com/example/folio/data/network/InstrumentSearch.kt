@@ -65,7 +65,7 @@ object InstrumentSearch {
         }
     }
 
-    private fun requestBody(url: String): String {
+    private suspend fun requestBody(url: String): String {
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
@@ -73,13 +73,7 @@ object InstrumentSearch {
             .applyProviderHeaders(url)
             .build()
 
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw PricingException.Unavailable("Search returned HTTP ${response.code}")
-            }
-            response.body?.string()
-                ?: throw PricingException.Invalid("The provider returned an empty search response.")
-        }
+        return client.newCall(request).awaitBody()
     }
 
     private fun Request.Builder.applyProviderHeaders(url: String): Request.Builder = apply {
@@ -108,7 +102,7 @@ object InstrumentSearch {
         }
     }
 
-    private fun searchNobitex(query: String): List<Instrument> {
+    private suspend fun searchNobitex(query: String): List<Instrument> {
         val sourceCurrency = nobitexSourceCurrency(query) ?: return emptyList()
         val url = "https://apiv2.nobitex.ir/market/stats?srcCurrency=$sourceCurrency"
         val response = JSONObject(requestBody(url))
@@ -162,7 +156,7 @@ object InstrumentSearch {
         )
     }
 
-    private fun searchAbanTether(query: String): List<Instrument> {
+    private suspend fun searchAbanTether(query: String): List<Instrument> {
         val needle = query.lowercase()
         val coins = JSONObject(requestBody("https://api.abantether.com/api/v2/manager/coins"))
             .optJSONArray("data")
@@ -190,7 +184,7 @@ object InstrumentSearch {
         )
     }
 
-    private fun searchTsetmc(query: String): List<Instrument> {
+    private suspend fun searchTsetmc(query: String): List<Instrument> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val url = "https://cdn.tsetmc.com/api/Instrument/GetInstrumentSearch/$encodedQuery"
         val results = JSONObject(requestBody(url)).optJSONArray("instrumentSearch") ?: return emptyList()
@@ -212,7 +206,7 @@ object InstrumentSearch {
             .take(MAX_RESULTS)
     }
 
-    private fun searchRahavard(query: String, assetType: String): List<Instrument> {
+    private suspend fun searchRahavard(query: String, assetType: String): List<Instrument> {
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val results = JSONObject(requestBody("https://rahavard365.com/api/v2/search?keyword=$encodedQuery"))
             .optJSONArray("data")
