@@ -27,7 +27,12 @@ object ProviderParsers {
             ?: throw PricingException.Invalid("Nobitex returned an unexpected market response.")
         val price = validPrice(rawPrice, "Nobitex")
         val isRial = quote == "rls"
-        return PriceResult(if (isRial) price.divide(BigDecimal.TEN) else price, if (isRial) PortfolioCodes.IRT else quote.uppercase(), PortfolioCodes.NOBITEX, symbol.uppercase())
+        return PriceResult(
+            price = if (isRial) price.divide(BigDecimal.TEN) else price,
+            currency = if (isRial) PortfolioCodes.IRT else quote.uppercase(),
+            provider = PortfolioCodes.NOBITEX,
+            providerSymbol = symbol.uppercase(),
+        )
     }
 
     fun tsetmc(symbol: String, body: String): PriceResult {
@@ -36,7 +41,12 @@ object ProviderParsers {
             ?: throw PricingException.Invalid("TSETMC returned an unexpected quote response.")
         val rawPrice = quote.opt("pClosing") ?: quote.opt("pDrCotVal")
             ?: throw PricingException.Invalid("TSETMC returned an invalid closing price.")
-        return PriceResult(validPrice(rawPrice.toString(), PortfolioCodes.TSETMC).divide(BigDecimal.TEN), PortfolioCodes.IRT, PortfolioCodes.TSETMC, symbol)
+        return PriceResult(
+            price = validPrice(rawPrice.toString(), PortfolioCodes.TSETMC).divide(BigDecimal.TEN),
+            currency = PortfolioCodes.IRT,
+            provider = PortfolioCodes.TSETMC,
+            providerSymbol = symbol,
+        )
     }
 
     fun aban(symbol: String, body: String): PriceResult = aban(symbol, abanCatalogue(body))
@@ -71,23 +81,34 @@ object ProviderParsers {
         val rawPrice = header.optString("real_close_price").ifBlank { trade.optString("close_price") }
         val timestamp = header.optString("end_date_time").ifBlank { trade.optString("end_date_time") }
         return PriceResult(
-            validPrice(rawPrice, "Rahavard").divide(BigDecimal.TEN), PortfolioCodes.IRT, PortfolioCodes.RAHAVARD, symbol,
-            runCatching { OffsetDateTime.parse(timestamp).toInstant() }.getOrElse { Instant.now() },
+            price = validPrice(rawPrice, "Rahavard").divide(BigDecimal.TEN),
+            currency = PortfolioCodes.IRT,
+            provider = PortfolioCodes.RAHAVARD,
+            providerSymbol = symbol,
+            fetchedAt = runCatching { OffsetDateTime.parse(timestamp).toInstant() }.getOrElse { Instant.now() },
         )
     }
 
     fun marketParts(symbol: String): Pair<String, String> {
         val normalized = symbol.trim().lowercase().replace('_', '-').replace('/', '-')
-        val pair = if ('-' in normalized) {
+        val (base, quote) = if ('-' in normalized) {
             val parts = normalized.split('-', limit = 2)
             if (parts.any(String::isBlank)) invalidPair()
             parts[0] to parts[1]
         } else {
-            listOf("usdt", "irt", "rls").firstNotNullOfOrNull { suffix ->
-                normalized.removeSuffix(suffix).takeIf { normalized.endsWith(suffix) && it.isNotBlank() }?.let { it to suffix }
-            } ?: invalidPair()
+            splitCompactMarketPair(normalized)
         }
-        return pair.first to if (pair.second == "irt") "rls" else pair.second
+        return base to if (quote == "irt") "rls" else quote
+    }
+
+    private fun splitCompactMarketPair(symbol: String): Pair<String, String> {
+        for (quote in listOf("usdt", "irt", "rls")) {
+            if (symbol.endsWith(quote)) {
+                val base = symbol.removeSuffix(quote)
+                if (base.isNotBlank()) return base to quote
+            }
+        }
+        invalidPair()
     }
 
     private fun validPrice(raw: String, provider: String): BigDecimal {

@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import com.example.folio.data.local.AssetEntity
 import com.example.folio.data.local.AssetPriceEntity
 import com.example.folio.data.local.AssetValuationEntity
+import com.example.folio.data.local.PortfolioDao
 import com.example.folio.FolioApplication
 import com.example.folio.data.local.PortfolioSnapshotEntity
 import com.example.folio.data.local.ProviderRefreshEntity
@@ -44,7 +45,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     }
 
     private suspend fun refreshProvider(
-        dao: com.example.folio.data.local.PortfolioDao,
+        dao: PortfolioDao,
         client: OkHttpClient,
         provider: String,
         assets: List<AssetEntity>,
@@ -136,7 +137,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
      * therefore complete in both currencies as well.
      */
     private suspend fun saveBothCurrencyPricesAndValuations(
-        dao: com.example.folio.data.local.PortfolioDao,
+        dao: PortfolioDao,
         client: OkHttpClient,
     ) {
         val assets = dao.allAssets()
@@ -152,22 +153,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             val capturedAt = Instant.now()
 
             val valuations = dao.activeAssets().mapNotNull { asset ->
-                // Derived quotes must never become the source of a later FX conversion.
-                val source = dao.prices(asset.id).firstOrNull { quote ->
-                    if (asset.pricingMode == PortfolioCodes.MANUAL) {
-                        quote.provider.equals(PortfolioCodes.MANUAL, ignoreCase = true)
-                    } else {
-                        quote.provider.equals(asset.priceProvider, ignoreCase = true) &&
-                            quote.providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
-                            !quote.provider.equals(PortfolioCodes.CALCULATED, ignoreCase = true)
-                    }
-                } ?: return@mapNotNull null
-                val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return@mapNotNull null
-                dao.insertPriceForConfiguration(asset, counterpart.copy(assetId = asset.id))
-                    ?: return@mapNotNull null
-                val (usdtPrice, tomanPrice) = valuationPrices(source, usdIrt)
-                val quantity = HoldingService.quantityAt(dao.transactions(asset.id))
-                AssetValuationEntity(assetId = asset.id, quantity = quantity, usdtValue = quantity.multiply(usdtPrice), tomanValue = quantity.multiply(tomanPrice), capturedAt = capturedAt)
+                saveCounterpartAndValueAsset(dao, asset, usdIrt, capturedAt)
             }
             dao.insertValuationSnapshot(valuations, PortfolioSnapshotEntity(
                 usdtValue = valuations.map { it.usdtValue ?: BigDecimal.ZERO }.fold(BigDecimal.ZERO, BigDecimal::add),
@@ -176,6 +162,36 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
             ))
         }
     }
+
+    private suspend fun saveCounterpartAndValueAsset(
+        dao: PortfolioDao,
+        asset: AssetEntity,
+        usdIrt: BigDecimal,
+        capturedAt: Instant,
+    ): AssetValuationEntity? {
+        val source = dao.prices(asset.id).firstOrNull { it.isSourcePriceFor(asset) } ?: return null
+        val counterpart = convertedPrice(source, usdIrt, capturedAt) ?: return null
+        dao.insertPriceForConfiguration(asset, counterpart.copy(assetId = asset.id)) ?: return null
+        val (usdtPrice, tomanPrice) = valuationPrices(source, usdIrt)
+        val quantity = HoldingService.quantityAt(dao.transactions(asset.id))
+        return AssetValuationEntity(
+            assetId = asset.id,
+            quantity = quantity,
+            usdtValue = quantity.multiply(usdtPrice),
+            tomanValue = quantity.multiply(tomanPrice),
+            capturedAt = capturedAt,
+        )
+    }
+
+    // Derived quotes must never become the source of a later FX conversion.
+    private fun AssetPriceEntity.isSourcePriceFor(asset: AssetEntity): Boolean =
+        if (asset.pricingMode == PortfolioCodes.MANUAL) {
+            provider.equals(PortfolioCodes.MANUAL, ignoreCase = true)
+        } else {
+            provider.equals(asset.priceProvider, ignoreCase = true) &&
+                providerSymbol.equals(asset.providerSymbol, ignoreCase = true) &&
+                !provider.equals(PortfolioCodes.CALCULATED, ignoreCase = true)
+        }
 
     private fun usdtIrtAsset() = AssetEntity(
         name = "USDT / IRT",
@@ -186,7 +202,7 @@ class PriceRefreshWorker(appContext: Context, params: WorkerParameters) : Corout
     )
 
     private suspend fun storedUsdIrt(
-        dao: com.example.folio.data.local.PortfolioDao,
+        dao: PortfolioDao,
         assets: List<AssetEntity>,
     ): BigDecimal? {
         val aliases = setOf("USD_IRT", "USDTIRT", "USDT_IRT", PortfolioCodes.USDT)

@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import java.util.Locale
 import android.database.sqlite.SQLiteConstraintException
 import android.database.sqlite.SQLiteException
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.folio.data.*
@@ -25,6 +26,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.math.BigDecimal
 import java.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class MainViewModel(
     context: Context,
@@ -83,7 +86,7 @@ class MainViewModel(
         if (cause is CancellationException) throw cause
         if (cause !is Exception) throw cause
         if (attempt == 0L) showError(localizedString(R.string.error_loading))
-        delay(1_000)
+        delay(1.seconds)
         true
     }
 
@@ -94,7 +97,7 @@ class MainViewModel(
                 locationSeedMutex.withLock {
                     if (!locationPreferences.getBoolean("default_locations_seeded", false)) {
                         repo.seedDefaultLocations(names)
-                        locationPreferences.edit().putBoolean("default_locations_seeded", true).apply()
+                        locationPreferences.edit { putBoolean("default_locations_seeded", true) }
                     }
                 }
                 locationsNeedRetry = false
@@ -110,7 +113,6 @@ class MainViewModel(
     val tags = repo.tags.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val locations = repo.locations.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val transactions = repo.transactions.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-    val refreshes = repo.refreshes.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val refresh = MutableStateFlow(0)
     private val _instrumentResults = MutableStateFlow<List<Instrument>>(emptyList())
     val instrumentResults: StateFlow<List<Instrument>> = _instrumentResults
@@ -124,14 +126,14 @@ class MainViewModel(
 
     // Refresh when local edits occur and when the worker writes refreshed prices/statuses.
     val dashboard = merge(
-        refresh.map { Unit },
-        repo.assets.map { Unit },
-        repo.transactions.map { Unit },
+        refresh.map {},
+        repo.assets.map {},
+        repo.transactions.map {},
         // Price quotes are persisted independently of valuation snapshots.  Observe
         // them directly so the last cached quote is used as soon as the app opens.
-        repo.prices.map { Unit },
-        repo.refreshes.map { Unit },
-        repo.valuations.map { Unit },
+        repo.prices.map {},
+        repo.refreshes.map {},
+        repo.valuations.map {},
     ).map { repo.dashboard() }
         .recoverErrors().stateIn(
             viewModelScope,
@@ -139,15 +141,15 @@ class MainViewModel(
             DashboardData(emptyList(), BigDecimal.ZERO, BigDecimal.ZERO, 0),
         )
     val portfolioHistory = merge(
-        refresh.map { Unit },
-        repo.valuations.map { Unit },
-        repo.portfolioSnapshots.map { Unit },
+        refresh.map {},
+        repo.valuations.map {},
+        repo.portfolioSnapshots.map {},
     ).map { repo.portfolioHistory() }
         .recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val assetTypeHistory = merge(
-        refresh.map { Unit },
-        repo.assets.map { Unit },
-        repo.valuations.map { Unit },
+        refresh.map {},
+        repo.assets.map {},
+        repo.valuations.map {},
     ).map { repo.assetTypeHistory() }
         .recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     fun asset(id: Long) = repo.asset(id).recoverErrors()
@@ -176,8 +178,6 @@ class MainViewModel(
         }
     }
 
-    fun saveAsset(asset: AssetEntity, tags: List<Long> = emptyList(), done: (Long) -> Unit = {}) =
-        save(::showError, done) { repo.saveAsset(asset, tags).also { repo.saveSnapshots() } }
     fun saveAsset(
         asset: AssetEntity,
         tags: List<Long>,
@@ -186,22 +186,39 @@ class MainViewModel(
     ) = save(onError, { _: Long -> done() }) {
         repo.saveAsset(asset, tags).also { repo.saveSnapshots() }
     }
-    fun saveAsset(asset: AssetEntity, tags: List<Long>, done: () -> Unit) =
-        saveAsset(asset, tags, ::showError, done)
-    fun saveAssetWithOpening(asset: AssetEntity, tags: List<Long>, quantity: String, averageCost: String, locationId: Long?, onError: (String) -> Unit = ::showError, done: (Long) -> Unit = {}) = save(onError, done) {
-        val q = quantity.trim().takeIf { it.isNotEmpty() }?.let {
+    fun saveAssetWithOpening(
+        asset: AssetEntity,
+        tags: List<Long>,
+        quantity: String,
+        averageCost: String,
+        locationId: Long?,
+        onError: (String) -> Unit = ::showError,
+        done: (Long) -> Unit = {},
+    ) = save(onError, done) {
+        val openingQuantity = quantity.trim().takeIf { it.isNotEmpty() }?.let {
             requireNotNull(it.toBigDecimalOrNull()) { localizedString(R.string.error_quantity_positive) }
         }
         val average = averageCost.trim().takeIf { it.isNotEmpty() }?.let {
             requireNotNull(it.toBigDecimalOrNull()) { localizedString(R.string.error_price_invalid) }
         }
-        require(q != null || (average == null && locationId == null)) { localizedString(R.string.error_opening_quantity_required) }
-        if (q != null) require(q > BigDecimal.ZERO) { localizedString(R.string.error_quantity_positive) }
+        require(openingQuantity != null || (average == null && locationId == null)) {
+            localizedString(R.string.error_opening_quantity_required)
+        }
+        if (openingQuantity != null) require(openingQuantity > BigDecimal.ZERO) {
+            localizedString(R.string.error_quantity_positive)
+        }
         require(average == null || average >= BigDecimal.ZERO) { localizedString(R.string.error_price_invalid) }
-        val opening = q?.let {
-            TransactionEntity(assetId = 0, transactionType = PortfolioCodes.BUY, quantity = it, pricePerUnit = average,
-                transactionCurrency = asset.manualPriceCurrency.ifBlank { PortfolioCodes.IRT }, locationId = locationId,
-                executedAt = Instant.now(), notes = "Initial position")
+        val opening = openingQuantity?.let {
+            TransactionEntity(
+                assetId = 0,
+                transactionType = PortfolioCodes.BUY,
+                quantity = it,
+                pricePerUnit = average,
+                transactionCurrency = asset.manualPriceCurrency.ifBlank { PortfolioCodes.IRT },
+                locationId = locationId,
+                executedAt = Instant.now(),
+                notes = "Initial position",
+            )
         }
         repo.saveAssetWithOpening(asset, tags, opening)
     }
@@ -213,8 +230,6 @@ class MainViewModel(
 
     fun saveTransaction(item: TransactionEntity, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =
         save(onError, { _: Unit -> done() }) { repo.saveTransaction(item); repo.saveSnapshots() }
-    fun deleteTransaction(item: TransactionEntity, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =
-        save(onError, { _: Unit -> done() }) { repo.deleteTransaction(item); repo.saveSnapshots() }
     fun savePrice(assetId: Long, price: String, currency: String, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =
         save(onError, { _: Unit -> done() }) {
             repo.savePrice(AssetPriceEntity(assetId = assetId, price = BigDecimal(price), currency = currency, provider = PortfolioCodes.MANUAL, capturedAt = Instant.now()))
@@ -238,7 +253,7 @@ class MainViewModel(
                 refreshDashboard()
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 showError(localizedString(R.string.error_refresh))
                 retryAction = ::refreshPrices
             } finally {
@@ -251,12 +266,12 @@ class MainViewModel(
         _instrumentResults.value = emptyList()
         _instrumentSearchError.value = null
         instrumentSearchJob = viewModelScope.launch {
-            delay(300)
+            delay(300.milliseconds)
             try {
                 _instrumentResults.value = InstrumentSearch.search(provider, name, assetType)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _instrumentResults.value = emptyList()
                 _instrumentSearchError.value = localizedString(R.string.error_search)
             }
