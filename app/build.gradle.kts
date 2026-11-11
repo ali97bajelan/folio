@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.folio"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.4.0"
+        versionCode = 2
+        versionName = "1.1.20261111-1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,10 +56,14 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
     ksp(libs.room.compiler)
     implementation(libs.work.runtime)
     implementation(libs.okhttp)
     debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.glance.preview)
+    debugImplementation(libs.glance.appwidget.preview)
     testImplementation(libs.junit)
     testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.espresso.core)

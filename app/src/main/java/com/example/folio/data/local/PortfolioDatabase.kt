@@ -2,6 +2,11 @@ package com.example.folio.data.local
 
 import com.example.folio.PortfolioCodes
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.folio.data.widget.WidgetConfigurationEntity
+import com.example.folio.data.widget.WidgetDao
+import com.example.folio.data.widget.WidgetQuoteEntity
 import kotlinx.coroutines.flow.Flow
 import java.math.BigDecimal
 import java.time.Instant
@@ -106,8 +111,43 @@ fun AssetEntity.hasSamePricingAs(other: AssetEntity): Boolean =
     @Query("SELECT * FROM portfolio_assetvaluation WHERE asset_id=:assetId ORDER BY captured_at ASC") fun observeValuations(assetId: Long): Flow<List<AssetValuationEntity>>
 }
 
-@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class], version = 3, exportSchema = true)
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """CREATE TABLE IF NOT EXISTS `widget_configuration` (
+                `app_widget_id` INTEGER NOT NULL,
+                `kind` TEXT NOT NULL,
+                `currency` TEXT NOT NULL,
+                `hide_total` INTEGER NOT NULL,
+                `market_provider` TEXT,
+                `market_provider_symbol` TEXT,
+                `market_display_name` TEXT,
+                `market_symbol` TEXT,
+                `market_asset_type` TEXT,
+                `revision` INTEGER NOT NULL,
+                PRIMARY KEY(`app_widget_id`)
+            )""".trimIndent(),
+        )
+        database.execSQL(
+            """CREATE TABLE IF NOT EXISTS `widget_quote` (
+                `provider` TEXT NOT NULL,
+                `provider_symbol` TEXT NOT NULL,
+                `price` TEXT,
+                `currency` TEXT,
+                `quote_at` INTEGER,
+                `last_success_at` INTEGER,
+                `last_attempt_at` INTEGER,
+                `status` TEXT NOT NULL,
+                `last_error` TEXT,
+                PRIMARY KEY(`provider`, `provider_symbol`)
+            )""".trimIndent(),
+        )
+    }
+}
+
+@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class, WidgetConfigurationEntity::class, WidgetQuoteEntity::class], version = 4, exportSchema = true)
 @TypeConverters(DbConverters::class)
 abstract class PortfolioDatabase : RoomDatabase() {
     abstract fun dao(): PortfolioDao
+    abstract fun widgetDao(): WidgetDao
 }
