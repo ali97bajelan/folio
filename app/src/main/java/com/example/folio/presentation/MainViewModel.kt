@@ -11,8 +11,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.folio.data.*
 import com.example.folio.data.local.*
-import com.example.folio.data.network.Instrument
-import com.example.folio.data.network.InstrumentSearch
 import com.example.folio.data.network.PriceRefreshWorker
 import androidx.work.WorkManager
 import androidx.work.await
@@ -26,7 +24,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.math.BigDecimal
 import java.time.Instant
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class MainViewModel(
@@ -114,11 +111,6 @@ class MainViewModel(
     val locations = repo.locations.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val transactions = repo.transactions.recoverErrors().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val refresh = MutableStateFlow(0)
-    private val _instrumentResults = MutableStateFlow<List<Instrument>>(emptyList())
-    val instrumentResults: StateFlow<List<Instrument>> = _instrumentResults
-    private val _instrumentSearchError = MutableStateFlow<String?>(null)
-    val instrumentSearchError: StateFlow<String?> = _instrumentSearchError
-    private var instrumentSearchJob: Job? = null
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
     private val _isRefreshing = MutableStateFlow(false)
@@ -261,21 +253,5 @@ class MainViewModel(
             }
         }
     }
-    fun searchInstruments(provider: String, name: String, assetType: String) {
-        instrumentSearchJob?.cancel()
-        _instrumentResults.value = emptyList()
-        _instrumentSearchError.value = null
-        instrumentSearchJob = viewModelScope.launch {
-            delay(300.milliseconds)
-            try {
-                _instrumentResults.value = InstrumentSearch.search(provider, name, assetType)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                _instrumentResults.value = emptyList()
-                _instrumentSearchError.value = localizedString(R.string.error_search)
-            }
-        }
-    }
-    fun clearInstrumentSearch() { instrumentSearchJob?.cancel(); _instrumentResults.value = emptyList(); _instrumentSearchError.value = null }
+
 }

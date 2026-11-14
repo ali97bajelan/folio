@@ -1,7 +1,7 @@
 # Folio Home Screen Widgets — Tasks
 
 Date: 2026-11-11
-Status: W01 implementation in progress — code and JVM coverage are written; Gradle verification and schema export are blocked because Google Maven returns HTTP 404 for the new Glance artifacts and existing Android dependencies.
+Status: W01 code is present; its Gradle/schema verification remains pending. W02 implementation is complete; final unit-test verification is blocked because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact.
 
 - [Specification](../specs/2026-11-11-home-screen-widgets-design.md)
 - [Detailed implementation plan](../plans/2026-11-11-home-screen-widgets.md)
@@ -11,6 +11,15 @@ Status: W01 implementation in progress — code and JVM coverage are written; Gr
 1. Portfolio total and allocation by asset type, with a persistent per-widget hide-total control.
 2. One selected favorite market price per widget, chosen from all four existing providers and their supported identifiers, including instruments not in the portfolio.
 3. Independent instances, durable configuration/cache, offline states, Persian/English and best-effort background updates.
+
+## Current execution status
+
+- W02 implementation and JVM fixtures are present in the working tree.
+- The final `./gradlew :app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
+- Emulator QA was not run; W08 remains the only emulator QA task.
+- Ruling: Continued in the existing workspace because the user asked to continue its in-progress W02 edits — cost if wrong: unrelated local work would share this tree; no changes were committed.
+- Ruling: Deferred Gradle verification until implementation was complete, as requested — cost if wrong: earlier test feedback was unavailable.
+- Final: minor (deferred): the picker ViewModel remains in the navigation entry until that entry is removed after the picker is toggled away; this can leave temporary unused ViewModels until the screen exits.
 
 ## Ordered backlog
 
@@ -28,7 +37,7 @@ Status: W01 implementation in progress — code and JVM coverage are written; Gr
 ## Completion checklist
 
 - [ ] W01 — Durable widget foundation.
-- [ ] W02 — Shared provider client and instrument picker.
+- [ ] W02 — Shared provider client and instrument picker (implementation complete; Gradle verification blocked).
 - [ ] W03 — Portfolio snapshot calculation.
 - [ ] W04 — Placement and configuration.
 - [ ] W05 — Portfolio widget.

@@ -59,6 +59,9 @@ import com.example.folio.data.AssetTypeHistoryPoint
 import com.example.folio.data.DashboardData
 import com.example.folio.data.PortfolioHistoryPoint
 import com.example.folio.data.local.*
+import com.example.folio.data.widget.MarketKey
+import com.example.folio.data.widget.MarketSelection
+import com.example.folio.presentation.components.MarketInstrumentPicker
 import com.example.folio.presentation.icons.FolioIcons
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -956,8 +959,6 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
         else remember(vm, id) { vm.assetTagIds(id) }.collectAsStateWithLifecycle(initialValue = null))
     val tags by vm.tags.collectAsStateWithLifecycle()
     val locations by vm.locations.collectAsStateWithLifecycle()
-    val results by vm.instrumentResults.collectAsStateWithLifecycle()
-    val searchError by vm.instrumentSearchError.collectAsStateWithLifecycle()
 
     var name by rememberSaveable(id) { mutableStateOf("") }
     var symbol by rememberSaveable(id) { mutableStateOf("") }
@@ -1003,11 +1004,6 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
             selectedTagIds = it.toSet()
             tagsInitialized = true
         }
-    }
-    LaunchedEffect(pricingMode, provider, name, assetType) {
-        if (pricingMode == PortfolioCodes.MARKET && name.trim().length >= 2) {
-            vm.searchInstruments(provider, name, assetType)
-        } else vm.clearInstrumentSearch()
     }
     if (!assetInitialized || !tagsInitialized) return Page(stringResource(R.string.edit_asset_title)) {
         Tiny(stringResource(R.string.loading))
@@ -1062,37 +1058,37 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
             pricingMode = it
         }
         if (pricingMode == PortfolioCodes.MARKET) {
-            Choice(
-                stringResource(R.string.provider), provider,
-                listOf(PortfolioCodes.NOBITEX, PortfolioCodes.ABANTETHER, PortfolioCodes.TSETMC, PortfolioCodes.RAHAVARD),
-                render = { choiceLabel(it) },
-            ) {
-                if (provider != it) {
-                    provider = it
-                    providerSymbol = ""
-                    vm.clearInstrumentSearch()
+            val initialMarketSelection = remember(provider, providerSymbol, symbol, name, assetType) {
+                providerSymbol.takeIf(String::isNotBlank)?.let { identifier ->
+                    MarketSelection(
+                        key = MarketKey(provider, identifier),
+                        displayName = name.ifBlank { symbol.ifBlank { identifier } },
+                        symbol = symbol.ifBlank { identifier },
+                        assetType = assetType,
+                    )
                 }
             }
-            Text(stringResource(R.string.suggested_markets), fontWeight = FontWeight.SemiBold)
-            if (searchError != null) Text(searchError!!, color = Danger)
-            if (results.isEmpty() && name.trim().length >= 2 && searchError == null) {
-                Tiny(stringResource(R.string.searching_or_empty))
-            }
-            results.forEach { item ->
-                ListItem(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        providerSymbol = item.providerSymbol
-                        symbol = item.assetSymbol
-                        vm.clearInstrumentSearch()
-                    },
-                    headlineContent = { Text("${item.symbol} · ${item.name}") },
-                    supportingContent = { Text(item.meta) },
-                )
-                HorizontalDivider(color = Color.White.copy(.06f))
-            }
-            Field(stringResource(R.string.provider_symbol), providerSymbol, stringResource(R.string.provider_symbol_hint)) {
-                providerSymbol = it
-            }
+            MarketInstrumentPicker(
+                assetType = assetType,
+                initialSelection = initialMarketSelection,
+                onSelectionChanged = { selection ->
+                    if (selection != null) {
+                        provider = selection.key.provider
+                        providerSymbol = selection.key.providerSymbol
+                        symbol = selection.symbol
+                    }
+                },
+                onProviderChanged = { selectedProvider ->
+                    provider = selectedProvider
+                },
+                onProviderSymbolChanged = { providerSymbol = it },
+                onManualSelectionValidated = { selection ->
+                    // A provider identifier must not replace the user's portfolio symbol.
+                    provider = selection.key.provider
+                    providerSymbol = selection.key.providerSymbol
+                },
+                initialSelectionValidated = id != null,
+            )
         } else Choice(stringResource(R.string.manual_price_currency), currency, listOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT)) {
             currency = it
         }

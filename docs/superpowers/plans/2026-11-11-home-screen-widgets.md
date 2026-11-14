@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 implementation in progress; Gradle verification and schema export are blocked by Google Maven artifact resolution.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`.
 
 ## Global Constraints
 
@@ -118,12 +118,13 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 - `MarketQuoteClient.suspend fun fetchAll(keys: Set<MarketKey>): Map<MarketKey, kotlin.Result<PriceResult>>`
 - `@Composable fun MarketInstrumentPicker(assetType: String, initialSelection: MarketSelection?, onSelectionChanged: (MarketSelection?) -> Unit)`
 
-- [ ] Extract provider HTTP request construction/parsing into MarketQuoteClient; preserve endpoint headers, timeouts, Aban midpoint, numeric IDs and all existing currency units. Normalize Nobitex aliases using marketParts; preserve numeric IDs without losing digits. Batch Aban catalogue once in fetchAll, propagate coroutine cancellation.
-- [ ] Change the existing worker to consume the client while retaining its current asset configuration guards and conversion behavior.
-- [ ] Implement shared picker state with four providers, asset-type search context, query field, results and manual provider identifier. Use 300 ms debounce plus generation checks/cancellation so stale results cannot change current selection.
-- [ ] Validate manual selection via fetch; Save readiness requires a valid selection. Provider/type/identifier edits invalidate the previous selection until validated.
-- [ ] Replace Add Asset's duplicated picker with the shared component without changing opening-holding or save behavior. Search errors, empty state and loading must be distinct.
-- [ ] Add fixture-based JVM tests for canonical pairs, numeric ID preservation, provider units, one Aban fetch per batch and late-search suppression; run the focused tests.
+- [x] Extract provider HTTP request construction/parsing into MarketQuoteClient; preserve endpoint headers, timeouts, Aban midpoint, numeric IDs and all existing currency units. Normalize Nobitex aliases using marketParts; preserve numeric IDs without losing digits. Batch Aban catalogue once in fetchAll, propagate coroutine cancellation.
+- [x] Change the existing worker to consume the client while retaining its current asset configuration guards and conversion behavior.
+- [x] Implement shared picker state with four providers, asset-type search context, query field, results and manual provider identifier. Use 300 ms debounce plus generation checks/cancellation so stale results cannot change current selection.
+- [x] Validate manual selection via fetch; Save readiness requires a valid selection. Provider/type/identifier edits invalidate the previous selection until validated.
+- [x] Replace Add Asset's duplicated picker with the shared component without changing opening-holding or save behavior. Search errors, empty state and loading must be distinct.
+- [x] Add fixture-based JVM tests for canonical pairs, numeric ID preservation, provider units, one Aban fetch per batch and late-search suppression, plus delayed ViewModel search/validation response coverage.
+- [ ] Run the focused tests; the final attempt stopped before compilation because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact.
 
 **Done when:** the same provider selection and fetch capabilities can be used by Add Asset and widget setup, including unowned markets.
 
