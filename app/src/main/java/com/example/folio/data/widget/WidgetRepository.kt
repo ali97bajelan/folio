@@ -36,6 +36,23 @@ class WidgetRepository(
         dao.storeQuote(quote.toEntity())
     }
 
+    suspend fun storeQuoteIfConfigurationCurrent(
+        appWidgetId: Int,
+        revision: Long,
+        savedKey: MarketKey,
+        quote: WidgetQuote,
+    ): Boolean {
+        require(appWidgetId > 0) { "Widget id must be positive." }
+        savedKey.validate()
+        quote.validate()
+        return dao.storeQuoteIfConfigurationCurrent(
+            appWidgetId = appWidgetId,
+            expectedRevision = revision,
+            savedKey = savedKey,
+            incoming = quote.toEntity(),
+        )
+    }
+
     suspend fun pruneQuotes() {
         dao.deleteUnreferencedQuotes()
     }

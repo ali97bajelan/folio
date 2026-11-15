@@ -121,6 +121,26 @@ interface WidgetDao {
     }
 
     @Transaction
+    suspend fun storeQuoteIfConfigurationCurrent(
+        appWidgetId: Int,
+        expectedRevision: Long,
+        savedKey: MarketKey,
+        incoming: WidgetQuoteEntity,
+    ): Boolean {
+        val current = configuration(appWidgetId) ?: return false
+        if (
+            current.kind != WidgetKind.ASSET_PRICE.name ||
+            current.revision != expectedRevision ||
+            current.marketProvider != savedKey.provider ||
+            current.marketProviderSymbol != savedKey.providerSymbol
+        ) {
+            return false
+        }
+        storeQuote(incoming)
+        return true
+    }
+
+    @Transaction
     suspend fun remapConfigurationIds(oldToNew: Map<Int, Int>) {
         if (oldToNew.isEmpty()) return
         require(oldToNew.keys.all { it > 0 } && oldToNew.values.all { it > 0 }) {

@@ -21,6 +21,7 @@ import com.example.folio.domain.PricingService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,6 +31,7 @@ import java.time.Instant
 class PortfolioRepository(
     private val database: PortfolioDatabase,
     private val calculationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val onWidgetsInvalidated: suspend () -> Unit = {},
 ) {
     private val dao = database.dao()
     val assets: Flow<List<AssetEntity>> = dao.observeAssets()
@@ -44,7 +46,32 @@ class PortfolioRepository(
     fun asset(id: Long) = dao.observeAsset(id)
     fun assetTagIds(id: Long) = dao.observeAssetTagIds(id)
 
-    suspend fun saveAsset(asset: AssetEntity, tagIds: List<Long> = emptyList()): Long = database.withTransaction {
+    suspend fun saveAsset(asset: AssetEntity, tagIds: List<Long> = emptyList()): Long =
+        withContext(calculationDispatcher) {
+            val assetId = database.withTransaction { saveAssetInTransaction(asset, tagIds) }
+            invalidateWidgetViews()
+            assetId
+        }
+
+    suspend fun saveAssetWithOpening(
+        asset: AssetEntity,
+        tagIds: List<Long>,
+        opening: TransactionEntity?,
+    ): Long = withContext(calculationDispatcher) {
+        require(asset.id == 0L) { "Opening holdings are only supported for new assets." }
+        validateAsset(asset)
+        opening?.let(::validateTransaction)
+        val assetId = database.withTransaction {
+            val id = saveAssetInTransaction(asset, tagIds)
+            if (opening != null) saveTransactionInTransaction(opening.copy(assetId = id))
+            saveSnapshots()
+            id
+        }
+        invalidateWidgetViews()
+        assetId
+    }
+
+    private suspend fun saveAssetInTransaction(asset: AssetEntity, tagIds: List<Long>): Long {
         validateAsset(asset)
         val assetId = if (asset.id == 0L) {
             dao.insertAsset(asset)
@@ -56,26 +83,30 @@ class PortfolioRepository(
         }
         dao.clearAssetTags(assetId)
         dao.insertAssetTags(tagIds.distinct().map { AssetTagCrossRef(assetId = assetId, tagId = it) })
-        assetId
+        return assetId
     }
 
-    suspend fun saveAssetWithOpening(
-        asset: AssetEntity,
-        tagIds: List<Long>,
-        opening: TransactionEntity?,
-    ): Long = withContext(calculationDispatcher) {
-        require(asset.id == 0L) { "Opening holdings are only supported for new assets." }
-        validateAsset(asset)
-        opening?.let(::validateTransaction)
-        database.withTransaction {
-            val assetId = saveAsset(asset, tagIds)
-            if (opening != null) saveTransaction(opening.copy(assetId = assetId))
-            saveSnapshots()
-            assetId
+    private suspend fun saveTransactionInTransaction(item: TransactionEntity) {
+        validateTransaction(item)
+        val existing = dao.transactions(item.assetId).filter { it.id != item.id }
+        require(HoldingService.timelineIsValid(existing + item)) {
+            "This change would create a negative holding at some point in the timeline."
+        }
+        if (item.id == 0L) {
+            dao.insertTransaction(item)
+        } else {
+            val persisted = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
+            require(item.assetId == persisted.assetId) {
+                "An existing transaction cannot be moved to another asset."
+            }
+            dao.updateTransaction(item.copy(createdAt = persisted.createdAt, updatedAt = Instant.now()))
         }
     }
 
-    suspend fun deleteAsset(asset: AssetEntity) = dao.deleteAssetAndTransactions(asset)
+    suspend fun deleteAsset(asset: AssetEntity) {
+        dao.deleteAssetAndTransactions(asset)
+        invalidateWidgetViews()
+    }
 
     suspend fun saveTag(name: String): Long {
         val trimmedName = name.trim()
@@ -102,20 +133,8 @@ class PortfolioRepository(
     }
 
     suspend fun saveTransaction(item: TransactionEntity): Unit = withContext(calculationDispatcher) {
-        validateTransaction(item)
-        database.withTransaction {
-            val existing = dao.transactions(item.assetId).filter { it.id != item.id }
-            require(HoldingService.timelineIsValid(existing + item)) {
-                "This change would create a negative holding at some point in the timeline."
-            }
-            if (item.id == 0L) {
-                dao.insertTransaction(item)
-            } else {
-                val persisted = requireNotNull(dao.transaction(item.id)) { "Transaction no longer exists." }
-                require(item.assetId == persisted.assetId) { "An existing transaction cannot be moved to another asset." }
-                dao.updateTransaction(item.copy(createdAt = persisted.createdAt, updatedAt = Instant.now()))
-            }
-        }
+        database.withTransaction { saveTransactionInTransaction(item) }
+        invalidateWidgetViews()
     }
 
     suspend fun deleteTransaction(item: TransactionEntity): Unit = withContext(calculationDispatcher) {
@@ -127,12 +146,15 @@ class PortfolioRepository(
             }
             dao.deleteTransaction(persisted)
         }
+        invalidateWidgetViews()
     }
 
     suspend fun savePrice(item: AssetPriceEntity): Long {
         require(item.price > BigDecimal.ZERO) { "Price must be greater than zero." }
         require(item.currency.isNotBlank()) { "Currency is required." }
-        return dao.insertPrice(item)
+        val priceId = dao.insertPrice(item)
+        invalidateWidgetViews()
+        return priceId
     }
 
     fun detail(id: Long): Flow<AssetDetail?> = combine(
@@ -251,6 +273,16 @@ class PortfolioRepository(
                 tomanValue = valuations.mapNotNull(AssetValuationEntity::tomanValue).fold(BigDecimal.ZERO, BigDecimal::add),
                 capturedAt = now,
             ))
+        }
+    }
+
+    private suspend fun invalidateWidgetViews() {
+        try {
+            onWidgetsInvalidated()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            // A Glance update failure must not undo a committed portfolio write.
         }
     }
 

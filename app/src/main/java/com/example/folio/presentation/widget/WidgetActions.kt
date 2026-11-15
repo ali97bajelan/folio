@@ -10,6 +10,7 @@ import androidx.glance.action.actionRunCallback
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.work.await
 import com.example.folio.FolioApplication
 import com.example.folio.data.network.PriceRefreshWorker
 import com.example.folio.data.widget.WidgetKind
@@ -52,7 +53,7 @@ class TogglePortfolioTotalAction : ActionCallback {
 
         try {
             app.widgetRepository.setTotalHidden(appWidgetId, !configuration.hideTotal)
-            PortfolioWidget().update(context, glanceId)
+            WidgetUpdateCoordinator.update(context, setOf(appWidgetId))
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Exception) {
@@ -69,19 +70,24 @@ class RefreshWidgetAction : ActionCallback {
     ) {
         val app = context.applicationContext as? FolioApplication ?: return
         val appWidgetId = widgetId(context, glanceId, parameters) ?: return
-        val configuration = try {
-            app.widgetRepository.configuration(appWidgetId)
+        val isConfigured = try {
+            app.widgetRepository.configuration(appWidgetId) != null
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Exception) {
-            null
-        } ?: return
-
-        PriceRefreshWorker.refreshNow(context)
-        when (configuration.kind) {
-            WidgetKind.PORTFOLIO -> PortfolioWidget().update(context, glanceId)
-            WidgetKind.ASSET_PRICE -> AssetPriceWidget().update(context, glanceId)
+            false
         }
+        if (!isConfigured) return
+
+        try {
+            PriceRefreshWorker.refreshNow(context).await()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            WidgetUpdateCoordinator.update(context, setOf(appWidgetId))
+            return
+        }
+        WidgetUpdateCoordinator.update(context, setOf(appWidgetId))
     }
 }
 

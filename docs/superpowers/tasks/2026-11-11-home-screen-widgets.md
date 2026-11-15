@@ -1,7 +1,7 @@
 # Folio Home Screen Widgets — Tasks
 
 Date: 2026-11-11
-Status: W01 code is present; its Gradle/schema verification remains pending. W02 implementation is complete; unit-test verification is blocked because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact. W03 implementation and JVM coverage are present; verification is pending because the same artifact prevented compilation. W04 implementation and focused configuration tests are present; its post-implementation Gradle test attempt was blocked before compilation by the same missing artifact. W05 implementation and focused presentation tests are present; its post-implementation Gradle test attempt also stopped before compilation because Google Maven could not provide that artifact. W06 implementation and focused JVM coverage are present; the final post-implementation :app:testDebugUnitTest attempt stopped before compilation because Google Maven could not provide androidx.lifecycle:lifecycle-common-java8:2.8.7; no assertions ran.
+Status: W01 code is present; its Gradle/schema verification remains pending. W02 implementation is complete; unit-test verification is blocked because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact. W03 implementation and JVM coverage are present; verification is pending because the same artifact prevented compilation. W04 implementation and focused configuration tests are present; its post-implementation Gradle test attempt was blocked before compilation by the same missing artifact. W05 implementation and focused presentation tests are present; its post-implementation Gradle test attempt also stopped before compilation because Google Maven could not provide that artifact. W06 implementation and focused JVM coverage are present; the final post-implementation :app:testDebugUnitTest attempt stopped before compilation because Google Maven could not provide androidx.lifecycle:lifecycle-common-java8:2.8.7; no assertions ran. W07 implementation and focused JVM coverage are present; its final post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
 
 - [Specification](../specs/2026-11-11-home-screen-widgets-design.md)
 - [Detailed implementation plan](../plans/2026-11-11-home-screen-widgets.md)
@@ -26,12 +26,18 @@ Status: W01 code is present; its Gradle/schema verification remains pending. W02
 - The final post-implementation W06 `:app:testDebugUnitTest` attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start.
 - W06 review findings about minimum-size metadata and no-cache failure wording were addressed with combined compact metadata and separate localized failure copy. Launcher rendering, resize behavior, action dispatch and theme checks remain in W08.
 - W06 uses the shared immediate refresh callback; W07 connects that worker to configured favorite markets and periodic scheduling.
-- Emulator QA was not run; W08 remains the only emulator QA task.
+- W07 implementation is present: the app-scoped refresh operation unions portfolio and widget markets; six-hour connected work runs only while an instance exists; local saves and language/visibility changes invalidate widgets; lifecycle events are serialized and restore mappings are preserved until reconciliation; README is updated.
+- W07 adds JVM coverage for deduplicated/provider-isolated targets, exact saved cache keys, stale configuration guards, quote timestamps/failure states, periodic scheduling, refresh indicator terminal states and restore cleanup ordering.
+- The independent W07 review findings were addressed: active Glance sessions now observe durable invalidation revisions and WorkInfo; lifecycle work uses an ordered unique chain and restore actions do not prune another widget kind; successful configuration Save requests an immediate coalesced refresh.
+- W07's final `:app:testDebugUnitTest` attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start. No emulator QA was run; W08 remains the sole emulator QA task.
 - Ruling: Runtime rendering, resize behavior, action dispatch and light/dark appearance are deferred to W08 per the plan — cost if wrong: launcher-specific issues remain undiscovered until the sole emulator QA task.
 - Ruling: Continued in the existing workspace because the user asked to continue its in-progress W02 edits — cost if wrong: unrelated local work would share this tree; no changes were committed.
 - Ruling: Deferred Gradle verification until implementation was complete, as requested — cost if wrong: earlier test feedback was unavailable.
-- Ruling: W04 requests the first receiver update after Save and leaves periodic scheduling to W07, where the plan introduces the scheduler — cost if wrong: periodic widget refresh will not be scheduled until W07 is implemented.
-- Ruling: W06 routes Refresh through the shared immediate worker; W07 adds configured favorite-market fetching — cost if wrong: a favorite quote will not refresh until W07 is implemented.
+- Ruling: W07 runs only `:app:testDebugUnitTest`; a separate assemble task is omitted per the user's explicit constraint — cost if wrong: packaging-specific errors remain unverified.
+- Ruling: Active Glance sessions observe durable widget revisions and WorkInfo state, then reload Room-backed values. Portfolio snapshots are computed at render after a complete refresh instead of stored redundantly — cost if wrong: a missed revision can leave an old render until a later invalidation.
+- Ruling: Lifecycle events use an ordered unique WorkManager chain; restore actions remap without global pruning and startup reconciliation handles stale IDs — cost if wrong: a system restore callback arriving only after startup reconciliation may leave its old row until the next reconciliation.
+- Ruling: W04 first added the receiver update on Save; W07 now schedules periodic work and requests an immediate quote refresh after configuration Save — cost if wrong: an uncached favorite may remain unavailable until another refresh.
+- Ruling: W06 routes Refresh through the shared immediate worker; W07 now includes configured favorite markets in that serialized fetch — cost if wrong: widget-only selections could otherwise remain stale.
 - Final: minor (deferred): the picker ViewModel remains in the navigation entry until that entry is removed after the picker is toggled away; this can leave temporary unused ViewModels until the screen exits.
 
 ## Ordered backlog
@@ -55,7 +61,7 @@ Status: W01 code is present; its Gradle/schema verification remains pending. W02
 - [ ] W04 — Placement and configuration (implementation and focused tests are present; Gradle verification is blocked before compilation by the missing lifecycle artifact).
 - [ ] W05 — Portfolio widget (implementation complete; Gradle verification blocked before compilation by the missing `androidx.lifecycle:lifecycle-common-java8:2.8.7` artifact).
 - [ ] W06 — Favorite asset price widget (implementation and focused JVM coverage are present; Gradle verification is blocked before compilation by the missing `androidx.lifecycle:lifecycle-common-java8:2.8.7` artifact; no assertions ran).
-- [ ] W07 — Refresh and lifecycle integration.
+- [ ] W07 — Refresh and lifecycle integration (implementation and focused JVM coverage are present; the final post-implementation test attempt was blocked before compilation by the missing lifecycle artifact; no assertions ran).
 - [ ] W08 — Single final QA on emulator, after all implementation is complete.
 
 ## QA constraint

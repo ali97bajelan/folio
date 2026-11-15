@@ -31,7 +31,16 @@ Market-priced assets can be searched and refreshed from public provider endpoint
 | TSETMC | Iranian equities |
 | Rahavard | Precious metals and supported market listings |
 
-Folio schedules a best-effort refresh every six hours when the device has a network connection. A refresh can also be started from the dashboard. Failed calls never remove existing cached prices, and provider responses may change or become unavailable; manual pricing is always available as a fallback. No provider credentials are embedded in the app.
+Opening the app or choosing Refresh in the dashboard requests a best-effort one-time update. While at least one home-screen widget is installed, Folio also schedules a network-connected refresh on a six-hour interval. The widgets and dashboard share the same serialized refresh operation. Failed provider calls preserve saved prices, and provider responses may change or become unavailable; manual pricing remains available as a fallback. No provider credentials are embedded in the app.
+
+## Home-screen widgets
+
+Folio provides two independently configured home-screen widgets:
+
+- The portfolio widget shows a local portfolio total and allocation by asset type. Its hide-total control masks monetary values for that widget while keeping allocation labels and percentages visible.
+- The favorite-price widget shows one market selected from Nobitex, Aban Tether, TSETMC, or Rahavard. A favorite can be any identifier supported by those providers, including a market that is not in the portfolio. Selecting one does not create or change a portfolio asset or transaction.
+
+Widget settings and quote caches are stored on the device. Prices use the provider's quoted currency; IRT quotes are displayed in toman using Folio's existing unit handling. Without a network connection, a widget keeps its last successful quote and quote time and marks it stale or refresh-failed when applicable. Before any successful quote is cached, it shows an unavailable state instead of zero. Use the widget's Configure action to change its selection and Refresh action to request an immediate update.
 
 ## Privacy and data
 
@@ -78,11 +87,12 @@ Folio is a native Kotlin application built with Jetpack Compose. Its core layers
 
 | Layer | Responsibility |
 | --- | --- |
-| `presentation/` | Compose screens, navigation, language selection, and view-model state |
-| `data/local/` | Room entities, DAO, migrations, and local persistence |
-| `data/` | Repository and dashboard/history aggregation |
+| `presentation/` | Compose screens, navigation, language selection, view-model state, and Glance widgets |
+| `data/local/` | Room entities, DAOs, migrations, and local persistence |
+| `data/` | Portfolio repository and dashboard/history aggregation |
+| `data/widget/` | Room-backed widget settings, quote cache, and portfolio snapshot calculation |
 | `domain/` | Holdings, cost basis, pricing, currency conversion, and valuation rules |
-| `data/network/` | Provider parsers, instrument search, and WorkManager price refresh |
+| `data/network/` | Shared provider quote client, serialized refresh operation, and WorkManager scheduling |
 
 The `assetsDashboard/` directory contains the earlier Django implementation retained as migration/reference material; the Android app does not depend on it at runtime.
 

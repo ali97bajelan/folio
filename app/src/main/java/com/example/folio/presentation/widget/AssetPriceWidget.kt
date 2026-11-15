@@ -2,6 +2,12 @@ package com.example.folio.presentation.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -37,6 +43,7 @@ import androidx.glance.text.TextStyle
 import com.example.folio.FolioApplication
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
+import com.example.folio.data.network.PriceRefreshWorker
 import com.example.folio.data.widget.WidgetConfiguration
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetQuote
@@ -53,32 +60,26 @@ class AssetPriceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val app = context.applicationContext as? FolioApplication
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        val localizedContext = widgetLocalizedContext(context)
+        val initialState = loadAssetPriceWidgetRenderState(app, appWidgetId)
 
-        var loadFailed = app == null
-        var configuration: WidgetConfiguration? = null
-        var quote: WidgetQuote? = null
-        try {
-            if (app != null) {
-                val state = loadAssetPriceWidgetState(app, appWidgetId)
-                configuration = state.configuration
-                quote = state.quote
-            }
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            loadFailed = true
-        }
-
-        val isUpdating = configuration != null && hasActiveWidgetRefresh(context)
         provideContent {
+            val revision by WidgetUpdateCoordinator.observeRequestedRevision(context)
+                .collectAsState(initial = 0L)
+            var state by remember(appWidgetId) { mutableStateOf(initialState) }
+            LaunchedEffect(revision) {
+                state = loadAssetPriceWidgetRenderState(app, appWidgetId)
+            }
+            val localizedContext = remember(revision) { widgetLocalizedContext(context) }
+            val isUpdating by PriceRefreshWorker.observeRefreshInProgress(context)
+                .collectAsState(initial = false)
+
             AssetPriceWidgetLayout(
                 context = localizedContext,
                 appWidgetId = appWidgetId,
-                configuration = configuration,
-                quote = quote,
+                configuration = state.data?.configuration,
+                quote = state.data?.quote,
                 isUpdating = isUpdating,
-                loadFailed = loadFailed,
+                loadFailed = state.loadFailed,
             )
         }
     }
@@ -417,6 +418,28 @@ private data class LoadedAssetPriceWidgetState(
     val configuration: WidgetConfiguration?,
     val quote: WidgetQuote?,
 )
+
+private data class AssetPriceWidgetRenderState(
+    val data: LoadedAssetPriceWidgetState?,
+    val loadFailed: Boolean,
+)
+
+private suspend fun loadAssetPriceWidgetRenderState(
+    app: FolioApplication?,
+    appWidgetId: Int,
+): AssetPriceWidgetRenderState {
+    if (app == null) return AssetPriceWidgetRenderState(data = null, loadFailed = true)
+    return try {
+        AssetPriceWidgetRenderState(
+            data = loadAssetPriceWidgetState(app, appWidgetId),
+            loadFailed = false,
+        )
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        AssetPriceWidgetRenderState(data = null, loadFailed = true)
+    }
+}
 
 private suspend fun loadAssetPriceWidgetState(
     app: FolioApplication,

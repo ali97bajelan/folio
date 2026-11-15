@@ -2,7 +2,6 @@ package com.example.folio.presentation.widget
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -21,8 +20,13 @@ import androidx.compose.ui.graphics.Color
 import com.example.folio.FolioApplication
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetRepository
+import com.example.folio.data.network.PriceRefreshWorker
 import com.example.folio.presentation.LanguagePreferences
+import kotlinx.coroutines.CancellationException
+import com.example.folio.presentation.widget.WidgetRefreshScheduler
+import com.example.folio.presentation.widget.WidgetUpdateCoordinator
 import kotlinx.coroutines.launch
+import androidx.work.await
 
 class WidgetConfigurationActivity : AppCompatActivity() {
     private lateinit var configurationViewModel: WidgetConfigurationViewModel
@@ -104,30 +108,37 @@ class WidgetConfigurationActivity : AppCompatActivity() {
     }
 
     private fun saveConfiguration() {
-        val kind = widgetKind ?: return
+        if (widgetKind == null) return
         lifecycleScope.launch {
             val saved = configurationViewModel.save() ?: return@launch
-            requestInitialUpdate(kind, appWidgetId)
+            try {
+                WidgetRefreshScheduler.scheduleAndInvalidate(applicationContext)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                WidgetUpdateCoordinator.update(applicationContext, setOf(saved.appWidgetId))
+            }
+            try {
+                // A newly configured favorite should not wait for the six-hour periodic run.
+                PriceRefreshWorker.refreshNow(applicationContext).await()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Saving configuration remains successful when scheduling is unavailable.
+            }
+            try {
+                WidgetUpdateCoordinator.update(applicationContext, setOf(saved.appWidgetId))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // The receiver and next reconciliation will retry rendering.
+            }
             setResult(
                 Activity.RESULT_OK,
                 Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, saved.appWidgetId),
             )
             finish()
         }
-    }
-
-    private fun requestInitialUpdate(kind: WidgetKind, id: Int) {
-        val receiverClass = when (kind) {
-            WidgetKind.PORTFOLIO ->
-                "$packageName.presentation.widget.PortfolioWidgetReceiver"
-            WidgetKind.ASSET_PRICE ->
-                "$packageName.presentation.widget.AssetPriceWidgetReceiver"
-        }
-        sendBroadcast(
-            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-                .setComponent(ComponentName(packageName, receiverClass))
-                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(id)),
-        )
     }
 
     private fun cancelConfiguration() {

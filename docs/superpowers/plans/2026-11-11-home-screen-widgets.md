@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact. W05 implementation and focused presentation tests are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide the same artifact. W06 implementation and focused JVM coverage are present; its final post-implementation `:app:testDebugUnitTest` attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact. W05 implementation and focused presentation tests are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide the same artifact. W06 implementation and focused JVM coverage are present; its final post-implementation `:app:testDebugUnitTest` attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start. W07 implementation and focused JVM coverage are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
 
 ## Global Constraints
 
@@ -57,7 +57,7 @@ Paths below are relative to repository root; main Kotlin paths are under `app/sr
 | `presentation/widget/WidgetActions.kt` | Hide, refresh and configure actions |
 | `presentation/widget/WidgetUpdateCoordinator.kt` | Revision invalidation, explicit Glance updates and reconciliation |
 | `data/network/MarketRefreshOperation.kt` | Shared serialized portfolio/widget refresh |
-| `data/network/WidgetRefreshScheduler.kt` and `WidgetPeriodicRefreshWorker.kt` | Unique six-hour scheduling |
+| `presentation/widget/WidgetRefreshScheduler.kt` and `data/network/WidgetPeriodicRefreshWorker.kt` | Unique six-hour scheduling and lifecycle reconciliation |
 | `res/xml/portfolio_widget_info.xml`, `asset_price_widget_info.xml` | Host metadata |
 | `res/values/widget_dimensions.xml`, `res/drawable/widget_*_preview.xml` | Size hints and fictional previews |
 | Existing database, application, repository, worker, language, Add Asset, manifest and Gradle files | Integration only |
@@ -221,17 +221,17 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 - `WidgetUpdateCoordinator.suspend fun invalidateAll(context: Context): Unit`
 - `WidgetUpdateCoordinator.suspend fun update(context: Context, appWidgetIds: Set<Int>): Unit`
 
-- [ ] Move refresh orchestration behind one application-scoped operation and Mutex shared by one-time and periodic workers. Network is outside Room transactions; preserve current portfolio configuration guards and snapshot transaction.
-- [ ] Refresh the deduplicated union of active portfolio markets and widget-selected keys. Persist each consumer's results independently, retaining last-good quotes on failures. Continue across provider errors and retain cancellation semantics.
-- [ ] Use a durable invalidation marker/revision so failures to update Glance can retry. Publish portfolio widget snapshots after a complete refresh, not each quote insertion; always load current visibility/configuration before rendering.
-- [ ] Add unique six-hour CONNECTED periodic work named folio-widget-periodic-refresh while installed instances exist. Both workers call the shared serialized operation. Keep folio-price-refresh-now with KEEP for explicit refresh; app-open refresh must no longer cancel widget periodic work.
-- [ ] Connect creation, completed local financial writes, configuration Save, hide/show and language change to invalidation. Update widgets without an Activity collector. If Glance state is changed, await updateAppWidgetState then explicit update/updateAll.
-- [ ] Receivers reconcile installed IDs, clean deleted configuration/unreferenced cache, remap restored IDs and schedule an update. Reconcile after restore/app start; only cancel widget periodic work when no widgets remain.
-- [ ] Refresh action enqueues one-time work and renders pending status; terminal failures clear busy status and retain data. Do not let widget update failure undo a valid portfolio mutation.
-- [ ] Update README with widget setup, privacy behavior, selectable providers, native currency, cache/stale behavior and the real schedule.
-- [ ] Run `./gradlew :app:assembleDebug :app:testDebugUnitTest` and fix failures. Keep all emulator scenarios for W08.
+- [x] Move refresh orchestration behind one application-scoped operation and Mutex shared by one-time and periodic workers. Network is outside Room transactions; preserve current portfolio configuration guards and valuation transaction.
+- [x] Refresh the deduplicated union of active portfolio markets and widget-selected keys. Persist each consumer's results independently, retaining last-good quotes on failures. Continue across provider errors and retain cancellation semantics.
+- [x] Use a durable invalidation marker/revision so failures to update Glance can retry. Glance sessions observe revisions and reload current Room-backed configuration/snapshots after a complete refresh.
+- [x] Add unique six-hour CONNECTED periodic work named folio-widget-periodic-refresh while installed instances exist. Both workers call the shared serialized operation. Keep folio-price-refresh-now with KEEP for explicit refresh; app-open refresh no longer cancels widget periodic work.
+- [x] Connect completed local financial writes, configuration Save, hide/show and language change to invalidation. Update widgets without an Activity collector.
+- [x] Reconcile lifecycle callbacks through a unique ordered work chain; restore actions remap IDs without pruning the other widget kind, delete actions remove exact rows, and app-start reconciliation prunes stale rows and schedules work.
+- [x] Refresh action enqueues one-time work; widgets observe WorkInfo so pending/running state clears at terminal completion. Widget update failure does not undo a portfolio mutation.
+- [x] Update README with widget setup, privacy behavior, selectable providers, native currency, cache/stale behavior and the real schedule.
+- [ ] Run `:app:testDebugUnitTest` after implementation. Attempted once; dependency resolution stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`, so no assertions ran. A separate `assembleDebug` was omitted per the user's instruction to run only the Gradle test task; keep all emulator scenarios for W08.
 
-**Done when:** both widgets update without the UI open, share requests safely and survive lifecycle changes.
+**Implementation ruling:** The widget snapshot is calculated from Room during Glance rendering after the refresh operation completes. This avoids a second cached snapshot table; publication uses a durable invalidation revision. Cost if wrong: active Glance sessions can retain the old render until an observed revision triggers their reload.
 
 ## W08 — Single final QA task: emulator acceptance
 
@@ -271,4 +271,4 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 - Shared contracts are defined once and consumed by later tasks.
 - The design received a separate builder document check: no important unanswered planning questions were found.
 - Proposed defaults remain reviewable: per-instance settings, one market per price widget, native quote currency, visible total default and six-hour widget background refresh.
-- W06 implementation was requested and completed in this work session; W07 integration and W08 emulator acceptance remain pending.
+- W07 implementation and focused JVM coverage are complete; its final test attempt was blocked before compilation by the unavailable lifecycle artifact. W08 emulator acceptance remains pending.

@@ -3,6 +3,7 @@ package com.example.folio.presentation
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import com.example.folio.FolioApplication
 
 /** The two locales Folio exposes in its in-app language selector. */
 enum class AppLanguage(val tag: String) {
@@ -21,13 +22,18 @@ enum class AppLanguage(val tag: String) {
  * preference lets the settings screen show a deterministic selected value.
  */
 class LanguagePreferences(context: Context) {
-    private val preferences = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val preferences = appContext.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
 
     fun current(): AppLanguage = AppLanguage.fromTag(preferences.getString(LANGUAGE_KEY, null))
 
     fun set(language: AppLanguage) {
+        val changed = current() != language
         preferences.edit().putString(LANGUAGE_KEY, language.tag).apply()
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language.tag))
+        if (changed) {
+            (appContext as? FolioApplication)?.requestWidgetInvalidation()
+        }
     }
 
     companion object {
