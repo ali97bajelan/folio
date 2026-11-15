@@ -165,4 +165,16 @@
         <item quantity="one">%1$d asset waiting for a price</item>
         <item quantity="other">%1$d assets waiting for a price</item>
     </plurals>
+    <string name="widget_configure_portfolio_title">Configure portfolio widget</string>
+    <string name="widget_configure_price_title">Configure asset price widget</string>
+    <string name="widget_config_loading">Loading widget settings…</string>
+    <string name="widget_config_load_error">Unable to load saved widget settings. Close and try again.</string>
+    <string name="widget_config_save_error">Unable to save widget settings. Please try again.</string>
+    <string name="widget_currency_label">Portfolio display currency</string>
+    <string name="widget_currency_irt">IRT · toman</string>
+    <string name="widget_currency_usd">USD</string>
+    <string name="widget_hide_total">Hide total portfolio value</string>
+    <string name="widget_asset_type_label">Instrument type</string>
+    <string name="widget_market_required">Choose and validate a market before saving.</string>
+    <string name="widget_market_selected">%1$s · %2$s</string>
 </resources>

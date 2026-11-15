@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact.
 
 ## Global Constraints
 
@@ -156,13 +156,13 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 **Consumes:** WidgetRepository, MarketInstrumentPicker, AppLanguage/LanguagePreferences.
 **Produces:** an activity accepting ACTION_APPWIDGET_CONFIGURE and a validated appWidgetId for either Folio provider; durable WidgetConfiguration after Save.
 
-- [ ] Declare the configuration activity and validate widget ID against AppWidgetManager provider ownership. Unknown IDs or widget kinds exit canceled; do not write arbitrary IDs.
-- [ ] Default to RESULT_CANCELED. Build portfolio form with IRT/USD and hide-total; build price form with shared provider/type/instrument picker.
-- [ ] Hold unsaved fields in SavedStateHandle, including selected validated market and validation status. Rotation preserves input; revalidate if required after process recreation.
-- [ ] On Save persist configuration, increment revision, trigger that instance's initial update, reconcile scheduling and return RESULT_OK with the ID. Do not depend on a host onUpdate broadcast for the first render.
-- [ ] Cancel placement without durable configuration; cancel edit preserves prior settings and cache. For reconfiguration display saved settings and refresh validation only when the market changes.
-- [ ] Replacing a selection clears its displayed draft quote; successful selection validation can seed the correctly keyed widget cache. Store no portfolio entity.
-- [ ] Verify compilation and focused configuration validation tests; defer launcher interaction to W08.
+- [x] Declare the configuration activity and validate widget ID against AppWidgetManager provider ownership. Unknown IDs or widget kinds exit canceled; do not write arbitrary IDs.
+- [x] Default to RESULT_CANCELED. Build portfolio form with IRT/USD and hide-total; build price form with shared provider/type/instrument picker.
+- [x] Hold unsaved fields in SavedStateHandle, including selected validated market and validation status. Rotation preserves input; revalidate if required after process recreation.
+- [x] On Save persist configuration, increment revision, request a first update for that instance, and return RESULT_OK with its ID. Periodic scheduler reconciliation stays in W07, where the plan introduces the scheduler.
+- [x] Cancel placement without durable configuration; cancel edit preserves prior settings and cache. For reconfiguration display saved settings and refresh validation only when the market changes.
+- [x] Replacing a selection clears the prior draft selection immediately; configuration never renders a cached quote under a new label. Store no portfolio entity.
+- [ ] Verify compilation and focused configuration validation tests; defer launcher interaction to W08. The post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
 
 **Done when:** both widget kinds can be configured through the Android result contract and edited independently.
 

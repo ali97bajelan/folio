@@ -48,6 +48,10 @@ fun MarketInstrumentPicker(
     onProviderSymbolChanged: (String) -> Unit = {},
     onManualSelectionValidated: (MarketSelection) -> Unit = { onSelectionChanged(it) },
     initialSelectionValidated: Boolean = true,
+    initialProvider: String? = null,
+    initialQuery: String? = null,
+    initialProviderSymbol: String? = null,
+    onQueryChanged: (String) -> Unit = {},
 ) {
     val pickerId = rememberSaveable { UUID.randomUUID().toString() }
     val pickerViewModel: MarketInstrumentPickerViewModel = viewModel(key = pickerId)
@@ -56,6 +60,7 @@ fun MarketInstrumentPicker(
     val currentProviderChanged by rememberUpdatedState(onProviderChanged)
     val currentProviderSymbolChanged by rememberUpdatedState(onProviderSymbolChanged)
     val currentManualSelectionValidated by rememberUpdatedState(onManualSelectionValidated)
+    val currentQueryChanged by rememberUpdatedState(onQueryChanged)
 
     LaunchedEffect(pickerViewModel, assetType) {
         val previousProvider = pickerViewModel.state.value.provider
@@ -64,9 +69,26 @@ fun MarketInstrumentPicker(
             initialSelection = initialSelection,
             initialSelectionValidated = initialSelectionValidated,
         )
+        if (!typeChanged) {
+            val current = pickerViewModel.state.value
+            if (!initialProvider.isNullOrBlank() && current.provider != initialProvider) {
+                pickerViewModel.changeProvider(initialProvider)
+            }
+            val afterProvider = pickerViewModel.state.value
+            if (initialQuery != null && afterProvider.query != initialQuery) {
+                pickerViewModel.updateQuery(initialQuery)
+            }
+            val afterQuery = pickerViewModel.state.value
+            if (initialProviderSymbol != null && afterQuery.providerSymbol != initialProviderSymbol) {
+                pickerViewModel.updateProviderSymbol(initialProviderSymbol)
+            }
+        }
         val selectedProvider = pickerViewModel.state.value.provider
         if (previousProvider != selectedProvider) currentProviderChanged(selectedProvider)
-        if (typeChanged) currentProviderSymbolChanged("")
+        if (typeChanged) {
+            currentProviderSymbolChanged("")
+            currentQueryChanged("")
+        }
     }
     LaunchedEffect(pickerViewModel) {
         pickerViewModel.selectionChangeEvents.collect { change ->
@@ -86,12 +108,16 @@ fun MarketInstrumentPicker(
                     pickerViewModel.changeProvider(provider)
                     currentProviderChanged(provider)
                     currentProviderSymbolChanged("")
+                    currentQueryChanged("")
                 }
             },
         )
         OutlinedTextField(
             value = state.query,
-            onValueChange = pickerViewModel::updateQuery,
+            onValueChange = { query ->
+                pickerViewModel.updateQuery(query)
+                currentQueryChanged(query)
+            },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             label = { Text(stringResource(R.string.market_search)) },
             placeholder = { Text(stringResource(R.string.market_search_hint)) },

@@ -95,4 +95,16 @@
         <item quantity="one">%1$d دارایی منتظر قیمت است</item>
         <item quantity="other">%1$d دارایی منتظر قیمت هستند</item>
     </plurals>
+    <string name="widget_configure_portfolio_title">تنظیم ابزارک پرتفوی</string>
+    <string name="widget_configure_price_title">تنظیم ابزارک قیمت دارایی</string>
+    <string name="widget_config_loading">در حال بارگذاری تنظیمات ابزارک…</string>
+    <string name="widget_config_load_error">بارگذاری تنظیمات ذخیره‌شدهٔ ابزارک ممکن نیست. ببندید و دوباره تلاش کنید.</string>
+    <string name="widget_config_save_error">ذخیرهٔ تنظیمات ابزارک ممکن نیست. دوباره تلاش کنید.</string>
+    <string name="widget_currency_label">ارز نمایش پرتفوی</string>
+    <string name="widget_currency_irt">تومان · IRT</string>
+    <string name="widget_currency_usd">دلار · USD</string>
+    <string name="widget_hide_total">پنهان کردن ارزش کل پرتفوی</string>
+    <string name="widget_asset_type_label">نوع دارایی</string>
+    <string name="widget_market_required">پیش از ذخیره، بازار را انتخاب و تأیید کنید.</string>
+    <string name="widget_market_selected">%1$s · %2$s</string>
 </resources>
