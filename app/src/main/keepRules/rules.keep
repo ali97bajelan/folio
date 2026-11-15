@@ -10,3 +10,5 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { public <init>(); }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="widget_portfolio_target_cell_width">4</integer>
+    <integer name="widget_portfolio_target_cell_height">2</integer>
+    <dimen name="widget_portfolio_min_width">250dp</dimen>
+    <dimen name="widget_portfolio_min_height">148dp</dimen>
+    <dimen name="widget_portfolio_min_resize_width">180dp</dimen>
+    <dimen name="widget_portfolio_min_resize_height">148dp</dimen>
+    <dimen name="widget_portfolio_max_resize_width">624dp</dimen>
+    <dimen name="widget_portfolio_max_resize_height">422dp</dimen>
+</resources>

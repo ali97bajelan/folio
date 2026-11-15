@@ -107,4 +107,30 @@
     <string name="widget_asset_type_label">نوع دارایی</string>
     <string name="widget_market_required">پیش از ذخیره، بازار را انتخاب و تأیید کنید.</string>
     <string name="widget_market_selected">%1$s · %2$s</string>
+    <string name="widget_portfolio_name">پرتفوی فولیو</string>
+    <string name="widget_portfolio_description">ارزش پرتفوی و تخصیص بر اساس نوع دارایی.</string>
+    <string name="widget_portfolio_total">ارزش کل پرتفوی</string>
+    <string name="widget_portfolio_empty">موجودی فعالی نیست</string>
+    <string name="widget_portfolio_partial_value">ارزش جزئی · %1$s</string>
+    <plurals name="widget_portfolio_missing_values">
+        <item quantity="one">%1$d موجودی ارزش‌گذاری نشده</item>
+        <item quantity="other">%1$d موجودی ارزش‌گذاری نشده‌اند</item>
+    </plurals>
+    <string name="widget_portfolio_unavailable_missing">%1$s · %2$s</string>
+    <string name="widget_portfolio_value_unavailable">ارزش در دسترس نیست</string>
+    <string name="widget_portfolio_other">سایر</string>
+    <string name="widget_portfolio_allocation_description">%1$s، %2$s از پرتفوی</string>
+    <string name="widget_portfolio_updating">در حال به‌روزرسانی قیمت‌ها…</string>
+    <string name="widget_portfolio_status_combined">%1$s · %2$s</string>
+    <string name="widget_portfolio_no_prices">هنوز دادهٔ قیمتی نیست</string>
+    <string name="widget_portfolio_last_updated">به‌روزرسانی %1$s</string>
+    <string name="widget_portfolio_hide_total">پنهان کردن ارزش کل</string>
+    <string name="widget_portfolio_show_total">نمایش ارزش کل</string>
+    <string name="widget_portfolio_refresh">تازه‌سازی قیمت‌ها</string>
+    <string name="widget_portfolio_configure">تنظیم ابزارک پرتفوی</string>
+    <string name="widget_portfolio_setup">تنظیم ابزارک پرتفوی</string>
+    <string name="widget_portfolio_setup_hint">برای انتخاب ارز، «تنظیم» را بزنید.</string>
+    <string name="widget_portfolio_load_error">دادهٔ پرتفوی در دسترس نیست. برای تلاش دوباره فولیو را باز کنید.</string>
+    <string name="widget_portfolio_preview_total">۱۲٬۸۴۰ IRT</string>
+    <string name="widget_portfolio_preview_allocation">رمزارز ۵۸٪ · طلا ۲۷٪ · دلار ۱۵٪</string>
 </resources>

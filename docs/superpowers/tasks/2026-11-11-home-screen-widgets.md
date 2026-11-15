@@ -1,7 +1,7 @@
 # Folio Home Screen Widgets — Tasks
 
 Date: 2026-11-11
-Status: W01 code is present; its Gradle/schema verification remains pending. W02 implementation is complete; final unit-test verification is blocked because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact. W03 implementation and JVM coverage are present; verification is pending because the same artifact prevented compilation. W04 implementation and focused configuration tests are present; its post-implementation Gradle test attempt was blocked before compilation by the same missing artifact.
+Status: W01 code is present; its Gradle/schema verification remains pending. W02 implementation is complete; final unit-test verification is blocked because Google Maven could not provide the existing androidx.lifecycle:lifecycle-common-java8:2.8.7 artifact. W03 implementation and JVM coverage are present; verification is pending because the same artifact prevented compilation. W04 implementation and focused configuration tests are present; its post-implementation Gradle test attempt was blocked before compilation by the same missing artifact. W05 implementation and focused presentation tests are present; its post-implementation Gradle test attempt also stopped before compilation because Google Maven could not provide that artifact.
 
 - [Specification](../specs/2026-11-11-home-screen-widgets-design.md)
 - [Detailed implementation plan](../plans/2026-11-11-home-screen-widgets.md)
@@ -20,6 +20,8 @@ Status: W01 code is present; its Gradle/schema verification remains pending. W02
 - The W03 `:app:testDebugUnitTest` attempt also stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
 - W04 adds the two configuration forms, validated provider ownership, SavedStateHandle drafts, result handling, direct first-update request, and focused JVM coverage.
 - The W04 `:app:testDebugUnitTest` attempt ran after implementation and stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
+- W05 adds the Glance portfolio receiver/layout, localized totals and allocations, persisted per-instance hide/show, refresh/configure controls, widget metadata/previews/dimensions and focused presentation tests.
+- The W05 `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran.
 - Periodic schedule reconciliation remains with W07, which introduces the widget scheduler.
 - Emulator QA was not run; W08 remains the only emulator QA task.
 - Ruling: Continued in the existing workspace because the user asked to continue its in-progress W02 edits — cost if wrong: unrelated local work would share this tree; no changes were committed.
@@ -46,7 +48,7 @@ Status: W01 code is present; its Gradle/schema verification remains pending. W02
 - [ ] W02 — Shared provider client and instrument picker (implementation complete; Gradle verification blocked).
 - [ ] W03 — Portfolio snapshot calculation (implementation and JVM coverage added; Gradle verification blocked before compilation by the missing `androidx.lifecycle:lifecycle-common-java8:2.8.7` artifact).
 - [ ] W04 — Placement and configuration (implementation and focused tests are present; Gradle verification is blocked before compilation by the missing lifecycle artifact).
-- [ ] W05 — Portfolio widget.
+- [ ] W05 — Portfolio widget (implementation complete; Gradle verification blocked before compilation by the missing `androidx.lifecycle:lifecycle-common-java8:2.8.7` artifact).
 - [ ] W06 — Favorite asset price widget.
 - [ ] W07 — Refresh and lifecycle integration.
 - [ ] W08 — Single final QA on emulator, after all implementation is complete.

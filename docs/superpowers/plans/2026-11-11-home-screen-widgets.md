@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact. W05 implementation and focused presentation tests are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide the same artifact.
 
 ## Global Constraints
 
@@ -52,7 +52,7 @@ Paths below are relative to repository root; main Kotlin paths are under `app/sr
 | `presentation/widget/WidgetConfigurationScreen.kt` | Portfolio and price setup forms |
 | `presentation/widget/WidgetConfigurationViewModel.kt` | Saved draft and durable Save |
 | `presentation/widget/WidgetLayout.kt` | Glance scaffold, theme, formatting and actions |
-| `presentation/widget/PortfolioWidget.kt` and `PortfolioWidgetReceiver.kt` | Portfolio Glance UI and host lifecycle |
+| `presentation/widget/PortfolioWidget.kt` | Portfolio Glance UI and receiver lifecycle |
 | `presentation/widget/AssetPriceWidget.kt` and `AssetPriceWidgetReceiver.kt` | Market price Glance UI and host lifecycle |
 | `presentation/widget/WidgetActions.kt` | Hide, refresh and configure actions |
 | `presentation/widget/WidgetUpdateCoordinator.kt` | Revision invalidation, explicit Glance updates and reconciliation |
@@ -171,18 +171,18 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 **Depends on:** W01, W03, W04.
 **Coverage:** P01–P06, L04–L05.
 
-**Files:** Create PortfolioWidget.kt, PortfolioWidgetReceiver.kt, WidgetLayout.kt, WidgetActions.kt and `res/xml/portfolio_widget_info.xml`; create portfolio preview and shared dimension resources. Modify manifest/strings.
+**Files:** Create PortfolioWidget.kt (including its receiver class), WidgetLayout.kt, WidgetActions.kt and `res/xml/portfolio_widget_info.xml`; create portfolio preview and shared dimension resources. Modify manifest/strings.
 
 **Consumes:** saved configuration and WidgetSnapshotRepository.portfolio.
 **Produces:** `PortfolioWidget : GlanceAppWidget`, `PortfolioWidgetReceiver : GlanceAppWidgetReceiver`, shared Glance layout helpers and hide/configure actions.
 
-- [ ] Register receiver metadata after the activity, with APPWIDGET_UPDATE, explicit exported value and matching XML resource. Restrict widgetCategory to home_screen.
-- [ ] Use SizeMode.Exact. Adapt Glance canonical standard-toolbar scaffold/title bar/action sizing to financial content; remove sample media buttons. Use dimension resources and the specified cell targets/minimums rather than copying toolbar sample dimensions that do not fit this product.
-- [ ] Render selected-currency total, labeled allocation bars, age/partial state and action buttons. Compact shows three types plus Other; >=280×220 dp shows all positive types.
-- [ ] Implement per-instance persisted hide/show. Every render must read latest hideTotal; refresh publication must never reuse an outdated visible flag. Mask money in text and content descriptions; keep labels/percentages accessible.
-- [ ] Implement empty, partial, unavailable, unconfigured and updating states. Body opens dashboard; Configure opens this ID. Use localized content descriptions and minimum 48 dp action targets.
-- [ ] Add fictional preview resources and light/dark styling. Extract shared number formatting from PortfolioApp only if needed; do not change app financial notation.
-- [ ] Compile and run pure formatting/allocation/hidden-output tests. No emulator check yet.
+- [x] Register receiver metadata after the activity, with APPWIDGET_UPDATE, explicit exported value and matching XML resource. Restrict widgetCategory to home_screen.
+- [x] Use SizeMode.Exact. Adapt Glance canonical standard-toolbar scaffold/title bar/action sizing to financial content; remove sample media buttons. Use dimension resources and the specified cell targets/minimums rather than copying toolbar sample dimensions that do not fit this product.
+- [x] Render selected-currency total, labeled allocation bars, age/partial state and action buttons. Compact shows three types plus Other; >=280×220 dp shows all positive types.
+- [x] Implement per-instance persisted hide/show. Every render must read latest hideTotal; refresh publication must never reuse an outdated visible flag. Mask money in text and content descriptions; keep labels/percentages accessible.
+- [x] Implement empty, partial, unavailable, unconfigured and updating states. Body opens dashboard; Configure opens this ID. Use localized content descriptions and minimum 48 dp action targets.
+- [x] Add fictional preview resources and light/dark styling. Extract shared number formatting from PortfolioApp only if needed; do not change app financial notation.
+- [ ] Verify compilation and pure formatting/allocation/hidden-output tests. The post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran. No emulator check yet.
 
 **Done when:** a portfolio widget renders every required data/privacy state with bounded, readable layout.
 
