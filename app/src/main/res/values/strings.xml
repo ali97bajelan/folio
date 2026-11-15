@@ -11,6 +11,7 @@
     <string name="update_price">Update price</string>
     <string name="asset">Asset</string>
     <string name="transaction">Transaction</string>
+    <string name="back">Back</string>
     <string name="asset_allocation_by_class">Allocation by asset class</string>
     <string name="total_portfolio_value">Total portfolio value</string>
     <string name="portfolio_value_history">Portfolio value history</string>

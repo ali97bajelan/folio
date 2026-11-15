@@ -11,6 +11,7 @@
     <string name="update_price">بروزرسانی قیمت</string>
     <string name="asset">دارایی</string>
     <string name="transaction">تراکنش</string>
+    <string name="back">بازگشت</string>
     <string name="asset_allocation_by_class">تخصیص بر اساس کلاس دارایی</string>
     <string name="total_portfolio_value">ارزش کل پرتفوی</string>
     <string name="portfolio_value_history">تاریخچه ارزش پرتفوی</string>

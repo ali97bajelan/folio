@@ -1,17 +1,12 @@
 package com.example.folio.presentation
 
 import com.example.folio.PortfolioCodes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
@@ -62,6 +57,7 @@ import com.example.folio.data.local.*
 import com.example.folio.data.widget.MarketKey
 import com.example.folio.data.widget.MarketSelection
 import com.example.folio.presentation.components.MarketInstrumentPicker
+import com.example.folio.presentation.design.*
 import com.example.folio.presentation.icons.FolioIcons
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -71,15 +67,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val Navy = Color(0xFF0B1020)
-private val Panel = Color(0xFF131B2B)
-private val PanelHi = Color(0xFF172137)
-private val Blue = Color(0xFF668FFC)
-private val Aqua = Color(0xFF76D8B0)
-private val Muted = Color(0xFF8F9CB1)
-private val Danger = Color(0xFFF47783)
-private val AppShape = RoundedCornerShape(16.dp)
-private val PillShape = RoundedCornerShape(50)
 private val dateFormat = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm")
     .withLocale(Locale.US)
@@ -87,7 +74,7 @@ private val dateFormat = DateTimeFormatter
 private val relativeLastUpdatedWindow = Duration.ofDays(3)
 
 /** Keeps Latin financial notation in its natural order inside RTL Persian text. */
-private fun ltrValue(value: String) = "\u2066$value\u2069"
+private fun ltrValue(value: String) = isolateFinancialText(value)
 
 private fun formattedNumber(value: BigDecimal, suffix: String, places: Int, minimumPlaces: Int): String =
     java.text.NumberFormat.getNumberInstance(Locale.US).apply {
@@ -176,6 +163,11 @@ private fun defaultProviderFor(assetType: String) = when (assetType) {
 private fun NavBackStackEntry.longArgument(name: String): Long? =
     arguments?.getString(name)?.toLongOrNull()
 
+private val FOLIO_TOP_LEVEL_ROUTES = setOf("dashboard", "assets", "transactions", "settings")
+
+internal fun isFolioTopLevelRoute(route: String): Boolean =
+    route in FOLIO_TOP_LEVEL_ROUTES
+
 @Composable
 fun PortfolioApp(
     factory: ViewModelProvider.Factory,
@@ -195,36 +187,45 @@ fun PortfolioApp(
     }
     val entry by navigationController.currentBackStackEntryAsState()
     val currentRoute = entry?.destination?.route ?: "dashboard"
+    val isTopLevelRoute = isFolioTopLevelRoute(currentRoute)
+    val contextualTitle = when (currentRoute) {
+        "tags" -> stringResource(R.string.tags)
+        "locations" -> stringResource(R.string.locations)
+        "asset/new" -> stringResource(R.string.add_asset_title)
+        "asset/{id}" -> stringResource(R.string.asset_details)
+        "asset/edit/{id}" -> stringResource(R.string.edit_asset_title)
+        "price/{id}" -> stringResource(R.string.update_price)
+        "transaction/edit/{id}" -> stringResource(R.string.edit_transaction_title)
+        "transaction/new?asset={asset}" -> stringResource(R.string.add_transaction_title)
+        else -> stringResource(R.string.personal_wealth)
+    }
+    val backDescription = stringResource(R.string.back)
 
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Blue,
-            secondary = Aqua,
-            surface = Panel,
-            background = Navy,
-            error = Danger,
-        ),
-        shapes = Shapes(
-            extraSmall = AppShape,
-            small = AppShape,
-            medium = AppShape,
-            large = AppShape,
-            extraLarge = AppShape,
-        ),
-    ) {
+    FolioTheme {
         Scaffold(
-            containerColor = Navy,
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHost) },
+            topBar = {
+                if (!isTopLevelRoute) {
+                    FolioTopBar(
+                        title = contextualTitle,
+                        onBack = { navigationController.popBackStack() },
+                        backDescription = backDescription,
+                    )
+                }
+            },
             bottomBar = {
-                AppNavigationBar(
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        navigationController.navigate(route) {
-                            popUpTo("dashboard")
-                            launchSingleTop = true
-                        }
-                    },
-                )
+                if (isTopLevelRoute) {
+                    AppNavigationBar(
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            navigationController.navigate(route) {
+                                popUpTo("dashboard")
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
             },
         ) { paddingValues ->
             NavHost(
@@ -318,7 +319,7 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
         Triple("settings", stringResource(R.string.nav_more), Icons.Outlined.Settings),
     )
 
-    NavigationBar(containerColor = Panel) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         destinations.forEach { (route, label, icon) ->
             NavigationBarItem(
                 selected = currentRoute == route,
@@ -329,43 +330,102 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
         }
     }
 }
-@OptIn(ExperimentalLayoutApi::class)
-@Composable private fun Page(title:String,subtitle:String=stringResource(R.string.personal_wealth),actionAlignment: Alignment.Horizontal = Alignment.End,action:(@Composable () -> Unit)?=null,content:@Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=16.dp)) {
-    var headerWidthPx by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
-    Box(Modifier.fillMaxWidth().onSizeChanged { headerWidthPx = it.width }) {
-        val heading: @Composable () -> Unit = {
-            Column {
-                Text(subtitle,color=Muted,style=MaterialTheme.typography.labelSmall)
-                Text(title,style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-            }
-        }
-        // The dashboard has three fairly wide actions.  At medium widths, placing
-        // them beside the title forces the primary button onto a second line where
-        // it appears oversized and detached from the other actions.
-        if (with(density) { headerWidthPx.toDp() } < 1_200.dp) {
-            Column {
-                heading()
-                if (action != null) {
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,actionAlignment),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
-                }
-            }
-        } else {
-            Row(verticalAlignment=Alignment.CenterVertically) {
-                heading()
-                if (action != null) FlowRow(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(12.dp,actionAlignment),verticalArrangement=Arrangement.spacedBy(10.dp)) { action() }
-            }
-        }
-    }
-    Spacer(Modifier.height(20.dp))
-    content()
-}
-@Composable private fun PanelCard(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit)=Card(modifier,colors=CardDefaults.cardColors(containerColor=PanelHi),shape=AppShape){Column(Modifier.padding(16.dp),content=content)}
-@Composable private fun Tiny(t:String)=Text(t,color=Muted,style=MaterialTheme.typography.labelSmall)
-@Composable private fun Pill(t:String,c:Color=Color(0xFFB8C7DF))=Surface(color=c.copy(alpha=.12f),shape=PillShape){Text(t,color=c,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=7.dp,vertical=4.dp))}
+@Composable
+private fun Page(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String = stringResource(R.string.personal_wealth),
+    actionAlignment: Alignment.Horizontal = Alignment.End,
+    action: (@Composable () -> Unit)? = null,
+    showHeading: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) = FolioPage(
+    title = title,
+    modifier = modifier,
+    subtitle = subtitle.takeIf { showHeading },
+    showHeading = showHeading,
+    actionAlignment = actionAlignment,
+    actions = action,
+    content = content,
+)
 
-@Composable private fun Dashboard(vm:MainViewModel,addAsset:()->Unit,addTx:()->Unit){val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle();val dash by vm.dashboard.collectAsStateWithLifecycle();val history by vm.portfolioHistory.collectAsStateWithLifecycle();val dashboardLoadedAt=remember(dash){Instant.now()};var displayCurrency by rememberSaveable{mutableStateOf(PortfolioCodes.IRT)};Page(stringResource(R.string.dashboard_title),action={Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton(vm::refreshPrices,Modifier.weight(1f),enabled=!isRefreshing,contentPadding=PaddingValues(horizontal=8.dp)){Icon(Icons.Outlined.Refresh,contentDescription=null,modifier=Modifier.size(15.dp));Spacer(Modifier.width(4.dp));Text(stringResource(R.string.refresh_prices),maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addTx,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.transaction)}",maxLines=1,overflow=TextOverflow.Ellipsis)};OutlinedButton(addAsset,Modifier.weight(1f),contentPadding=PaddingValues(horizontal=8.dp)){Text("+ ${stringResource(R.string.asset)}",maxLines=1,overflow=TextOverflow.Ellipsis)}}}){PanelCard(Modifier.fillMaxWidth()){PortfolioValue(dash,displayCurrency,dashboardLoadedAt){displayCurrency=it}};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){PortfolioHistoryChart(history,displayCurrency)};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){AllocationCakeChart(dash.rows,displayCurrency)}}}
+@Composable
+private fun PanelCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) = FolioCard(modifier, content)
+
+@Composable
+private fun Tiny(text: String) = Text(
+    text = text,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.labelSmall,
+)
+
+@Composable
+private fun Pill(
+    text: String,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) = Surface(
+    color = color.copy(alpha = .12f),
+    shape = FolioShapeTokens.pill,
+) {
+    Text(
+        text = text,
+        color = color,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.padding(horizontal = FolioSpacing.small, vertical = FolioSpacing.extraSmall),
+    )
+}
+
+@Composable
+private fun Dashboard(
+    vm: MainViewModel,
+    addAsset: () -> Unit,
+    addTx: () -> Unit,
+) {
+    val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
+    val dash by vm.dashboard.collectAsStateWithLifecycle()
+    val history by vm.portfolioHistory.collectAsStateWithLifecycle()
+    val dashboardLoadedAt = remember(dash) { Instant.now() }
+    var displayCurrency by rememberSaveable { mutableStateOf(PortfolioCodes.IRT) }
+
+    Page(
+        title = stringResource(R.string.dashboard_title),
+        action = {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+            ) {
+                FolioSecondaryButton(
+                    text = stringResource(R.string.refresh_prices),
+                    onClick = vm::refreshPrices,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isRefreshing,
+                    leadingIcon = Icons.Outlined.Refresh,
+                )
+                FolioSecondaryButton(
+                    text = "+ ${stringResource(R.string.transaction)}",
+                    onClick = addTx,
+                    modifier = Modifier.weight(1f),
+                )
+                FolioPrimaryButton(
+                    text = "+ ${stringResource(R.string.asset)}",
+                    onClick = addAsset,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        },
+    ) {
+        PanelCard(Modifier.fillMaxWidth()) {
+            PortfolioValue(dash, displayCurrency, dashboardLoadedAt) { displayCurrency = it }
+        }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        PanelCard(Modifier.fillMaxWidth()) { PortfolioHistoryChart(history, displayCurrency) }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        PanelCard(Modifier.fillMaxWidth()) { AllocationCakeChart(dash.rows, displayCurrency) }
+    }
+}
 
 private data class AllocationSlice(val assetType: String, val value: BigDecimal)
 
@@ -383,7 +443,7 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
         .filter { it.value.signum() > 0 }
         .sortedByDescending { it.value }
     val total = slices.fold(BigDecimal.ZERO) { sum, slice -> sum.add(slice.value) }
-    val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B))
+    val colors = LocalFolioSemanticColors.current.allocationSeries
 
     Text(stringResource(R.string.asset_allocation_by_class), fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(12.dp))
@@ -419,7 +479,7 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
                 val percentage = slice.value.divide(total, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal("100"))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = colors[index % colors.size], shape = PillShape) {
+                    Surface(color = colors[index % colors.size], shape = FolioShapeTokens.pill) {
                         Spacer(Modifier.size(10.dp))
                     }
                     Spacer(Modifier.width(8.dp))
@@ -456,24 +516,24 @@ private fun PortfolioValue(
     val total = if (currency == PortfolioCodes.USD) dash.usdTotal else dash.tomanTotal
     val alternateTotal = if (currency == PortfolioCodes.USD) compact(dash.tomanTotal) else wholeUsd(dash.usdTotal)
     Spacer(Modifier.height(14.dp))
-    Text(
-        if (currency == PortfolioCodes.USD) wholeUsd(total) else compact(total),
+    FolioFinancialValue(
+        value = if (currency == PortfolioCodes.USD) wholeUsd(total) else compact(total),
         style = MaterialTheme.typography.headlineLarge,
         fontWeight = FontWeight.Bold,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        isolateDirection = false,
     )
     Spacer(Modifier.height(4.dp))
-    Text(
-        "≈ $alternateTotal",
-        color = Muted,
+    FolioFinancialValue(
+        value = "≈ $alternateTotal",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        isolateDirection = false,
     )
 
     Spacer(Modifier.height(16.dp))
-    Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -497,10 +557,10 @@ private fun PortfolioValue(
 
     if (dash.missing > 0) {
         Spacer(Modifier.height(12.dp))
-        Surface(color = Danger.copy(alpha = .14f), shape = AppShape) {
+        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
             Text(
                 pluralStringResource(R.plurals.assets_waiting_for_price, dash.missing, dash.missing),
-                color = Danger,
+                color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.labelSmall,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
             )
@@ -510,27 +570,12 @@ private fun PortfolioValue(
 
 @Composable
 private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
-    Surface(color = Panel.copy(alpha = .72f), shape = AppShape) {
-        Row(Modifier.padding(3.dp).selectableGroup()) {
-            listOf(PortfolioCodes.IRT, PortfolioCodes.USD).forEach { option ->
-                val selected = currency == option
-                Surface(
-                    color = if (selected) Aqua.copy(alpha = .18f) else Color.Transparent,
-                    shape = AppShape,
-                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                        .selectable(selected = selected, role = Role.RadioButton) { onCurrencyChange(option) },
-                ) {
-                    Box(contentAlignment = Alignment.Center) { Text(
-                        option,
-                        color = if (selected) Aqua else Muted,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    ) }
-                }
-            }
-        }
-    }
+    FolioChoiceChips(
+        options = listOf(PortfolioCodes.IRT, PortfolioCodes.USD),
+        selected = currency,
+        onSelected = onCurrencyChange,
+        optionLabel = { isolateFinancialText(it) },
+    )
 }
 
 private fun timelineFractions(times: List<Instant>): List<Float> {
@@ -567,7 +612,8 @@ private fun TimeSeriesCanvas(
     modifier: Modifier,
 ) {
     val selection = rememberUpdatedState(selectedIndex)
-    val drawing = remember(series, fractions, lower, upper, ticks, colors) {
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f)
+    val drawing = remember(series, fractions, lower, upper, ticks, colors, gridColor) {
         Modifier.drawWithCache {
             val left = 4.dp.toPx()
             val right = size.width - left
@@ -587,7 +633,7 @@ private fun TimeSeriesCanvas(
             }
             onDrawBehind {
                 ticks.forEach { tick ->
-                    drawLine(Muted.copy(alpha = .2f), Offset(left, y(tick)), Offset(right, y(tick)))
+                    drawLine(gridColor, Offset(left, y(tick)), Offset(right, y(tick)))
                 }
                 paths.forEachIndexed { index, path ->
                     val color = colors[index % colors.size]
@@ -637,8 +683,8 @@ private fun Modifier.chartNavigation(
 private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1)), WEEK(Duration.ofDays(7)), MONTH(Duration.ofDays(30)), ALL(null) }
 @Composable private fun chartValue(value: BigDecimal, currency: String) =
     if (currency == PortfolioCodes.USD) wholeUsd(value) else compact(value)
-@OptIn(ExperimentalLayoutApi::class)
-@Composable private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:String) {
+@Composable
+private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:String) {
     var range by rememberSaveable { mutableStateOf(HistoryRange.DAY) }
     var selectedAt by rememberSaveable { mutableStateOf<Long?>(null) }
     val now = remember(history) { Instant.now() }
@@ -648,14 +694,21 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
     }
     Text(stringResource(R.string.portfolio_value_history), fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HistoryRange.entries.forEach { item ->
-            FilterChip(selected = range == item, onClick = { range = item }, label = { Text(when (item) {
-                HistoryRange.DAY -> stringResource(R.string.chart_1_day); HistoryRange.WEEK -> stringResource(R.string.chart_1_week)
-                HistoryRange.MONTH -> stringResource(R.string.chart_1_month); HistoryRange.ALL -> stringResource(R.string.chart_all_time)
-            }) })
-        }
-    }
+    FolioChoiceChips(
+        options = HistoryRange.entries,
+        selected = range,
+        onSelected = { range = it },
+        optionLabel = { item ->
+            stringResource(
+                when (item) {
+                    HistoryRange.DAY -> R.string.chart_1_day
+                    HistoryRange.WEEK -> R.string.chart_1_week
+                    HistoryRange.MONTH -> R.string.chart_1_month
+                    HistoryRange.ALL -> R.string.chart_all_time
+                },
+            )
+        },
+    )
     Spacer(Modifier.height(12.dp))
     if (points.size < 2) { Tiny(stringResource(R.string.portfolio_history_empty)); return }
     val first = points.first().second
@@ -676,8 +729,8 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
     val timeFractions = remember(times) { timelineFractions(times) }
     val chartInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text((if (change.signum() >= 0) "+" else "") + chartValue(change, currency), color = if (change.signum() >= 0) Aqua else Danger, fontWeight = FontWeight.SemiBold)
-        percentChange?.let { Text("(${if (it.signum() >= 0) "+" else ""}${formattedNumber(it, "%", 1, 1)})", color = if (change.signum() >= 0) Aqua else Danger, style = MaterialTheme.typography.labelMedium) }
+        Text((if (change.signum() >= 0) "+" else "") + chartValue(change, currency), color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss, fontWeight = FontWeight.SemiBold)
+        percentChange?.let { Text("(${if (it.signum() >= 0) "+" else ""}${formattedNumber(it, "%", 1, 1)})", color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss, style = MaterialTheme.typography.labelMedium) }
     }
     Row(Modifier.fillMaxWidth().height(156.dp)) {
         Column(Modifier.width(72.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
@@ -692,7 +745,7 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
                 ((chartWidthPx - tooltipWidth.roundToPx()).coerceAtLeast(0) * selectedFraction).toDp()
             }
             val summary = "${stringResource(R.string.portfolio_value_history)} · ${dateFormat.format(selected.first)} · ${chartValue(selected.second, currency)}"
-            TimeSeriesCanvas(series, timeFractions, selectedIndex, 0f, 1f, listOf(0f, .5f, 1f), listOf(Blue),
+            TimeSeriesCanvas(series, timeFractions, selectedIndex, 0f, 1f, listOf(0f, .5f, 1f), listOf(MaterialTheme.colorScheme.primary),
                 Modifier.fillMaxSize().padding(vertical = 10.dp)
                     .chartNavigation(summary, times, selectedIndex) { selectedAt = it }
                     .pointerInput(points) {
@@ -704,15 +757,55 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
                     })
             Surface(
                 modifier = Modifier.align(Alignment.TopStart).offset(x = tooltipX).padding(top = 2.dp),
-                color = Panel,
-                shape = AppShape,
+                color = MaterialTheme.colorScheme.surface,
+                shape = MaterialTheme.shapes.medium,
             ) { Text(chartValue(selected.second, currency), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal=6.dp, vertical=3.dp), maxLines = 1) }
         }
     }
     Row(Modifier.fillMaxWidth().padding(start=72.dp), horizontalArrangement=Arrangement.SpaceBetween) { Tiny(dateFormat.format(points.first().first)); Tiny(dateFormat.format(points.last().first)) }
 }
-@Composable private fun Metric(a:String,b:String,c:String,modifier:Modifier)=PanelCard(modifier){Tiny(a);Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold);Tiny(c)}
-@Composable private fun AssetRowItem(r:AssetRow,open:(Long)->Unit){val values=if(r.tomanValue==null||r.usdValue==null)stringResource(R.string.asset_values_unavailable) else "${compact(r.tomanValue)} · ${wholeUsd(r.usdValue)}";ListItem(modifier=Modifier.fillMaxWidth().clickable{open(r.asset.id)},headlineContent={Text("${r.asset.symbol} · ${r.asset.name}",fontWeight=FontWeight.SemiBold)},supportingContent={Text("${number(r.quantity, places=4)}${if(r.asset.unit==PortfolioCodes.GRAM)" g" else ""}  ·  $values")},trailingContent={Pill(typeLabel(r.asset.assetType))})}
+@Composable
+private fun Metric(
+    label: String,
+    value: String,
+    detail: String,
+    modifier: Modifier,
+) = FolioCard(modifier) {
+    Tiny(label)
+    FolioFinancialValue(
+        value = value,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        isolateDirection = false,
+    )
+    if (detail.isNotBlank()) Tiny(detail)
+}
+@Composable
+private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
+    val values = if (row.tomanValue == null || row.usdValue == null) {
+        stringResource(R.string.asset_values_unavailable)
+    } else {
+        "${compact(row.tomanValue)} · ${wholeUsd(row.usdValue)}"
+    }
+    FolioListRow(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { open(row.asset.id) },
+        trailing = { Pill(typeLabel(row.asset.assetType)) },
+    ) {
+        Text(
+            text = "${isolateFinancialText(row.asset.symbol)} · ${row.asset.name}",
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        FolioFinancialValue(
+            value = "${number(row.quantity, places = 4)}${if (row.asset.unit == PortfolioCodes.GRAM) " g" else ""}  ·  $values",
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 2,
+            isolateDirection = false,
+        )
+    }
+}
 private enum class AssetFilter { ALL, ACTIVE, INACTIVE }
 
 @Composable
@@ -739,7 +832,7 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
         }
     }
     Page(stringResource(R.string.nav_assets), actionAlignment = Alignment.Start,
-        action = { Button(add) { Text(stringResource(R.string.add_asset)) } }) {
+        action = { FolioPrimaryButton(stringResource(R.string.add_asset), add) }) {
         SingleChoiceRow(filter, AssetFilter.entries.toList(), render = {
             stringResource(when (it) {
                 AssetFilter.ALL -> R.string.assets_filter_all
@@ -757,7 +850,7 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
                 rows.forEachIndexed { index, item ->
                     AssetRowItem(item, open)
                     if (!item.asset.isActive) Tiny(stringResource(R.string.assets_filter_inactive))
-                    if (index < rows.lastIndex) HorizontalDivider(color = Color.White.copy(.06f))
+                    if (index < rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
                 }
             }
         }
@@ -791,7 +884,6 @@ private fun percentageAxis(percentages: List<BigDecimal>): PercentageAxis {
 private fun percentageLabel(value: Float): String =
     formattedNumber(BigDecimal.valueOf(value.toDouble()), "%", if (value % 1f == 0f) 0 else 1, 0)
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     var range by rememberSaveable { mutableStateOf(HistoryRange.ALL) }
@@ -802,14 +894,21 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     }
     Text(stringResource(R.string.asset_type_percentage_history), fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        HistoryRange.entries.forEach { item ->
-            FilterChip(selected = range == item, onClick = { range = item }, label = { Text(when (item) {
-                HistoryRange.DAY -> stringResource(R.string.chart_1_day); HistoryRange.WEEK -> stringResource(R.string.chart_1_week)
-                HistoryRange.MONTH -> stringResource(R.string.chart_1_month); HistoryRange.ALL -> stringResource(R.string.chart_all_time)
-            }) })
-        }
-    }
+    FolioChoiceChips(
+        options = HistoryRange.entries,
+        selected = range,
+        onSelected = { range = it },
+        optionLabel = { item ->
+            stringResource(
+                when (item) {
+                    HistoryRange.DAY -> R.string.chart_1_day
+                    HistoryRange.WEEK -> R.string.chart_1_week
+                    HistoryRange.MONTH -> R.string.chart_1_month
+                    HistoryRange.ALL -> R.string.chart_all_time
+                },
+            )
+        },
+    )
     Spacer(Modifier.height(12.dp))
     if (points.size < 2) {
         Tiny(stringResource(R.string.asset_type_history_empty))
@@ -824,7 +923,7 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
     val times = remember(points) { points.map { it.capturedAt } }
     val timeFractions = remember(times) { timelineFractions(times) }
     val chartInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
-    val colors = listOf(Aqua, Blue, Color(0xFFF6B36A), Color(0xFFF47783), Color(0xFF64B8DF), Color(0xFFD6C46B), Color(0xFFC58CF0), Color(0xFF80C4A0))
+    val colors = LocalFolioSemanticColors.current.allocationSeries
     val percentages = remember(points, assetTypes) { points.map { point ->
         val total = point.values.values.fold(BigDecimal.ZERO, BigDecimal::add)
         assetTypes.associateWith { assetType ->
@@ -843,7 +942,7 @@ private fun AssetTypeHistoryChart(history: List<AssetTypeHistoryPoint>) {
         assetTypes.forEachIndexed { index, assetType ->
             val percentage = selectedPercentages.getValue(assetType)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = colors[index % colors.size], shape = PillShape) { Spacer(Modifier.size(10.dp)) }
+                Surface(color = colors[index % colors.size], shape = FolioShapeTokens.pill) { Spacer(Modifier.size(10.dp)) }
                 Spacer(Modifier.width(8.dp))
                 Text(typeLabel(assetType), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(ltrValue(formattedNumber(percentage, "%", 1, 0)), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
@@ -881,7 +980,7 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
     Page(
         stringResource(R.string.nav_transactions),
         actionAlignment = Alignment.Start,
-        action = { Button(add) { Text(stringResource(R.string.add_transaction)) } },
+        action = { FolioPrimaryButton(stringResource(R.string.add_transaction), add) },
     ) {
         if (transactions.isEmpty()) {
             Empty(
@@ -900,18 +999,29 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
                     val assetSymbol = assetsById[transaction.assetId]?.symbol
                         ?: stringResource(R.string.empty_value)
 
-                    ListItem(
-                        modifier = Modifier.fillMaxWidth().clickable { edit(transaction.id) },
-                        headlineContent = { Text("$transactionLabel · $assetSymbol") },
-                        supportingContent = {
-                            Text("${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}")
+                    FolioListRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { edit(transaction.id) },
+                        trailing = {
+                            Pill(
+                                transactionLabel,
+                                if (isPurchase) LocalFolioSemanticColors.current.gain
+                                else LocalFolioSemanticColors.current.loss,
+                            )
                         },
-                        trailingContent = {
-                            Pill(transactionLabel, if (isPurchase) Aqua else Danger)
-                        },
-                    )
+                    ) {
+                        Text(
+                            "$transactionLabel · ${isolateFinancialText(assetSymbol)}",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        FolioFinancialValue(
+                            value = "${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            isolateDirection = false,
+                        )
+                    }
                     if (index < transactions.lastIndex) {
-                        HorizontalDivider(color = Color.White.copy(alpha = .06f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
                     }
                 }
             }
@@ -919,26 +1029,157 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
     }
 }
 
-@Composable private fun AssetDetailScreen(vm:MainViewModel,id:Long,edit:()->Unit,price:()->Unit,tx:()->Unit,back:()->Unit){val x by remember(vm,id){vm.detail(id)}.collectAsStateWithLifecycle(initialValue=null);val locs by vm.locations.collectAsStateWithLifecycle();val dashboard by vm.dashboard.collectAsStateWithLifecycle();var confirm by remember{mutableStateOf(false)}
-    var deleting by remember(vm,id){mutableStateOf(false)}
-    var deleteError by remember(vm,id){mutableStateOf("")}
-    val d=x?:return Page(stringResource(R.string.asset)){Text(stringResource(R.string.loading))};val row=dashboard.assetRows.firstOrNull{it.asset.id==id};Page(d.asset.name,action={TextButton(edit){Text(stringResource(R.string.edit))};if(d.asset.pricingMode==PortfolioCodes.MANUAL)Button(price){Text(stringResource(R.string.update_price))}}){if(confirm)AlertDialog(
-        onDismissRequest={if(!deleting)confirm=false},
-        title={Text(stringResource(R.string.delete_asset_title))},
-        text={Column{Text(stringResource(R.string.delete_asset_message));if(deleteError.isNotBlank())Text(deleteError,color=Danger)}},
-        confirmButton={Button(
-            onClick={
-                if(!deleting){
-                    deleting=true
-                    deleteError=""
-                    vm.deleteAsset(d.asset,onError={deleteError=it;deleting=false},done={deleting=false;confirm=false;back()})
+@Composable
+private fun AssetDetailScreen(
+    vm: MainViewModel,
+    id: Long,
+    edit: () -> Unit,
+    price: () -> Unit,
+    tx: () -> Unit,
+    back: () -> Unit,
+) {
+    val detail by remember(vm, id) { vm.detail(id) }.collectAsStateWithLifecycle(initialValue = null)
+    val locations by vm.locations.collectAsStateWithLifecycle()
+    val dashboard by vm.dashboard.collectAsStateWithLifecycle()
+    var confirm by remember { mutableStateOf(false) }
+    var deleting by remember(vm, id) { mutableStateOf(false) }
+    var deleteError by remember(vm, id) { mutableStateOf("") }
+    val assetDetail = detail ?: return Page(
+        title = stringResource(R.string.asset_details),
+        showHeading = false,
+    ) {
+        FolioStateMessage(
+            message = stringResource(R.string.loading),
+            kind = FolioMessageKind.Loading,
+        )
+    }
+    val assetRow = dashboard.assetRows.firstOrNull { it.asset.id == id }
+
+    if (confirm) {
+        FolioDialog(
+            title = stringResource(R.string.delete_asset_title),
+            text = stringResource(R.string.delete_asset_message),
+            confirmText = stringResource(R.string.delete),
+            dismissText = stringResource(R.string.cancel),
+            onConfirm = {
+                if (!deleting) {
+                    deleting = true
+                    deleteError = ""
+                    vm.deleteAsset(
+                        assetDetail.asset,
+                        onError = {
+                            deleteError = it
+                            deleting = false
+                        },
+                        done = {
+                            deleting = false
+                            confirm = false
+                            back()
+                        },
+                    )
                 }
             },
-            enabled=!deleting,
-            colors=ButtonDefaults.buttonColors(containerColor=Danger),
-        ){Text(stringResource(R.string.delete))}},
-        dismissButton={TextButton(onClick={confirm=false},enabled=!deleting){Text(stringResource(R.string.cancel))}},
-    );Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(tx){Text("+ ${stringResource(R.string.transaction)}")};OutlinedButton({confirm=true}){Text(stringResource(R.string.delete),color=Danger)}};Spacer(Modifier.height(14.dp));AssetMetrics(d,row?.tomanValue,row?.usdValue);Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.asset_details),fontWeight=FontWeight.Bold);DetailLine(stringResource(R.string.symbol),d.asset.symbol);DetailLine(stringResource(R.string.type),typeLabel(d.asset.assetType));DetailLine(stringResource(R.string.pricing),if(d.asset.pricingMode==PortfolioCodes.MANUAL)stringResource(R.string.manual) else stringResource(R.string.market_provider,d.asset.priceProvider));DetailLine(stringResource(R.string.last_price),d.prices.firstOrNull()?.let{money(it.price,it.currency)}?:stringResource(R.string.unavailable))};Spacer(Modifier.height(14.dp));PanelCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.holdings_by_location),fontWeight=FontWeight.Bold);d.byLocation.forEach{(loc,q)->DetailLine(loc?.let{key->locs.firstOrNull{it.id==key}?.name}?:stringResource(R.string.no_location),detailQuantity(q))};if(d.byLocation.isEmpty())Tiny(stringResource(R.string.no_holdings))};Spacer(Modifier.height(14.dp));Text(stringResource(R.string.nav_transactions),fontWeight=FontWeight.Bold);d.transactions.forEach{t->ListItem(headlineContent={Text(if(t.transactionType==PortfolioCodes.BUY)stringResource(R.string.buy) else stringResource(R.string.sell))},supportingContent={Text("${number(t.quantity)} · ${dateFormat.format(t.executedAt)}")},trailingContent={Pill(t.transactionCurrency)});HorizontalDivider(color=Color.White.copy(.06f))}}}
+            onDismiss = { if (!deleting) confirm = false },
+            destructive = true,
+            supportingError = deleteError.takeIf(String::isNotBlank),
+            working = deleting,
+        )
+    }
+
+    Page(
+        title = assetDetail.asset.name,
+        showHeading = false,
+    ) {
+        Text(
+            text = assetDetail.asset.name,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(FolioSpacing.medium))
+        FolioPrimaryButton(
+            text = "+ ${stringResource(R.string.transaction)}",
+            onClick = tx,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(FolioSpacing.small))
+        Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+            FolioSecondaryButton(
+                text = stringResource(R.string.edit),
+                onClick = edit,
+                modifier = Modifier.weight(1f),
+            )
+            if (assetDetail.asset.pricingMode == PortfolioCodes.MANUAL) {
+                FolioSecondaryButton(
+                    text = stringResource(R.string.update_price),
+                    onClick = price,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Spacer(Modifier.height(FolioSpacing.small))
+        FolioDestructiveButton(
+            text = stringResource(R.string.delete),
+            onClick = { confirm = true },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(FolioSpacing.large))
+        AssetMetrics(assetDetail, assetRow?.tomanValue, assetRow?.usdValue)
+        Spacer(Modifier.height(FolioSpacing.large))
+        PanelCard(Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.asset_details), fontWeight = FontWeight.Bold)
+            DetailLine(stringResource(R.string.symbol), isolateFinancialText(assetDetail.asset.symbol))
+            DetailLine(stringResource(R.string.type), typeLabel(assetDetail.asset.assetType))
+            DetailLine(
+                stringResource(R.string.pricing),
+                if (assetDetail.asset.pricingMode == PortfolioCodes.MANUAL) {
+                    stringResource(R.string.manual)
+                } else {
+                    stringResource(R.string.market_provider, assetDetail.asset.priceProvider)
+                },
+            )
+            DetailLine(
+                stringResource(R.string.last_price),
+                assetDetail.prices.firstOrNull()?.let { money(it.price, it.currency) }
+                    ?: stringResource(R.string.unavailable),
+            )
+        }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        PanelCard(Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.holdings_by_location), fontWeight = FontWeight.Bold)
+            assetDetail.byLocation.forEach { (locationId, quantity) ->
+                val locationName = locationId?.let { selectedId ->
+                    locations.firstOrNull { it.id == selectedId }?.name
+                } ?: stringResource(R.string.no_location)
+                DetailLine(locationName, detailQuantity(quantity))
+            }
+            if (assetDetail.byLocation.isEmpty()) {
+                Tiny(stringResource(R.string.no_holdings))
+            }
+        }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        Text(stringResource(R.string.nav_transactions), fontWeight = FontWeight.Bold)
+        assetDetail.transactions.forEachIndexed { index, transaction ->
+            val transactionLabel = stringResource(
+                if (transaction.transactionType == PortfolioCodes.BUY) R.string.buy else R.string.sell,
+            )
+            FolioListRow(
+                trailing = { Pill(isolateFinancialText(transaction.transactionCurrency)) },
+            ) {
+                Text(transactionLabel)
+                FolioFinancialValue(
+                    value = "${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    isolateDirection = false,
+                )
+            }
+            if (index < assetDetail.transactions.lastIndex) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+            }
+        }
+    }
+}
 @Composable private fun AssetMetrics(d:AssetDetail,tomanValue:BigDecimal?,usdtValue:BigDecimal?) {
     var metricsWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -948,7 +1189,23 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
         else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) { cards(Modifier.weight(1f)) }
     }
 }
-@Composable private fun DetailLine(a:String,b:String)=Row(Modifier.fillMaxWidth().padding(top=9.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){Text(a,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f));Text(b,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))}
+@Composable
+private fun DetailLine(label: String, value: String) {
+    FolioListRow {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        FolioFinancialValue(
+            value = value,
+            style = MaterialTheme.typography.bodyMedium,
+            isolateDirection = false,
+            maxLines = 2,
+        )
+    }
+}
 
 @Composable
 private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
@@ -1005,8 +1262,15 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
             tagsInitialized = true
         }
     }
-    if (!assetInitialized || !tagsInitialized) return Page(stringResource(R.string.edit_asset_title)) {
-        Tiny(stringResource(R.string.loading))
+    if (!assetInitialized || !tagsInitialized) return Page(
+        title = stringResource(R.string.edit_asset_title),
+        showHeading = false,
+        modifier = Modifier.imePadding(),
+    ) {
+        FolioStateMessage(
+            message = stringResource(R.string.loading),
+            kind = FolioMessageKind.Loading,
+        )
     }
 
     FormPage(
@@ -1177,8 +1441,15 @@ private fun TransactionForm(
         }
     }
 
-    if (!initialized) return Page(stringResource(R.string.edit_transaction_title)) {
-        Tiny(stringResource(R.string.loading))
+    if (!initialized) return Page(
+        title = stringResource(R.string.edit_transaction_title),
+        showHeading = false,
+        modifier = Modifier.imePadding(),
+    ) {
+        FolioStateMessage(
+            message = stringResource(R.string.loading),
+            kind = FolioMessageKind.Loading,
+        )
     }
 
     FormPage(
@@ -1284,9 +1555,25 @@ private fun TransactionForm(
             }
         }
         Spacer(Modifier.height(10.dp))
-        PanelCard(Modifier.fillMaxWidth().clickable(onClick=tags)){Text(stringResource(R.string.tags),fontWeight=FontWeight.Bold);Tiny(stringResource(R.string.tags_hint))}
+        PanelCard(Modifier.fillMaxWidth()) {
+            FolioListRow(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = tags,
+            ) {
+                Text(stringResource(R.string.tags), fontWeight = FontWeight.Bold)
+                Tiny(stringResource(R.string.tags_hint))
+            }
+        }
         Spacer(Modifier.height(10.dp))
-        PanelCard(Modifier.fillMaxWidth().clickable(onClick=locations)){Text(stringResource(R.string.locations),fontWeight=FontWeight.Bold);Tiny(stringResource(R.string.locations_hint))}
+        PanelCard(Modifier.fillMaxWidth()) {
+            FolioListRow(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = locations,
+            ) {
+                Text(stringResource(R.string.locations), fontWeight = FontWeight.Bold)
+                Tiny(stringResource(R.string.locations_hint))
+            }
+        }
         Spacer(Modifier.height(20.dp));Tiny(stringResource(R.string.local_data_hint))
     }
 }
@@ -1329,8 +1616,55 @@ private fun Locations(vm: MainViewModel) {
         entries.forEach { DetailLine(it.name, it.notes) }
     }
 }
-@Composable private fun FormPage(title:String,error:String,button:String?=null,enabled:Boolean=true,done:()->Unit,content:@Composable ColumnScope.()->Unit)=Page(title){PanelCard(Modifier.fillMaxWidth()){content();if(error.isNotBlank())Text(error,color=Danger);Spacer(Modifier.height(14.dp));Button(done,Modifier.align(Alignment.End),enabled=enabled){Text(button ?: stringResource(R.string.save))}}}
-@Composable private fun Field(label:String,value:String,hint:String="",keyboardType:KeyboardType=KeyboardType.Text,change:(String)->Unit){OutlinedTextField(value,change,Modifier.fillMaxWidth().padding(bottom=10.dp),label={Text(label)},placeholder={if(hint.isNotBlank())Text(hint)},singleLine=label != stringResource(R.string.notes),keyboardOptions=KeyboardOptions(keyboardType=keyboardType))}
+@Composable
+private fun FormPage(
+    title: String,
+    error: String,
+    button: String? = null,
+    enabled: Boolean = true,
+    done: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) = Page(
+    title = title,
+    showHeading = false,
+    modifier = Modifier.imePadding(),
+) {
+    PanelCard(Modifier.fillMaxWidth()) {
+        content()
+        if (error.isNotBlank()) {
+            FolioStateMessage(
+                message = error,
+                kind = FolioMessageKind.Error,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        FolioPrimaryButton(
+            text = button ?: stringResource(R.string.save),
+            onClick = done,
+            modifier = Modifier.align(Alignment.End),
+            enabled = enabled,
+        )
+    }
+}
+@Composable
+private fun Field(
+    label: String,
+    value: String,
+    hint: String = "",
+    keyboardType: KeyboardType = KeyboardType.Text,
+    change: (String) -> Unit,
+) {
+    FolioField(
+        value = value,
+        onValueChange = change,
+        label = label,
+        modifier = Modifier.fillMaxWidth().padding(bottom = FolioSpacing.small),
+        placeholder = hint.takeIf(String::isNotBlank),
+        singleLine = label != stringResource(R.string.notes),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+    )
+}
 @Composable
 private fun choiceLabel(value: String): String = when (value) {
     PortfolioCodes.CRYPTO, PortfolioCodes.USD, PortfolioCodes.IRAN_STOCK, PortfolioCodes.US_STOCK, PortfolioCodes.GOLD, PortfolioCodes.SILVER, PortfolioCodes.FIXED_INCOME, PortfolioCodes.MANUAL -> typeLabel(value)
@@ -1341,9 +1675,51 @@ private fun choiceLabel(value: String): String = when (value) {
     else -> value
 }
 
-@OptIn(ExperimentalMaterial3Api::class) @Composable private fun Choice(label:String,selected:String,options:List<String>,render:@Composable (String)->String={it},select:(String)->Unit){var expanded by remember{mutableStateOf(false)};ExposedDropdownMenuBox(expanded,{expanded=it},Modifier.fillMaxWidth().padding(bottom=10.dp)){OutlinedTextField(render(selected),{},Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),readOnly=true,label={Text(label)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded)});ExposedDropdownMenu(expanded,{expanded=false}){options.forEach{o->DropdownMenuItem({Text(render(o))},{select(o);expanded=false})}}}}
-@OptIn(ExperimentalLayoutApi::class) @Composable private fun SingleChoiceRow(selected:String,values:List<String>,select:(String)->Unit)=FlowRow{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(v)},Modifier.padding(end=6.dp))}}
-@OptIn(ExperimentalLayoutApi::class) @Composable private fun <T> SingleChoiceRow(selected:T,values:List<T>,render:@Composable (T)->String,select:(T)->Unit)=FlowRow{values.forEach{v->FilterChip(selected==v,{select(v)},{Text(render(v))},Modifier.padding(end=6.dp))}}
+@Composable
+private fun Choice(
+    label: String,
+    selected: String,
+    options: List<String>,
+    render: @Composable (String) -> String = { value ->
+        if (value in setOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT)) {
+            isolateFinancialText(value)
+        } else {
+            value
+        }
+    },
+    select: (String) -> Unit,
+) = FolioSelector(
+    options = options,
+    selected = selected,
+    onSelected = select,
+    label = label,
+    modifier = Modifier.fillMaxWidth().padding(bottom = FolioSpacing.small),
+    optionLabel = render,
+)
+@Composable
+private fun SingleChoiceRow(
+    selected: String,
+    values: List<String>,
+    select: (String) -> Unit,
+) = FolioChoiceChips(
+    options = values,
+    selected = selected,
+    onSelected = select,
+    optionLabel = { isolateFinancialText(it) },
+)
+
+@Composable
+private fun <T> SingleChoiceRow(
+    selected: T,
+    values: List<T>,
+    render: @Composable (T) -> String,
+    select: (T) -> Unit,
+) = FolioChoiceChips(
+    options = values,
+    selected = selected,
+    onSelected = select,
+    optionLabel = render,
+)
 @Composable
 private fun Empty(
     title: String,
@@ -1351,8 +1727,7 @@ private fun Empty(
     actionLabel: String = stringResource(R.string.add_asset),
     action: () -> Unit,
 ) = PanelCard(Modifier.fillMaxWidth()) {
-    Text(title, fontWeight = FontWeight.Bold)
-    Tiny(copy)
-    Spacer(Modifier.height(10.dp))
-    Button(action) { Text(actionLabel) }
+    FolioStateMessage(message = copy, title = title, kind = FolioMessageKind.Empty)
+    Spacer(Modifier.height(FolioSpacing.small))
+    FolioPrimaryButton(actionLabel, action)
 }

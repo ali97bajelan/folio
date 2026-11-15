@@ -1,36 +1,15 @@
 package com.example.folio.presentation.widget
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -39,6 +18,16 @@ import com.example.folio.R
 import com.example.folio.data.widget.MarketSelection
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.presentation.components.MarketInstrumentPicker
+import com.example.folio.presentation.design.FolioCard
+import com.example.folio.presentation.design.FolioChoiceChips
+import com.example.folio.presentation.design.FolioListRow
+import com.example.folio.presentation.design.FolioMessageKind
+import com.example.folio.presentation.design.FolioPage
+import com.example.folio.presentation.design.FolioPrimaryButton
+import com.example.folio.presentation.design.FolioSecondaryButton
+import com.example.folio.presentation.design.FolioSelector
+import com.example.folio.presentation.design.FolioStateMessage
+import com.example.folio.presentation.design.isolateFinancialText
 
 @Composable
 internal fun WidgetConfigurationScreen(
@@ -53,76 +42,69 @@ internal fun WidgetConfigurationScreen(
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    val title = when (state.kind) {
+        WidgetKind.PORTFOLIO -> stringResource(R.string.widget_configure_portfolio_title)
+        WidgetKind.ASSET_PRICE -> stringResource(R.string.widget_configure_price_title)
+        null -> stringResource(R.string.widget_config_loading)
+    }
+    FolioPage(
+        title = title,
+        modifier = Modifier.imePadding(),
     ) {
-        Text(
-            text = when (state.kind) {
-                WidgetKind.PORTFOLIO -> stringResource(R.string.widget_configure_portfolio_title)
-                WidgetKind.ASSET_PRICE -> stringResource(R.string.widget_configure_price_title)
-                null -> stringResource(R.string.widget_config_loading)
-            },
-            style = MaterialTheme.typography.headlineSmall,
-        )
-
         when {
-            state.isLoading -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
+            state.isLoading -> FolioStateMessage(
+                message = stringResource(R.string.widget_config_loading),
+                kind = FolioMessageKind.Loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            state.loadError -> FolioStateMessage(
+                message = stringResource(R.string.widget_config_load_error),
+                kind = FolioMessageKind.Error,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            state.kind == WidgetKind.PORTFOLIO -> FolioCard(Modifier.fillMaxWidth()) {
+                PortfolioOptions(
+                    state = state,
+                    onCurrencyChanged = onCurrencyChanged,
+                    onHideTotalChanged = onHideTotalChanged,
+                )
             }
 
-            state.loadError -> Text(
-                text = stringResource(R.string.widget_config_load_error),
-                color = MaterialTheme.colorScheme.error,
-            )
-
-            state.kind == WidgetKind.PORTFOLIO -> PortfolioOptions(
-                state = state,
-                onCurrencyChanged = onCurrencyChanged,
-                onHideTotalChanged = onHideTotalChanged,
-            )
-
-            state.kind == WidgetKind.ASSET_PRICE -> PriceOptions(
-                state = state,
-                onAssetTypeChanged = onAssetTypeChanged,
-                onProviderChanged = onProviderChanged,
-                onQueryChanged = onQueryChanged,
-                onProviderSymbolChanged = onProviderSymbolChanged,
-                onMarketSelectionChanged = onMarketSelectionChanged,
-            )
+            state.kind == WidgetKind.ASSET_PRICE -> FolioCard(Modifier.fillMaxWidth()) {
+                PriceOptions(
+                    state = state,
+                    onAssetTypeChanged = onAssetTypeChanged,
+                    onProviderChanged = onProviderChanged,
+                    onQueryChanged = onQueryChanged,
+                    onProviderSymbolChanged = onProviderSymbolChanged,
+                    onMarketSelectionChanged = onMarketSelectionChanged,
+                )
+            }
         }
 
         if (state.saveError) {
-            Text(
-                text = stringResource(R.string.widget_config_save_error),
-                color = MaterialTheme.colorScheme.error,
+            FolioStateMessage(
+                message = stringResource(R.string.widget_config_save_error),
+                kind = FolioMessageKind.Error,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 
         Spacer(Modifier.height(4.dp))
-        Button(
+        FolioPrimaryButton(
+            text = stringResource(R.string.save),
             onClick = onSave,
             enabled = state.canSave,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.save))
-        }
-        OutlinedButton(
+        )
+        FolioSecondaryButton(
+            text = stringResource(R.string.cancel),
             onClick = onCancel,
             enabled = !state.isSaving,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.cancel))
-        }
+        )
     }
 }
 
@@ -133,34 +115,34 @@ private fun PortfolioOptions(
     onHideTotalChanged: (Boolean) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.widget_currency_label))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = state.currency == PortfolioCodes.IRT,
-                onClick = { onCurrencyChanged(PortfolioCodes.IRT) },
-                label = { Text(stringResource(R.string.widget_currency_irt)) },
-            )
-            FilterChip(
-                selected = state.currency == PortfolioCodes.USD,
-                onClick = { onCurrencyChanged(PortfolioCodes.USD) },
-                label = { Text(stringResource(R.string.widget_currency_usd)) },
-            )
-        }
+        FolioChoiceChips(
+            options = listOf(PortfolioCodes.IRT, PortfolioCodes.USD),
+            selected = state.currency,
+            onSelected = onCurrencyChanged,
+            label = stringResource(R.string.widget_currency_label),
+            optionLabel = { currency ->
+                when (currency) {
+                    PortfolioCodes.IRT -> stringResource(R.string.widget_currency_irt)
+                    else -> stringResource(R.string.widget_currency_usd)
+                }
+            },
+        )
 
-        Row(
+        FolioListRow(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.widget_hide_total),
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = state.hideTotal,
-                onCheckedChange = onHideTotalChanged,
-            )
-        }
+            content = {
+                Text(
+                    text = stringResource(R.string.widget_hide_total),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            trailing = {
+                Switch(
+                    checked = state.hideTotal,
+                    onCheckedChange = onHideTotalChanged,
+                )
+            },
+        )
     }
 }
 
@@ -192,31 +174,30 @@ private fun PriceOptions(
             onManualSelectionValidated = onMarketSelectionChanged,
         )
         if (state.market == null) {
-            Text(
-                text = stringResource(R.string.widget_market_required),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            FolioStateMessage(
+                message = stringResource(R.string.widget_market_required),
+                kind = FolioMessageKind.Empty,
+                modifier = Modifier.fillMaxWidth(),
             )
         } else {
-            Text(
-                text = stringResource(
+            FolioStateMessage(
+                message = stringResource(
                     R.string.widget_market_selected,
-                    state.market.symbol,
+                    isolateFinancialText(state.market.symbol),
                     state.market.displayName,
                 ),
-                style = MaterialTheme.typography.bodySmall,
+                kind = FolioMessageKind.Empty,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AssetTypeSelector(
     selected: String,
     onSelected: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val assetTypes = listOf(
         PortfolioCodes.FIXED_INCOME,
         PortfolioCodes.USD,
@@ -227,37 +208,15 @@ private fun AssetTypeSelector(
         PortfolioCodes.SILVER,
         PortfolioCodes.MANUAL,
     )
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = assetTypeLabel(selected),
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.widget_asset_type_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                .fillMaxWidth(),
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            assetTypes.forEach { assetType ->
-                DropdownMenuItem(
-                    text = { Text(assetTypeLabel(assetType)) },
-                    onClick = {
-                        expanded = false
-                        if (assetType != selected) onSelected(assetType)
-                    },
-                )
-            }
-        }
-    }
+    FolioSelector(
+        options = assetTypes,
+        selected = selected,
+        onSelected = { assetType ->
+            if (assetType != selected) onSelected(assetType)
+        },
+        label = stringResource(R.string.widget_asset_type_label),
+        optionLabel = { assetTypeLabel(it) },
+    )
 }
 
 @Composable

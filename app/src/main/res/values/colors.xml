@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="folio_navy">#FF0B1020</color>
+    <color name="folio_system_background">#F5F7FB</color>
+    <color name="folio_system_foreground">#172033</color>
+    <color name="folio_primary">#315FC8</color>
+    <color name="folio_primary_variant">#214A9F</color>
+    <color name="folio_on_primary">#FFFFFFFF</color>
+    <color name="folio_secondary">#087F5D</color>
+    <color name="folio_on_secondary">#FFFFFFFF</color>
+    <color name="folio_disabled">#929BAD</color>
 </resources>

@@ -58,11 +58,11 @@
 - Produce named FolioSpacing, FolioIconSize, FolioMotion, and FolioShapeTokens.
 - Use the exact palette and dimension values in the approved design note; keep Material 3 typography roles.
 
-- [ ] Define dark/light Material 3 ColorSchemes and semantic extras in FolioTokens.kt.
-- [ ] Define FolioTheme and a CompositionLocal for semantic colors in FolioTheme.kt; select by isSystemInDarkTheme().
-- [ ] Align Android XML theme, night theme, splash, and system bar colors with the same brand-authored palette.
-- [ ] Replace the two inline Compose theme declarations with FolioTheme.
-- [ ] Inspect changed Kotlin files with Android Studio editor analysis and resolve all errors.
+- [x] Define dark/light Material 3 ColorSchemes and semantic extras in FolioTokens.kt.
+- [x] Define FolioTheme and a CompositionLocal for semantic colors in FolioTheme.kt; select by isSystemInDarkTheme().
+- [x] Align Android XML theme, night theme, splash, and system bar colors with the same brand-authored palette.
+- [x] Replace the two inline Compose theme declarations with FolioTheme.
+- [x] Inspect changed Kotlin files with Android Studio editor analysis and resolve all errors.
 
 ## Task 2: Shared components and bidi helper
 
@@ -76,10 +76,10 @@
 - Produce isolateFinancialText(value: String): String for existing Latin financial/provider values.
 - Keep layout/presentation-only wrappers; callbacks and business validation remain owned by current screens.
 
-- [ ] Implement the shared components using Material 3 defaults plus approved tokens and a minimum 48dp action target.
-- [ ] Keep component APIs small; expose style/semantics customization only where existing screens require it.
-- [ ] Implement the bidi helper using the existing directional-isolate characters.
-- [ ] Inspect changed files with Android Studio editor analysis.
+- [x] Implement the shared components using Material 3 defaults plus approved tokens and a minimum 48dp action target.
+- [x] Keep component APIs small; expose style/semantics customization only where existing screens require it.
+- [x] Implement the bidi helper using the existing directional-isolate characters.
+- [x] Inspect changed files with Android Studio editor analysis.
 
 ## Task 3: App shell, navigation, dashboard, lists, and detail
 
@@ -87,13 +87,13 @@
 - Modify: PortfolioApp.kt
 - Consume: FolioTheme and FolioComponents
 
-- [ ] Wrap the app shell with FolioTheme and replace local Page/Card/Tiny/Pill styling with shared components.
-- [ ] Keep existing routes/back stack; show bottom navigation only for dashboard, assets, transactions, and settings.
-- [ ] Add contextual back bars for nested routes, including detail and management pages, and provide localized action descriptions where needed.
-- [ ] Migrate dashboard, chart legends, portfolio values, asset list, transaction list, and asset detail to shared color/type/spacing/action hierarchy.
-- [ ] Replace duplicate chart/allocation palettes with named semantic chart colors; retain chart calculations and series order.
-- [ ] Keep values and provider symbols visually LTR through the shared helper; do not change number or currency formatting.
-- [ ] Inspect PortfolioApp.kt with Android Studio editor analysis and compare each route against the design note.
+- [x] Wrap the app shell with FolioTheme and replace local Page/Card/Tiny/Pill styling with shared components.
+- [x] Keep existing routes/back stack; show bottom navigation only for dashboard, assets, transactions, and settings.
+- [x] Add contextual back bars for nested routes, including detail and management pages, and provide localized action descriptions where needed.
+- [x] Migrate dashboard, chart legends, portfolio values, asset list, transaction list, and asset detail to shared color/type/spacing/action hierarchy.
+- [x] Replace duplicate chart/allocation palettes with named semantic chart colors; retain chart calculations and series order.
+- [x] Keep values and provider symbols visually LTR through the shared helper; do not change number or currency formatting.
+- [x] Inspect PortfolioApp.kt with Android Studio editor analysis and compare each route against the design note.
 
 ## Task 4: Forms, validation, settings, and management screens
 
@@ -101,11 +101,11 @@
 - Modify: PortfolioApp.kt
 - Consume: FolioComponents, FolioTokens
 
-- [ ] Migrate asset, transaction, manual-price, tag, and location forms to FolioField, FolioSelector, and shared action/state components.
-- [ ] Use a consistent primary Save/Add action and shared inline error presentation without changing validation conditions, strings, or save callbacks.
-- [ ] Keep form contents scrollable, preserve rememberSaveable drafts, and account for system and IME insets so controls remain reachable.
-- [ ] Migrate settings and empty/loading states to shared cards, rows, and state messages.
-- [ ] Inspect changed routes with Android Studio editor analysis; verify no persistence or calculation code changed.
+- [x] Migrate asset, transaction, manual-price, tag, and location forms to FolioField, FolioSelector, and shared action/state components.
+- [x] Use a consistent primary Save/Add action and shared inline error presentation without changing validation conditions, strings, or save callbacks.
+- [x] Keep form contents scrollable, preserve rememberSaveable drafts, and account for system and IME insets so controls remain reachable.
+- [x] Migrate settings and empty/loading states to shared cards, rows, and state messages.
+- [x] Inspect changed routes with Android Studio editor analysis; verify no persistence or calculation code changed.
 
 ## Task 5: Instrument picker and widget configuration
 
@@ -114,11 +114,11 @@
 - Modify localized string resources only for missing semantics/accessibility copy
 - Consume: FolioTheme, FolioComponents
 
-- [ ] Replace picker text fields, provider selector, results, dividers, and loading/error/empty messages with shared components.
-- [ ] Preserve provider selection, debounce, identifier validation, stale-result protection, and selected market behavior.
-- [ ] Use FolioTheme in WidgetConfigurationActivity and migrate configuration forms, currency chips, Save/Cancel, loading, and error states.
-- [ ] Preserve SavedStateHandle drafts, result contract, and Save/Cancel behavior.
-- [ ] Inspect all changed files with Android Studio editor analysis.
+- [x] Replace picker text fields, provider selector, results, dividers, and loading/error/empty messages with shared components.
+- [x] Preserve provider selection, debounce, identifier validation, stale-result protection, and selected market behavior.
+- [x] Use FolioTheme in WidgetConfigurationActivity and migrate configuration forms, currency chips, Save/Cancel, loading, and error states.
+- [x] Preserve SavedStateHandle drafts, result contract, and Save/Cancel behavior.
+- [x] Inspect all changed files with Android Studio editor analysis.
 
 ## Task 6: Glance widgets and widget token adapter
 
@@ -127,11 +127,11 @@
 - Modify: WidgetLayout.kt, AssetPriceWidget.kt, AssetPriceWidgetPresentation.kt
 - Consume: FolioTokens and FinancialTextDirection
 
-- [ ] Map the same semantic light/dark colors to GlanceTheme and replace the hardcoded allocation palette with the shared allocation tokens.
-- [ ] Replace repeated dimensions with shared widget token values where they represent the same roles; retain compact/expanded thresholds and current widget sizing.
-- [ ] Preserve 48dp widget actions, data/status copy, masked-total semantics, action intents, and offline/stale behavior.
-- [ ] Use shared financial bidi isolation while preserving current IRT/USD/USDT formatting and provider labels.
-- [ ] Inspect changed files with Android Studio editor analysis.
+- [x] Map the same semantic light/dark colors to GlanceTheme and replace the hardcoded allocation palette with the shared allocation tokens.
+- [x] Replace repeated dimensions with shared widget token values where they represent the same roles; retain compact/expanded thresholds and current widget sizing.
+- [x] Preserve 48dp widget actions, data/status copy, masked-total semantics, action intents, and offline/stale behavior.
+- [x] Use shared financial bidi isolation while preserving current IRT/USD/USDT formatting and provider labels.
+- [x] Inspect changed files with Android Studio editor analysis.
 
 ## Task 7: Design-system reference and final verification
 
@@ -139,11 +139,11 @@
 - Create: docs/design-system.md
 - Verification: existing project build and unit-test tasks; W08 is the sole emulator QA task.
 
-- [ ] Write the short reference with token table and Compose examples for FolioTheme, FolioCard, FolioField, and FolioFinancialValue, plus Glance color mapping guidance.
-- [ ] Run ./gradlew :app:assembleDebug :app:testDebugUnitTest from the project root; record dependency/build failures separately from code failures.
+- [x] Write the short reference with token table and Compose examples for FolioTheme, FolioCard, FolioField, and FolioFinancialValue, plus Glance color mapping guidance.
+- [x] Run ./gradlew :app:assembleDebug :app:testDebugUnitTest from the project root; record dependency/build failures separately from code failures.
 - [ ] Run W08 visual QA only after Tasks 1–6 are complete: inspect dashboard, asset detail, form, instrument picker, widget configuration, and both widget types in Persian/English and light/dark modes.
 - [ ] In W08, inspect one compact layout, large font scale, IME visibility, navigation/back behavior, contrast, and accessibility descriptions; capture screenshots/evidence as required by the existing widget QA checklist.
-- [ ] Update docs/superpowers/tasks/2026-11-11-home-screen-widgets.md with W08 status/evidence without creating another emulator QA task.
-- [ ] Review git diff for accidental finance/provider changes and list any remaining inconsistencies in the final report.
+- [x] Update docs/superpowers/tasks/2026-11-11-home-screen-widgets.md with W08 status/evidence without creating another emulator QA task.
+- [x] Review git diff for accidental finance/provider changes and list any remaining inconsistencies in the final report.
 
 **Completion:** all existing screens/flows use the shared visual foundations; builds/tests and requested visual checks are reported with exact outcomes; docs/design-system.md contains usage examples; any remaining inconsistency is identified.

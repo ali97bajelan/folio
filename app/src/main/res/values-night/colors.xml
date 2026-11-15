@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="folio_system_background">#0B1020</color>
+    <color name="folio_system_foreground">#F4F6FC</color>
+    <color name="folio_primary">#668FFC</color>
+    <color name="folio_primary_variant">#496BC8</color>
+    <color name="folio_on_primary">#08142D</color>
+    <color name="folio_secondary">#76D8B0</color>
+    <color name="folio_on_secondary">#0A271E</color>
+    <color name="folio_disabled">#788297</color>
+</resources>

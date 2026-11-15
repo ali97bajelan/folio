@@ -1,17 +1,19 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
     <style name="Theme.Folio" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_200</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_200</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/folio_primary</item>
+        <item name="colorPrimaryVariant">@color/folio_primary_variant</item>
+        <item name="colorOnPrimary">@color/folio_on_primary</item>
+        <item name="colorSecondary">@color/folio_secondary</item>
+        <item name="colorSecondaryVariant">@color/folio_secondary</item>
+        <item name="colorOnSecondary">@color/folio_on_secondary</item>
+        <item name="colorAccent">@color/folio_primary</item>
+        <item name="android:colorAccent">@color/folio_primary</item>
+        <item name="android:statusBarColor">@color/folio_system_background</item>
+        <item name="android:navigationBarColor">@color/folio_system_background</item>
+        <item name="android:windowBackground">@color/folio_system_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
     <style name="Theme.Folio.Splash" parent="Theme.Folio" />
 </resources>

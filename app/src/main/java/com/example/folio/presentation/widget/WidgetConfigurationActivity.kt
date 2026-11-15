@@ -13,15 +13,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import com.example.folio.FolioApplication
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetRepository
 import com.example.folio.data.network.PriceRefreshWorker
 import com.example.folio.presentation.LanguagePreferences
+import com.example.folio.presentation.design.FolioTheme
 import kotlinx.coroutines.CancellationException
 import com.example.folio.presentation.widget.WidgetRefreshScheduler
 import com.example.folio.presentation.widget.WidgetUpdateCoordinator
@@ -68,15 +66,7 @@ class WidgetConfigurationActivity : AppCompatActivity() {
         )[WidgetConfigurationViewModel::class.java]
 
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Color(0xFF668FFC),
-                    secondary = Color(0xFF76D8B0),
-                    surface = Color(0xFF131B2B),
-                    background = Color(0xFF0B1020),
-                    error = Color(0xFFF47783),
-                ),
-            ) {
+            FolioTheme {
                 val state by configurationViewModel.state.collectAsStateWithLifecycle()
                 WidgetConfigurationScreen(
                     state = state,

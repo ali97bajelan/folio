@@ -4,10 +4,11 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.example.folio.presentation.design.FolioSpacing
+import com.example.folio.presentation.design.isolateFinancialText
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
@@ -26,7 +27,6 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.defaultWeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -108,7 +108,7 @@ internal fun formatPortfolioWidgetTotal(
         maximumFractionDigits = fractionDigits
         minimumFractionDigits = 0
     }.format(displayValue)
-    return ltr("$number $suffix")
+    return isolateFinancialText("$number $suffix")
 }
 
 internal fun compactPortfolioWidgetAllocations(
@@ -166,13 +166,13 @@ internal fun PortfolioWidgetLayout(
     val openDashboard = actionStartActivity<MainActivity>()
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
-        GlanceTheme {
+        FolioWidgetTheme {
             if (expanded) {
                 Scaffold(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.surface),
-                    horizontalPadding = 8.dp,
+                    horizontalPadding = FolioWidgetSpacing.contentHorizontal,
                     titleBar = {
                         TitleBar(
                             startIcon = ImageProvider(R.mipmap.ic_launcher),
@@ -198,7 +198,7 @@ internal fun PortfolioWidgetLayout(
                         openDashboard = openDashboard,
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
                     )
                 }
             } else {
@@ -211,7 +211,7 @@ internal fun PortfolioWidgetLayout(
                     Column(
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
                     ) {
                         Row(
                             modifier = GlanceModifier.fillMaxWidth(),
@@ -247,7 +247,7 @@ internal fun PortfolioWidgetLayout(
                             openDashboard = openDashboard,
                             modifier = GlanceModifier
                                 .fillMaxSize()
-                                .padding(horizontal = 4.dp),
+                                .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
                         )
                     }
                 }
@@ -307,7 +307,7 @@ internal fun WidgetActionButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = GlanceModifier
-            .size(48.dp)
+            .size(FolioWidgetSpacing.actionTarget)
             .semantics { contentDescription = description }
             .clickable(action),
     ) {
@@ -336,8 +336,7 @@ private fun PortfolioWidgetBody(
             Column(
                 modifier = modifier
                     .clickable(openDashboard)
-                    .padding(vertical = 4.dp),
-                verticalArrangement = androidx.glance.layout.Arrangement.spacedBy(4.dp),
+                    .padding(vertical = FolioSpacing.extraSmall),
             ) {
                 Text(
                     text = context.getString(R.string.widget_portfolio_setup),
@@ -347,6 +346,7 @@ private fun PortfolioWidgetBody(
                         fontWeight = FontWeight.Bold,
                     ),
                 )
+                Spacer(GlanceModifier.height(FolioSpacing.extraSmall))
                 Text(
                     text = context.getString(R.string.widget_portfolio_setup_hint),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
@@ -358,7 +358,7 @@ private fun PortfolioWidgetBody(
             Column(
                 modifier = modifier
                     .clickable(openDashboard)
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = FolioSpacing.extraSmall),
             ) {
                 Text(
                     text = context.getString(R.string.widget_portfolio_load_error),
@@ -394,12 +394,12 @@ private fun PortfolioWidgetBody(
 
             Column(
                 modifier = modifier.clickable(openDashboard),
-                verticalArrangement = androidx.glance.layout.Arrangement.spacedBy(1.dp),
             ) {
                 if (compact) {
                     Row(
                         modifier = GlanceModifier
                             .fillMaxWidth()
+                            .padding(bottom = 1.dp)
                             .semantics { contentDescription = total.contentDescription },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -431,6 +431,7 @@ private fun PortfolioWidgetBody(
                     Row(
                         modifier = GlanceModifier
                             .fillMaxWidth()
+                            .padding(bottom = 1.dp)
                             .semantics { contentDescription = total.contentDescription },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -467,7 +468,9 @@ private fun PortfolioWidgetBody(
 
                 if (status != null || age.isNotBlank()) {
                     Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .padding(bottom = 1.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         status?.let {
@@ -476,7 +479,7 @@ private fun PortfolioWidgetBody(
                                 modifier = GlanceModifier.defaultWeight(),
                                 maxLines = 1,
                                 style = TextStyle(
-                                    color = GlanceTheme.colors.onSurfaceVariant,
+                                    color = LocalFolioWidgetSemanticColors.current.warning,
                                     fontSize = if (compact) 9.sp else 11.sp,
                                 ),
                             )
@@ -520,12 +523,13 @@ private fun PortfolioAllocationRow(
     val barWidth = if (compact) 36.dp else 48.dp
     val fillFraction = (row.percentage.toFloat() / 100f).coerceIn(0f, 1f)
     val fillWidth = max(1f, barWidth.value * fillFraction).coerceAtMost(barWidth.value).dp
-    val colors = allocationColors
+    val colors = LocalFolioWidgetSemanticColors.current.allocationSeries
     val color = colors[colorIndex % colors.size]
 
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
+            .padding(bottom = 1.dp)
             .height(14.dp)
             .semantics {
                 contentDescription = context.getString(
@@ -654,23 +658,10 @@ internal fun formatPortfolioWidgetPercentage(value: BigDecimal): String {
         maximumFractionDigits = 1
         minimumFractionDigits = 1
     }.format(rounded)
-    return ltr("$number%")
+    return isolateFinancialText("$number%")
 }
-
-private fun ltr(value: String): String = "\u2066$value\u2069"
 
 private const val MASKED_PORTFOLIO_TOTAL = "••••"
 private val widgetDateFormat = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm", Locale.US)
     .withZone(ZoneId.systemDefault())
-
-private val allocationColors = listOf(
-    Color(0xFF76D8B0),
-    Color(0xFF668FFC),
-    Color(0xFFFFC857),
-    Color(0xFFF47783),
-    Color(0xFF8B7CF6),
-    Color(0xFF5BC0EB),
-    Color(0xFFE28F63),
-    Color(0xFF5FADB7),
-)

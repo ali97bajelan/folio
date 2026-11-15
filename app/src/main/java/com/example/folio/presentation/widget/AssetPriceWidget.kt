@@ -17,6 +17,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.ImageProvider
+import com.example.folio.presentation.design.isolateFinancialText
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
@@ -31,9 +32,9 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.defaultWeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
@@ -107,7 +108,7 @@ internal fun AssetPriceWidgetLayout(
     val configureAction = configureWidgetAction(appWidgetId)
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
-        GlanceTheme {
+        FolioWidgetTheme {
             if (expanded) {
                 Scaffold(
                     modifier = GlanceModifier
@@ -135,7 +136,7 @@ internal fun AssetPriceWidgetLayout(
                         compact = false,
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
                     )
                 }
             } else {
@@ -143,7 +144,10 @@ internal fun AssetPriceWidgetLayout(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.surface)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(
+                            horizontal = FolioWidgetSpacing.contentHorizontal,
+                            vertical = FolioWidgetSpacing.compactContentVertical,
+                        ),
                 ) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
@@ -162,7 +166,7 @@ internal fun AssetPriceWidgetLayout(
                         compact = true,
                         modifier = GlanceModifier
                             .fillMaxSize()
-                            .padding(horizontal = 4.dp),
+                            .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
                     )
                 }
             }
@@ -234,7 +238,7 @@ private fun AssetPriceWidgetBody(
     val provider = assetPriceProviderLabel(context, selection.key.provider)
     val instrumentLabel = context.getString(
         R.string.widget_asset_price_instrument,
-        isolateLtrText(selection.symbol),
+        isolateFinancialText(selection.symbol),
         selection.displayName,
     )
     val instrumentDescription = context.getString(
@@ -263,7 +267,7 @@ private fun AssetPriceWidgetBody(
             tomanCurrencyLabel = context.getString(R.string.widget_asset_price_currency_irt),
         )
     }
-    val priceText = amount?.let(::isolateLtrText)
+    val priceText = amount?.let(::isolateFinancialText)
         ?: context.getString(R.string.widget_asset_price_unavailable)
     val priceDescription = amount ?: priceText
     val status = buildList {
@@ -294,7 +298,6 @@ private fun AssetPriceWidgetBody(
         modifier = modifier
             .clickable(configureAction)
             .padding(vertical = 2.dp),
-        verticalArrangement = androidx.glance.layout.Arrangement.spacedBy(1.dp),
     ) {
         if (compact) {
             Text(
@@ -319,6 +322,7 @@ private fun AssetPriceWidgetBody(
                     fontWeight = FontWeight.Medium,
                 ),
             )
+            Spacer(GlanceModifier.height(1.dp))
             Text(
                 text = instrumentLabel,
                 modifier = GlanceModifier
@@ -332,6 +336,7 @@ private fun AssetPriceWidgetBody(
                 ),
             )
         }
+        Spacer(GlanceModifier.height(1.dp))
         Text(
             text = priceText,
             modifier = GlanceModifier
@@ -350,6 +355,7 @@ private fun AssetPriceWidgetBody(
         )
         if (compact) {
             if (compactMetadata.isNotBlank()) {
+                Spacer(GlanceModifier.height(1.dp))
                 Text(
                     text = compactMetadata,
                     modifier = GlanceModifier.fillMaxWidth(),
@@ -362,17 +368,19 @@ private fun AssetPriceWidgetBody(
             }
         } else {
             if (status.isNotBlank()) {
+                Spacer(GlanceModifier.height(1.dp))
                 Text(
                     text = status,
                     modifier = GlanceModifier.fillMaxWidth(),
                     maxLines = 2,
                     style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
+                        color = LocalFolioWidgetSemanticColors.current.warning,
                         fontSize = 11.sp,
                     ),
                 )
             }
             if (age.isNotBlank()) {
+                Spacer(GlanceModifier.height(1.dp))
                 Text(
                     text = age,
                     modifier = GlanceModifier.fillMaxWidth(),
@@ -466,8 +474,6 @@ private suspend fun loadAssetPriceWidgetState(
         ?.takeIf { it.kind == WidgetKind.ASSET_PRICE }
     return LoadedAssetPriceWidgetState(configuration = latest, quote = null)
 }
-
-private fun isolateLtrText(value: String): String = "\u2066$value\u2069"
 
 private fun assetPriceProviderLabel(context: Context, provider: String): String =
     context.getString(

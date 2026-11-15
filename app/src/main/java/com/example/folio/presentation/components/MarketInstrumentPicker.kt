@@ -1,27 +1,16 @@
 package com.example.folio.presentation.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -30,8 +19,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
 import com.example.folio.data.widget.MarketSelection
+import com.example.folio.presentation.design.FolioField
+import com.example.folio.presentation.design.FolioListRow
+import com.example.folio.presentation.design.FolioMessageKind
+import com.example.folio.presentation.design.FolioSelector
+import com.example.folio.presentation.design.FolioStateMessage
+import com.example.folio.presentation.design.FolioFinancialValue
 import java.util.UUID
-import kotlinx.coroutines.flow.collect
 
 /**
  * Shared market provider/search/identifier picker used by Add Asset and widget setup.
@@ -112,107 +106,100 @@ fun MarketInstrumentPicker(
                 }
             },
         )
-        OutlinedTextField(
+        FolioField(
             value = state.query,
             onValueChange = { query ->
                 pickerViewModel.updateQuery(query)
                 currentQueryChanged(query)
             },
+            label = stringResource(R.string.market_search),
+            placeholder = stringResource(R.string.market_search_hint),
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            label = { Text(stringResource(R.string.market_search)) },
-            placeholder = { Text(stringResource(R.string.market_search_hint)) },
             singleLine = true,
         )
         when (state.searchStatus) {
-            InstrumentSearchStatus.IDLE ->
-                Text(stringResource(R.string.market_search_prompt), style = MaterialTheme.typography.bodySmall)
-            InstrumentSearchStatus.LOADING ->
-                Text(stringResource(R.string.market_searching), style = MaterialTheme.typography.bodySmall)
-            InstrumentSearchStatus.EMPTY ->
-                Text(stringResource(R.string.market_search_empty), style = MaterialTheme.typography.bodySmall)
-            InstrumentSearchStatus.ERROR ->
-                Text(
-                    stringResource(R.string.error_search),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            InstrumentSearchStatus.IDLE -> FolioStateMessage(
+                message = stringResource(R.string.market_search_prompt),
+                kind = FolioMessageKind.Info,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            InstrumentSearchStatus.LOADING -> FolioStateMessage(
+                message = stringResource(R.string.market_searching),
+                kind = FolioMessageKind.Loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            InstrumentSearchStatus.EMPTY -> FolioStateMessage(
+                message = stringResource(R.string.market_search_empty),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            InstrumentSearchStatus.ERROR -> FolioStateMessage(
+                message = stringResource(R.string.error_search),
+                kind = FolioMessageKind.Error,
+                modifier = Modifier.fillMaxWidth(),
+            )
             InstrumentSearchStatus.RESULTS -> Unit
         }
         state.instruments.forEach { instrument ->
-            ListItem(
-                modifier = Modifier.fillMaxWidth().clickable {
-                    pickerViewModel.selectInstrument(instrument)
-                },
-                headlineContent = { Text("${instrument.symbol} · ${instrument.name}") },
-                supportingContent = { Text(instrument.meta) },
-            )
-            HorizontalDivider()
+            FolioListRow(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { pickerViewModel.selectInstrument(instrument) },
+            ) {
+                FolioFinancialValue(
+                    value = instrument.symbol,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+                Text(instrument.name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    instrument.meta,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
-        OutlinedTextField(
+        val identifierError = state.validationStatus == IdentifierValidationStatus.ERROR
+        val identifierMessage = when (state.validationStatus) {
+            IdentifierValidationStatus.LOADING -> stringResource(R.string.provider_identifier_checking)
+            IdentifierValidationStatus.ERROR -> stringResource(R.string.provider_identifier_invalid)
+            IdentifierValidationStatus.IDLE,
+            IdentifierValidationStatus.VALID -> null
+        }
+        FolioField(
             value = state.providerSymbol,
             onValueChange = { providerSymbol ->
                 pickerViewModel.updateProviderSymbol(providerSymbol)
                 currentProviderSymbolChanged(providerSymbol)
             },
+            label = stringResource(R.string.provider_symbol),
+            placeholder = stringResource(R.string.provider_symbol_hint),
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            label = { Text(stringResource(R.string.provider_symbol)) },
-            placeholder = { Text(stringResource(R.string.provider_symbol_hint)) },
             singleLine = true,
-            supportingText = {
-                when (state.validationStatus) {
-                    IdentifierValidationStatus.IDLE -> Unit
-                    IdentifierValidationStatus.LOADING ->
-                        Text(stringResource(R.string.provider_identifier_checking))
-                    IdentifierValidationStatus.VALID -> Unit
-                    IdentifierValidationStatus.ERROR ->
-                        Text(
-                            stringResource(R.string.provider_identifier_invalid),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                }
-            },
+            supportingText = identifierMessage,
+            isError = identifierError,
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProviderDropdown(
     selected: String,
     onSelected: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val providers = listOf(
         PortfolioCodes.NOBITEX,
         PortfolioCodes.ABANTETHER,
         PortfolioCodes.TSETMC,
         PortfolioCodes.RAHAVARD,
     )
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-    ) {
-        OutlinedTextField(
-            value = providerLabel(selected),
-            onValueChange = {},
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            readOnly = true,
-            label = { Text(stringResource(R.string.provider)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            providers.forEach { provider ->
-                DropdownMenuItem(
-                    text = { Text(providerLabel(provider)) },
-                    onClick = {
-                        expanded = false
-                        onSelected(provider)
-                    },
-                )
-            }
-        }
-    }
+    FolioSelector(
+        options = providers,
+        selected = selected,
+        onSelected = onSelected,
+        label = stringResource(R.string.provider),
+        modifier = Modifier.padding(bottom = 8.dp),
+        optionLabel = { providerLabel(it) },
+    )
 }
 
 private fun providerLabel(provider: String): String = when (provider) {
