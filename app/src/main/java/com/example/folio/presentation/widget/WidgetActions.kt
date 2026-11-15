@@ -22,13 +22,13 @@ internal fun togglePortfolioTotalAction(appWidgetId: Int): Action =
         actionParametersOf(WIDGET_ID_ACTION_PARAMETER to appWidgetId),
     )
 
-internal fun refreshPortfolioAction(appWidgetId: Int): Action =
-    actionRunCallback<RefreshPortfolioWidgetAction>(
+internal fun refreshWidgetAction(appWidgetId: Int): Action =
+    actionRunCallback<RefreshWidgetAction>(
         actionParametersOf(WIDGET_ID_ACTION_PARAMETER to appWidgetId),
     )
 
 @Composable
-internal fun configurePortfolioAction(appWidgetId: Int): Action =
+internal fun configureWidgetAction(appWidgetId: Int): Action =
     actionStartActivity<WidgetConfigurationActivity>(
         actionParametersOf(WIDGET_ID_ACTION_PARAMETER to appWidgetId),
     )
@@ -61,7 +61,7 @@ class TogglePortfolioTotalAction : ActionCallback {
     }
 }
 
-class RefreshPortfolioWidgetAction : ActionCallback {
+class RefreshWidgetAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
         glanceId: GlanceId,
@@ -76,10 +76,12 @@ class RefreshPortfolioWidgetAction : ActionCallback {
         } catch (_: Exception) {
             null
         } ?: return
-        if (configuration.kind != WidgetKind.PORTFOLIO) return
 
         PriceRefreshWorker.refreshNow(context)
-        PortfolioWidget().update(context, glanceId)
+        when (configuration.kind) {
+            WidgetKind.PORTFOLIO -> PortfolioWidget().update(context, glanceId)
+            WidgetKind.ASSET_PRICE -> AssetPriceWidget().update(context, glanceId)
+        }
     }
 }
 

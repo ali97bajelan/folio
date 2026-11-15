@@ -266,7 +266,7 @@ private fun PortfolioWidgetActionButtons(
         WidgetActionButton(
             icon = R.drawable.widget_configure,
             description = context.getString(R.string.widget_portfolio_configure),
-            action = configurePortfolioAction(appWidgetId),
+            action = configureWidgetAction(appWidgetId),
         )
         return
     }
@@ -289,17 +289,17 @@ private fun PortfolioWidgetActionButtons(
     WidgetActionButton(
         icon = R.drawable.widget_refresh,
         description = context.getString(R.string.widget_portfolio_refresh),
-        action = refreshPortfolioAction(appWidgetId),
+        action = refreshWidgetAction(appWidgetId),
     )
     WidgetActionButton(
         icon = R.drawable.widget_configure,
         description = context.getString(R.string.widget_portfolio_configure),
-        action = configurePortfolioAction(appWidgetId),
+        action = configureWidgetAction(appWidgetId),
     )
 }
 
 @Composable
-private fun WidgetActionButton(
+internal fun WidgetActionButton(
     icon: Int,
     description: String,
     action: Action,

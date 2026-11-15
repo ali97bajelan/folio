@@ -8,4 +8,12 @@
     <dimen name="widget_portfolio_min_resize_height">148dp</dimen>
     <dimen name="widget_portfolio_max_resize_width">624dp</dimen>
     <dimen name="widget_portfolio_max_resize_height">422dp</dimen>
+    <integer name="widget_asset_price_target_cell_width">2</integer>
+    <integer name="widget_asset_price_target_cell_height">2</integer>
+    <dimen name="widget_asset_price_min_width">132dp</dimen>
+    <dimen name="widget_asset_price_min_height">132dp</dimen>
+    <dimen name="widget_asset_price_min_resize_width">132dp</dimen>
+    <dimen name="widget_asset_price_min_resize_height">132dp</dimen>
+    <dimen name="widget_asset_price_max_resize_width">624dp</dimen>
+    <dimen name="widget_asset_price_max_resize_height">422dp</dimen>
 </resources>

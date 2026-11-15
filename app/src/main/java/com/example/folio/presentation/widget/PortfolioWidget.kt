@@ -45,7 +45,7 @@ class PortfolioWidget : GlanceAppWidget() {
                 loadFailed = true
             }
         }
-        val isUpdating = configuration != null && hasActivePortfolioRefresh(context)
+        val isUpdating = configuration != null && hasActiveWidgetRefresh(context)
 
         provideContent {
             PortfolioWidgetLayout(
@@ -64,7 +64,7 @@ class PortfolioWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = PortfolioWidget()
 }
 
-private suspend fun hasActivePortfolioRefresh(context: Context): Boolean =
+internal suspend fun hasActiveWidgetRefresh(context: Context): Boolean =
     withContext(Dispatchers.IO) {
         runCatching {
             WorkManager.getInstance(context.applicationContext)

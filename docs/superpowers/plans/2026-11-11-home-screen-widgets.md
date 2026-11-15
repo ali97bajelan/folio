@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact. W05 implementation and focused presentation tests are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide the same artifact.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact. W04 implementation and focused tests are present; its post-implementation unit-test attempt also stopped before compilation because Google Maven could not provide that artifact. W05 implementation and focused presentation tests are present; its post-implementation `:app:testDebugUnitTest` attempt stopped before compilation because Google Maven could not provide the same artifact. W06 implementation and focused JVM coverage are present; its final post-implementation `:app:testDebugUnitTest` attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start.
 
 ## Global Constraints
 
@@ -191,17 +191,19 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 **Depends on:** W01, W02, W04, W05 shared layout.
 **Coverage:** F04–F07, L04–L05.
 
-**Files:** Create AssetPriceWidget.kt, AssetPriceWidgetReceiver.kt, `res/xml/asset_price_widget_info.xml` and price preview; extend WidgetActions.kt/shared layout, manifest/strings.
+**Files:** Create AssetPriceWidget.kt, AssetPriceWidgetPresentation.kt, AssetPriceWidgetReceiver.kt, `res/xml/asset_price_widget_info.xml`, price preview resources and dimensions; extend WidgetActions.kt/shared layout, manifest/strings.
 
 **Consumes:** saved MarketSelection, WidgetRepository.quote(key), shared Glance layout helpers.
 **Produces:** `AssetPriceWidget : GlanceAppWidget` and `AssetPriceWidgetReceiver : GlanceAppWidgetReceiver`.
 
-- [ ] Register receiver/XML and 2×2 initial size hint with horizontal/vertical resize and SizeMode.Exact.
-- [ ] Render provider, symbol/name, native-currency price and quote time from the configured MarketKey only. Do not look up a portfolio asset by symbol.
-- [ ] Show stale when quoteAt is more than six hours old; preserve a cached value with failure/offline indicator. No cached success renders “Price unavailable”, not 0.
-- [ ] Resolve queued/running status without claiming cached data is fresh. Unsupported state preserves selection with Configure available.
-- [ ] Body/Configure open the selected widget's configuration; Refresh delegates to the shared action. Re-read saved market/revision before publication to prevent new labels showing old prices.
-- [ ] Add focused JVM cases for same ticker/different providers, exact native currency/IRT units, stale boundary and no-cache failure; compile.
+- [x] Register receiver/XML and 2×2 initial size hint with horizontal/vertical resize and SizeMode.Exact.
+- [x] Render provider, symbol/name, native-currency price and quote time from the configured MarketKey only. Do not look up a portfolio asset by symbol.
+- [x] Show stale when quoteAt is more than six hours old; preserve a cached value with failure/offline indicator. No cached success renders “Price unavailable”, not 0.
+- [x] Resolve queued/running status without claiming cached data is fresh. Unsupported state preserves selection with Configure available.
+- [x] Body/Configure open the selected widget's configuration; Refresh delegates to the shared action. Re-read saved market/revision before publication to prevent new labels showing old prices.
+- [x] Add JVM cases for native IRT/USDT units, stale boundary, no-cache failure, cached refresh failure, unsupported markets and superseded configuration. Provider-key isolation is already covered by W01's WidgetRepositoryTest.
+- [ ] Run `:app:testDebugUnitTest` after implementation: the final attempt stopped during dependency resolution because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; compilation and assertions did not start. No emulator check yet.
+- **Review disposition:** The minimum-size metadata clipping concern is addressed by compact identity and combined status/age. No-cache failures now have distinct localized wording. Launcher rendering, resize behavior, action dispatch and light/dark appearance remain deferred to W08, the only emulator QA task.
 
 **Done when:** any supported owned or unowned market can be displayed independently and truthfully offline.
 
@@ -269,4 +271,4 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 - Shared contracts are defined once and consumed by later tasks.
 - The design received a separate builder document check: no important unanswered planning questions were found.
 - Proposed defaults remain reviewable: per-instance settings, one market per price widget, native quote currency, visible total default and six-hour widget background refresh.
-- App implementation begins only under a subsequent implementation request; no source changes, dependency installation or emulator execution are part of generating these documents.
+- W06 implementation was requested and completed in this work session; W07 integration and W08 emulator acceptance remain pending.
