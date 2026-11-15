@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-11-home-screen-widgets-design.md](../specs/2026-11-11-home-screen-widgets-design.md)
 **Task checklist:** [2026-11-11-home-screen-widgets.md](../tasks/2026-11-11-home-screen-widgets.md)
-**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`.
+**Status:** W01 code is present; Gradle/schema verification remains pending. W02 implementation is complete; its unit-test verification is blocked before compilation by missing `androidx.lifecycle:lifecycle-common-java8:2.8.7`. W03 implementation and JVM coverage are present; verification is blocked before compilation by the same missing artifact.
 
 ## Global Constraints
 
@@ -138,11 +138,11 @@ Define these in W01 and keep later tasks consistent. These are proposed public i
 **Consumes:** WidgetPortfolioSnapshot, active assets, holdings, cached prices and existing conversion services.
 **Produces:** `WidgetSnapshotRepository.suspend fun portfolio(currency: String, now: Instant = Instant.now()): WidgetPortfolioSnapshot`.
 
-- [ ] Read the necessary assets, transactions, prices and available FX in one Room read transaction; perform expensive aggregation off the main thread. Reuse the existing currency-price selection rules rather than inventing widget conversions.
-- [ ] Derive total and grouped type values from exactly the same rows in the requested currency. Count only unvalued nonzero active holdings as missing. Distinguish empty zero portfolio, partial subtotal and all-unpriced unavailable.
-- [ ] Keep underlying grouped values unrounded; round only displayed percentages. Implement stable sorting and compact top-three-plus-Other as a pure presentation helper.
-- [ ] Add JVM assertions: values 60+30+10 yield 60/30/10%; five types preserve the sum when grouped; zero denominator is safe; inactive assets excluded; missing FX is partial/unavailable; zero holdings need no quote.
-- [ ] Run focused tests. Document the spec P05 distinction between current widget rows and the dashboard's committed headline.
+- [x] Read the necessary assets, transactions, prices and available FX in one Room read transaction; perform expensive aggregation off the main thread. Reuse the existing currency-price selection rules rather than inventing widget conversions.
+- [x] Derive total and grouped type values from exactly the same rows in the requested currency. Count only unvalued nonzero active holdings as missing. Distinguish empty zero portfolio, partial subtotal and all-unpriced unavailable.
+- [x] Keep underlying grouped values unrounded; round only displayed percentages. Implement stable sorting and compact top-three-plus-Other as a pure presentation helper.
+- [x] Add JVM assertions: values 60+30+10 yield 60/30/10%; five types preserve the sum when grouped; zero denominator is safe; inactive assets excluded; missing FX is partial/unavailable; zero holdings need no quote.
+- [ ] Run focused tests. The Studio Gradle task stopped before compilation because Google Maven could not provide `androidx.lifecycle:lifecycle-common-java8:2.8.7`; no assertions ran. The spec P05 distinction is documented in `WidgetSnapshotRepository`.
 
 **Done when:** one coherent snapshot drives both total and allocation without missing-data deception.
 
