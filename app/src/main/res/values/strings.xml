@@ -21,10 +21,10 @@
     <string name="chart_low">Low</string>
     <string name="chart_peak">Peak</string>
     <string name="total_assets">Total assets</string>
-    <string name="weighted_distribution">Weighted distribution</string>
-    <string name="total_exposure">100% total exposure</string>
-    <string name="recent_portfolio_movements">Recent portfolio movements</string>
-    <string name="view_all">View all</string>
+
+
+
+
     <string name="portfolio_history_empty">Save at least two valuation snapshots to display a chart.</string>
     <string name="asset_type_percentage_history">Asset type percentage history</string>
     <string name="asset_type_history_empty">Save at least two valuation snapshots to display allocation history.</string>

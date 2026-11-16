@@ -21,10 +21,10 @@
     <string name="chart_low">کمترین</string>
     <string name="chart_peak">بیشترین</string>
     <string name="total_assets">مجموع دارایی‌ها</string>
-    <string name="weighted_distribution">توزیع وزنی</string>
-    <string name="total_exposure">مجموع سهم‌ها ۱۰۰٪</string>
-    <string name="recent_portfolio_movements">تغییرات اخیر پرتفوی</string>
-    <string name="view_all">مشاهده همه</string>
+
+
+
+
     <string name="portfolio_history_empty">برای نمایش نمودار، حداقل دو اسنپ‌شات ارزش‌گذاری ذخیره کنید.</string>
     <string name="asset_type_percentage_history">تاریخچه درصد نوع دارایی</string>
     <string name="asset_type_history_empty">برای نمایش تاریخچه تخصیص، حداقل دو اسنپ‌شات ارزش‌گذاری ذخیره کنید.</string>

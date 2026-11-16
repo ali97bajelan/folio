@@ -149,6 +149,20 @@ private fun lastUpdatedText(updatedAt: Instant?, calculatedAt: Instant): String 
 @Composable private fun money(value: BigDecimal?, currency: String) =
     if (currency == PortfolioCodes.IRT) compact(value) else number(value, currency)
 
+@Composable
+private fun compactUsd(value: BigDecimal?): String {
+    if (value == null) return stringResource(R.string.unavailable)
+
+    val (divisor, suffix) = when {
+        value.abs() >= BigDecimal("1000000000") -> BigDecimal("1000000000") to "B"
+        value.abs() >= BigDecimal("1000000") -> BigDecimal("1000000") to "M"
+        value.abs() >= BigDecimal("1000") -> BigDecimal("1000") to "k"
+        else -> BigDecimal.ONE to ""
+    }
+    val amount = value.divide(divisor, 2, RoundingMode.HALF_UP)
+    return ltrValue('$' + formattedNumber(amount, "", 2, 0) + suffix)
+}
+
 @Composable private fun wholeUsd(value: BigDecimal?) = number(value?.setScale(0, RoundingMode.HALF_UP), PortfolioCodes.USD, places = 0)
 
 @Composable private fun typeLabel(value: String) = when (value) {
@@ -258,7 +272,6 @@ fun PortfolioApp(
                         viewModel,
                         addAsset = { navigationController.navigate("asset/new") },
                         addTx = { navigationController.navigate("transaction/new") },
-                        openHistory = { navigationController.navigate("transactions") },
                     )
                 }
                 composable("assets") {
@@ -459,13 +472,10 @@ private fun Dashboard(
     vm: MainViewModel,
     addAsset: () -> Unit,
     addTx: () -> Unit,
-    openHistory: () -> Unit,
 ) {
     val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
     val dash by vm.dashboard.collectAsStateWithLifecycle()
     val history by vm.portfolioHistory.collectAsStateWithLifecycle()
-    val transactions by vm.transactions.collectAsStateWithLifecycle()
-    val assets by vm.assets.collectAsStateWithLifecycle()
     val dashboardLoadedAt = remember(dash) { Instant.now() }
     var displayCurrency by rememberSaveable { mutableStateOf(PortfolioCodes.IRT) }
 
@@ -529,16 +539,7 @@ private fun Dashboard(
         PanelCard(Modifier.fillMaxWidth()) { PortfolioHistoryChart(history, displayCurrency) }
         Spacer(Modifier.height(FolioSpacing.medium))
         PanelCard(Modifier.fillMaxWidth()) { AllocationCakeChart(dash.rows, displayCurrency) }
-        Spacer(Modifier.height(FolioSpacing.medium))
-        PanelCard(Modifier.fillMaxWidth()) { WeightedDistribution(dash.rows, displayCurrency) }
-        Spacer(Modifier.height(FolioSpacing.medium))
-        PanelCard(Modifier.fillMaxWidth()) {
-            RecentMovements(
-                transactions = transactions.take(2),
-                assetsById = assets.associateBy { it.id },
-                onViewAll = openHistory,
-            )
-        }
+
     }
 }
 
@@ -650,7 +651,7 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 FolioFinancialValue(
-                    value = money(total, currency),
+                    value = if (currency == PortfolioCodes.USD) compactUsd(total) else money(total, currency),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     isolateDirection = false,
@@ -697,147 +698,6 @@ private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
     }
 }
 
-@Composable
-private fun WeightedDistribution(rows: List<AssetRow>, currency: String) {
-    val slices = allocationSlices(rows, currency)
-    val total = slices.fold(BigDecimal.ZERO) { sum, slice -> sum.add(slice.value) }
-    val colors = LocalFolioSemanticColors.current.allocationSeries
-    if (slices.isEmpty() || total.signum() == 0) return
-
-    Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Tiny(stringResource(R.string.weighted_distribution))
-            Text(
-                stringResource(R.string.total_exposure),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth().height(10.dp).clip(FolioShapeTokens.pill)
-                .background(MaterialTheme.colorScheme.surface),
-        ) {
-            slices.forEachIndexed { index, slice ->
-                val weight = slice.value.divide(total, 8, RoundingMode.HALF_UP).toFloat()
-                    .coerceAtLeast(.001f)
-                Box(
-                    Modifier.weight(weight).fillMaxHeight()
-                        .background(colors[index % colors.size]),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentMovements(
-    transactions: List<TransactionEntity>,
-    assetsById: Map<Long, AssetEntity>,
-    onViewAll: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
-        ) {
-            Icon(
-                FolioIcons.ReceiptLong,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(FolioIconSize.medium),
-            )
-            Text(
-                stringResource(R.string.recent_portfolio_movements),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        TextButton(onClick = onViewAll, contentPadding = PaddingValues(horizontal = 4.dp)) {
-            Text(stringResource(R.string.view_all), color = MaterialTheme.colorScheme.tertiary)
-        }
-    }
-    if (transactions.isEmpty()) {
-        Tiny(stringResource(R.string.transactions_empty_copy))
-        return
-    }
-    Spacer(Modifier.height(FolioSpacing.small))
-    transactions.forEachIndexed { index, transaction ->
-        val isPurchase = transaction.transactionType == PortfolioCodes.BUY
-        val accent = if (isPurchase) {
-            LocalFolioSemanticColors.current.gain
-        } else {
-            LocalFolioSemanticColors.current.loss
-        }
-        val asset = assetsById[transaction.assetId]
-        val label = stringResource(if (isPurchase) R.string.buy else R.string.sell)
-        val symbol = asset?.symbol?.let(::isolateFinancialText) ?: stringResource(R.string.empty_value)
-        val assetType = asset?.let { typeLabel(it.assetType) } ?: ""
-        val quantity = "${if (isPurchase) "+" else "−"}${detailQuantity(transaction.quantity)} ${asset?.unit.orEmpty()}".trim()
-        val amount = transaction.pricePerUnit?.multiply(transaction.quantity)?.let {
-            ltrValue("${if (isPurchase) "−" else "+"}${formattedNumber(it, transaction.transactionCurrency, 2, 0)}")
-        } ?: stringResource(R.string.unavailable)
-
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = FolioSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
-        ) {
-            Surface(
-                color = accent.copy(alpha = .14f),
-                shape = FolioShapeTokens.pill,
-            ) {
-                Icon(
-                    FolioIcons.ReceiptLong,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.padding(9.dp).size(FolioIconSize.medium),
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "$label · $symbol",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Tiny(
-                    listOfNotNull(
-                        assetType.takeIf(String::isNotBlank),
-                        ltrValue(dateFormat.format(transaction.executedAt)),
-                    ).joinToString(" · "),
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                FolioFinancialValue(
-                    value = quantity,
-                    color = accent,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    isolateDirection = false,
-                )
-                FolioFinancialValue(
-                    value = amount,
-                    color = if (isPurchase) MaterialTheme.colorScheme.error else LocalFolioSemanticColors.current.gain,
-                    style = MaterialTheme.typography.labelSmall,
-                    isolateDirection = false,
-                )
-            }
-        }
-        if (index < transactions.lastIndex) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
-        }
-    }
-}
 @Composable
 private fun PortfolioValue(
     dash: DashboardData,
