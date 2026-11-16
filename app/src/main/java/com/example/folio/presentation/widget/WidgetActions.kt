@@ -6,7 +6,7 @@ import androidx.glance.GlanceId
 import androidx.glance.action.Action
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionRunCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.GlanceAppWidgetManager
