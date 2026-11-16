@@ -15,7 +15,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -36,6 +37,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
@@ -200,9 +203,9 @@ fun PortfolioApp(
     val contextualTitle = when (currentRoute) {
         "tags" -> stringResource(R.string.tags)
         "locations" -> stringResource(R.string.locations)
-        "asset/new" -> stringResource(R.string.add_asset_title)
+        "asset/new" -> stringResource(R.string.nav_assets)
         "asset/{id}" -> stringResource(R.string.asset_details)
-        "asset/edit/{id}" -> stringResource(R.string.edit_asset_title)
+        "asset/edit/{id}" -> stringResource(R.string.nav_assets)
         "price/{id}" -> stringResource(R.string.update_price)
         "transaction/edit/{id}" -> stringResource(R.string.edit_transaction_title)
         "transaction/new?asset={asset}" -> stringResource(R.string.add_transaction_title)
@@ -293,7 +296,13 @@ fun PortfolioApp(
                     )
                 }
                 composable("locations") { Locations(viewModel) }
-                composable("asset/new") { AssetForm(viewModel) { navigationController.popBackStack() } }
+                composable("asset/new") {
+                    AssetForm(
+                        vm = viewModel,
+                        onDone = { navigationController.popBackStack() },
+                        onCancel = { navigationController.popBackStack() },
+                    )
+                }
                 composable("asset/{id}") { backStackEntry ->
                     backStackEntry.longArgument("id")?.let { id ->
                         AssetDetailScreen(
@@ -308,7 +317,12 @@ fun PortfolioApp(
                 }
                 composable("asset/edit/{id}") { backStackEntry ->
                     backStackEntry.longArgument("id")?.let { id ->
-                        AssetForm(viewModel, id) { navigationController.popBackStack() }
+                        AssetForm(
+                            vm = viewModel,
+                            id = id,
+                            onDone = { navigationController.popBackStack() },
+                            onCancel = { navigationController.popBackStack() },
+                        )
                     }
                 }
                 composable("price/{id}") { backStackEntry ->
@@ -1787,8 +1801,74 @@ private fun DetailLine(label: String, value: String) {
     }
 }
 
+private data class AssetCategoryOption(
+    val label: Int,
+    val marker: String,
+    val types: List<String>,
+)
+
+private val ASSET_CATEGORY_OPTIONS = listOf(
+    AssetCategoryOption(R.string.category_crypto, "₿", listOf(PortfolioCodes.CRYPTO)),
+    AssetCategoryOption(R.string.category_metals, "◆", listOf(PortfolioCodes.GOLD, PortfolioCodes.SILVER)),
+    AssetCategoryOption(R.string.category_fiat, "¤", listOf(PortfolioCodes.USD, PortfolioCodes.FIXED_INCOME, PortfolioCodes.MANUAL)),
+    AssetCategoryOption(R.string.category_equities, "↗", listOf(PortfolioCodes.IRAN_STOCK, PortfolioCodes.US_STOCK)),
+)
+
 @Composable
-private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
+private fun AssetFormSection(
+    title: String,
+    step: Int,
+    totalSteps: Int,
+    marker: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    FolioCard(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+        ) {
+            Surface(
+                shape = FolioShapeTokens.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            ) {
+                Text(
+                    text = marker,
+                    modifier = Modifier.padding(horizontal = FolioSpacing.small, vertical = FolioSpacing.extraSmall),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.step_progress, step, totalSteps),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        Column(
+            verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+            content = content,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AssetForm(
+    vm: MainViewModel,
+    id: Long? = null,
+    onDone: () -> Unit,
+    onCancel: () -> Unit,
+) {
     val isSaving by vm.isSaving.collectAsStateWithLifecycle()
     val existingAsset by (if (id == null) remember { mutableStateOf<AssetEntity?>(null) }
         else remember(vm, id) { vm.asset(id) }.collectAsStateWithLifecycle(initialValue = null))
@@ -1813,6 +1893,10 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
     var openingQuantity by rememberSaveable(id) { mutableStateOf("") }
     var openingAverage by rememberSaveable(id) { mutableStateOf("") }
     var error by rememberSaveable(id) { mutableStateOf("") }
+    var showLocationSheet by rememberSaveable(id) { mutableStateOf(false) }
+    var locationName by rememberSaveable(id) { mutableStateOf("") }
+    var locationNotes by rememberSaveable(id) { mutableStateOf("") }
+    var locationError by rememberSaveable(id) { mutableStateOf("") }
 
     val noLocation = stringResource(R.string.no_location)
     val nameRequired = stringResource(R.string.error_name_required)
@@ -1853,121 +1937,640 @@ private fun AssetForm(vm: MainViewModel, id: Long? = null, done: () -> Unit) {
         )
     }
 
-    FormPage(
-        if (id == null) stringResource(R.string.add_asset_title) else stringResource(R.string.edit_asset_title),
-        error,
-        enabled = !isSaving && (id == null || existingAsset != null),
-        done = {
-            val asset = AssetEntity(
-                id ?: 0, name, symbol.uppercase(), assetType, unit, pricingMode,
-                if (pricingMode == PortfolioCodes.MANUAL) PortfolioCodes.MANUAL else provider,
-                providerSymbol, currency, active,
-            )
-            if (name.isBlank()) error = nameRequired
-            else if (symbol.isBlank()) error = symbolRequired
-            else if (pricingMode == PortfolioCodes.MARKET && (provider.isBlank() || providerSymbol.isBlank())) {
-                error = marketRequired
-            } else if (id == null) {
-                vm.saveAssetWithOpening(
-                    asset, selectedTagIds.toList(), openingQuantity, openingAverage,
-                    openingLocation.takeIf { it != 0L }, { error = it },
-                ) { done() }
-            } else vm.saveAsset(asset, selectedTagIds.toList(), onError = { error = it }, done = done)
-        },
+    val formTitle = stringResource(
+        if (id == null) R.string.add_asset_title else R.string.edit_asset_title,
+    )
+    val totalSteps = if (id == null) 4 else 3
+    val selectedCategory = ASSET_CATEGORY_OPTIONS.firstOrNull { assetType in it.types }
+        ?: ASSET_CATEGORY_OPTIONS.first()
+    val openingBookValue = (openingQuantity.toBigDecimalOrNull() ?: BigDecimal.ZERO)
+        .multiply(openingAverage.toBigDecimalOrNull() ?: BigDecimal.ZERO)
+    val saveEnabled = !isSaving && (id == null || existingAsset != null)
+    val accentChipColors = FilterChipDefaults.filterChipColors(
+        containerColor = MaterialTheme.colorScheme.surface,
+        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
+        selectedLabelColor = MaterialTheme.colorScheme.tertiary,
+    )
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Field(stringResource(R.string.name), name) {
-            name = it
-            if (symbol.isBlank()) symbol = it.uppercase().replace(' ', '-')
-        }
-        Field(stringResource(R.string.symbol), symbol) { symbol = it }
-        Choice(
-            stringResource(R.string.asset_type), assetType,
-            listOf(
-                PortfolioCodes.CRYPTO, PortfolioCodes.USD, PortfolioCodes.IRAN_STOCK,
-                PortfolioCodes.US_STOCK, PortfolioCodes.GOLD, PortfolioCodes.SILVER,
-                PortfolioCodes.FIXED_INCOME, PortfolioCodes.MANUAL,
-            ),
-            render = { typeLabel(it) },
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium),
+            verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
         ) {
-            assetType = it
-            if (id == null) {
-                provider = defaultProviderFor(it)
-                providerSymbol = ""
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .clip(FolioShapeTokens.pill)
+                                .background(MaterialTheme.colorScheme.secondary),
+                        )
+                        Text(
+                            text = stringResource(R.string.asset_registry_label).uppercase(),
+                            color = MaterialTheme.colorScheme.secondary,
+                            style = MaterialTheme.typography.labelSmall,
+                            letterSpacing = 1.sp,
+                        )
+                    }
+                    Text(
+                        text = formTitle,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = stringResource(R.string.asset_form_description),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (id == null) {
+                    Surface(
+                        shape = FolioShapeTokens.pill,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                name = "Ethereum"
+                                symbol = "ETH"
+                                assetType = PortfolioCodes.CRYPTO
+                                unit = PortfolioCodes.UNIT
+                                pricingMode = PortfolioCodes.MANUAL
+                                provider = PortfolioCodes.NOBITEX
+                                providerSymbol = ""
+                                currency = PortfolioCodes.USD
+                                openingQuantity = "1.75"
+                                openingAverage = "3450"
+                                error = ""
+                            },
+                        ) {
+                            Text(stringResource(R.string.quick_fill))
+                        }
+                    }
+                }
             }
-        }
-        Choice(stringResource(R.string.unit), unit, listOf(PortfolioCodes.UNIT, PortfolioCodes.GRAM), render = { choiceLabel(it) }) {
-            unit = it
-        }
-        Choice(stringResource(R.string.pricing_method), pricingMode, listOf(PortfolioCodes.MANUAL, PortfolioCodes.MARKET), render = { choiceLabel(it) }) {
-            pricingMode = it
-        }
-        if (pricingMode == PortfolioCodes.MARKET) {
-            val initialMarketSelection = remember(provider, providerSymbol, symbol, name, assetType) {
-                providerSymbol.takeIf(String::isNotBlank)?.let { identifier ->
-                    MarketSelection(
-                        key = MarketKey(provider, identifier),
-                        displayName = name.ifBlank { symbol.ifBlank { identifier } },
-                        symbol = symbol.ifBlank { identifier },
-                        assetType = assetType,
+
+            AssetFormSection(
+                title = stringResource(R.string.asset_identity),
+                step = 1,
+                totalSteps = totalSteps,
+                marker = "◈",
+            ) {
+                Text(
+                    text = stringResource(R.string.category_classification),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(FolioShapeTokens.medium)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(FolioSpacing.extraSmall),
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                ) {
+                    ASSET_CATEGORY_OPTIONS.forEach { category ->
+                        val selected = category == selectedCategory
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(FolioShapeTokens.small)
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.surfaceVariant
+                                    else Color.Transparent,
+                                )
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        val newType = category.types.first()
+                                        assetType = newType
+                                        if (id == null) {
+                                            provider = defaultProviderFor(newType)
+                                            providerSymbol = ""
+                                        }
+                                    },
+                                )
+                                .padding(horizontal = FolioSpacing.extraSmall, vertical = FolioSpacing.small),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                        ) {
+                            Text(
+                                text = category.marker,
+                                color = if (selected) MaterialTheme.colorScheme.tertiary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = stringResource(category.label).uppercase(),
+                                color = if (selected) MaterialTheme.colorScheme.tertiary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                if (selectedCategory.types.size > 1) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                    ) {
+                        selectedCategory.types.forEach { type ->
+                            FilterChip(
+                                selected = assetType == type,
+                                onClick = {
+                                    assetType = type
+                                    if (id == null) {
+                                        provider = defaultProviderFor(type)
+                                        providerSymbol = ""
+                                    }
+                                },
+                                label = { Text(typeLabel(type)) },
+                                modifier = Modifier.heightIn(min = FolioMinimumTouchTarget),
+                                colors = accentChipColors,
+                            )
+                        }
+                    }
+                }
+                FolioField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        if (symbol.isBlank()) symbol = it.uppercase().replace(' ', '-')
+                    },
+                    label = stringResource(R.string.name),
+                    placeholder = stringResource(R.string.asset_name_hint),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+                    FolioField(
+                        value = symbol,
+                        onValueChange = { symbol = it.uppercase() },
+                        label = stringResource(R.string.symbol),
+                        placeholder = stringResource(R.string.symbol_hint),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                        ),
+                    )
+                    FolioSelector(
+                        options = listOf(PortfolioCodes.UNIT, PortfolioCodes.GRAM),
+                        selected = unit,
+                        onSelected = { unit = it },
+                        label = stringResource(R.string.accounting_unit),
+                        modifier = Modifier.weight(1f),
+                        optionLabel = { choiceLabel(it) },
                     )
                 }
             }
-            MarketInstrumentPicker(
-                assetType = assetType,
-                initialSelection = initialMarketSelection,
-                onSelectionChanged = { selection ->
-                    if (selection != null) {
-                        provider = selection.key.provider
-                        providerSymbol = selection.key.providerSymbol
-                        symbol = selection.symbol
+
+            AssetFormSection(
+                title = stringResource(R.string.pricing_and_market_sync),
+                step = 2,
+                totalSteps = totalSteps,
+                marker = "↗",
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(FolioShapeTokens.medium)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(FolioSpacing.extraSmall),
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                ) {
+                    listOf(
+                        PortfolioCodes.MARKET to stringResource(R.string.pricing_market),
+                        PortfolioCodes.MANUAL to stringResource(R.string.manual),
+                    ).forEach { (mode, label) ->
+                        val selected = pricingMode == mode
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = FolioMinimumTouchTarget)
+                                .clip(FolioShapeTokens.small)
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.surfaceVariant
+                                    else Color.Transparent,
+                                )
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.RadioButton,
+                                    onClick = { pricingMode = mode },
+                                )
+                                .padding(horizontal = FolioSpacing.small),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    }
+                }
+                if (pricingMode == PortfolioCodes.MARKET) {
+                    val initialMarketSelection = remember(provider, providerSymbol, symbol, name, assetType) {
+                        providerSymbol.takeIf(String::isNotBlank)?.let { identifier ->
+                            MarketSelection(
+                                key = MarketKey(provider, identifier),
+                                displayName = name.ifBlank { symbol.ifBlank { identifier } },
+                                symbol = symbol.ifBlank { identifier },
+                                assetType = assetType,
+                            )
+                        }
+                    }
+                    MarketInstrumentPicker(
+                        assetType = assetType,
+                        initialSelection = initialMarketSelection,
+                        onSelectionChanged = { selection ->
+                            if (selection != null) {
+                                provider = selection.key.provider
+                                providerSymbol = selection.key.providerSymbol
+                                symbol = selection.symbol
+                            }
+                        },
+                        onProviderChanged = { provider = it },
+                        onProviderSymbolChanged = { providerSymbol = it },
+                        onManualSelectionValidated = { selection ->
+                            provider = selection.key.provider
+                            providerSymbol = selection.key.providerSymbol
+                        },
+                        initialSelectionValidated = id != null,
+                    )
+                } else {
+                    Choice(
+                        stringResource(R.string.manual_price_currency),
+                        currency,
+                        listOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT),
+                    ) { currency = it }
+                }
+            }
+
+            if (id == null) {
+                AssetFormSection(
+                    title = stringResource(R.string.custody_opening_balance),
+                    step = 3,
+                    totalSteps = totalSteps,
+                    marker = "▣",
+                ) {
+                    Text(
+                        text = stringResource(R.string.opening_holding_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FolioSelector(
+                            options = listOf("0") + locations.map { it.id.toString() },
+                            selected = openingLocation.toString(),
+                            onSelected = { openingLocation = it.toLongOrNull() ?: 0L },
+                            label = stringResource(R.string.location),
+                            modifier = Modifier.weight(1f),
+                            optionLabel = { value ->
+                                if (value == "0") noLocation
+                                else locations.firstOrNull { it.id.toString() == value }?.name ?: noLocation
+                            },
+                        )
+                        TextButton(onClick = {
+                            locationError = ""
+                            showLocationSheet = true
+                        }) {
+                            Text(stringResource(R.string.new_location))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+                        FolioField(
+                            value = openingQuantity,
+                            onValueChange = { openingQuantity = it },
+                            label = stringResource(R.string.opening_quantity),
+                            placeholder = stringResource(R.string.optional),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                        FolioField(
+                            value = openingAverage,
+                            onValueChange = { openingAverage = it },
+                            label = stringResource(R.string.average_cost),
+                            placeholder = stringResource(R.string.optional),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                    }
+                    if (pricingMode == PortfolioCodes.MARKET) {
+                        Choice(
+                            stringResource(R.string.opening_cost_currency),
+                            currency,
+                            listOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT),
+                        ) { currency = it }
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = FolioShapeTokens.medium,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(FolioSpacing.medium),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.initial_book_value),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            FolioFinancialValue(
+                                value = "${formattedNumber(openingBookValue, "", 2, 0)} $currency",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.zero_fees),
+                                color = MaterialTheme.colorScheme.secondary,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+            }
+
+            AssetFormSection(
+                title = stringResource(R.string.portfolio_integration),
+                step = if (id == null) 4 else 3,
+                totalSteps = totalSteps,
+                marker = "✓",
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(FolioShapeTokens.medium)
+                        .clickable { active = !active }
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = FolioSpacing.medium, vertical = FolioSpacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.asset_is_active),
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = stringResource(R.string.include_in_net_worth),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(checked = active, onCheckedChange = { active = it })
+                }
+                Text(
+                    text = stringResource(R.string.tags),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                if (tags.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.no_tags_yet),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                    ) {
+                        tags.forEach { tag ->
+                            FilterChip(
+                                selected = tag.id in selectedTagIds,
+                                onClick = {
+                                    selectedTagIds = if (tag.id in selectedTagIds) {
+                                        selectedTagIds - tag.id
+                                    } else {
+                                        selectedTagIds + tag.id
+                                    }
+                                },
+                                label = { Text(tag.name) },
+                                modifier = Modifier.heightIn(min = FolioMinimumTouchTarget),
+                                colors = accentChipColors,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (error.isNotBlank()) {
+                FolioStateMessage(
+                    message = error,
+                    kind = FolioMessageKind.Error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            FolioPrimaryButton(
+                text = if (id == null) stringResource(R.string.save_asset_to_portfolio)
+                else stringResource(R.string.save),
+                onClick = {
+                    error = ""
+                    val asset = AssetEntity(
+                        id ?: 0,
+                        name,
+                        symbol.uppercase(),
+                        assetType,
+                        unit,
+                        pricingMode,
+                        if (pricingMode == PortfolioCodes.MANUAL) PortfolioCodes.MANUAL else provider,
+                        providerSymbol,
+                        currency,
+                        active,
+                    )
+                    when {
+                        name.isBlank() -> error = nameRequired
+                        symbol.isBlank() -> error = symbolRequired
+                        pricingMode == PortfolioCodes.MARKET &&
+                            (provider.isBlank() || providerSymbol.isBlank()) -> error = marketRequired
+                        id == null -> vm.saveAssetWithOpening(
+                            asset = asset,
+                            tags = selectedTagIds.toList(),
+                            quantity = openingQuantity,
+                            averageCost = openingAverage,
+                            locationId = openingLocation.takeIf { it != 0L },
+                            onError = { error = it },
+                            done = { onDone() },
+                        )
+                        else -> vm.saveAsset(
+                            asset,
+                            selectedTagIds.toList(),
+                            onError = { error = it },
+                            done = onDone,
+                        )
                     }
                 },
-                onProviderChanged = { selectedProvider ->
-                    provider = selectedProvider
-                },
-                onProviderSymbolChanged = { providerSymbol = it },
-                onManualSelectionValidated = { selection ->
-                    // A provider identifier must not replace the user's portfolio symbol.
-                    provider = selection.key.provider
-                    providerSymbol = selection.key.providerSymbol
-                },
-                initialSelectionValidated = id != null,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = saveEnabled,
+                leadingIcon = FolioIcons.AccountBalanceWallet,
             )
-        } else Choice(stringResource(R.string.manual_price_currency), currency, listOf(PortfolioCodes.IRT, PortfolioCodes.USD, PortfolioCodes.USDT)) {
-            currency = it
-        }
-        if (id == null) {
-            Text(stringResource(R.string.opening_holding), fontWeight = FontWeight.SemiBold)
-            Tiny(stringResource(R.string.opening_holding_hint))
-            Choice(
-                stringResource(R.string.location), openingLocation.toString(),
-                listOf("0") + locations.map { it.id.toString() },
-                render = { value ->
-                    if (value == "0") noLocation
-                    else locations.firstOrNull { it.id.toString() == value }?.name ?: noLocation
-                },
-            ) { openingLocation = it.toLong() }
-            Field(stringResource(R.string.opening_quantity), openingQuantity, stringResource(R.string.optional), keyboardType = KeyboardType.Decimal) {
-                openingQuantity = it
-            }
-            Field(stringResource(R.string.average_purchase_price), openingAverage, stringResource(R.string.optional), keyboardType = KeyboardType.Decimal) {
-                openingAverage = it
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(active, { active = it })
-            Text(stringResource(R.string.asset_is_active))
-        }
-        Text(stringResource(R.string.tags), fontWeight = FontWeight.SemiBold)
-        tags.forEach { tag ->
-            Row(
-                Modifier.fillMaxWidth().toggleable(tag.id in selectedTagIds) {
-                    selectedTagIds = if (tag.id in selectedTagIds) selectedTagIds - tag.id else selectedTagIds + tag.id
-                },
-                verticalAlignment = Alignment.CenterVertically,
+            FolioSecondaryButton(
+                text = stringResource(R.string.discard_changes),
+                onClick = onCancel,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSaving,
+            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = FolioShapeTokens.medium,
             ) {
-                Checkbox(tag.id in selectedTagIds, null)
-                Text(tag.name)
+                Row(
+                    modifier = Modifier.padding(FolioSpacing.medium),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                ) {
+                    Icon(
+                        imageVector = FolioIcons.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(FolioIconSize.medium),
+                    )
+                    Text(
+                        text = stringResource(R.string.form_local_storage_note),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    }
+
+    if (showLocationSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showLocationSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = FolioSpacing.large)
+                    .padding(bottom = FolioSpacing.extraLarge),
+                verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                ) {
+                    Icon(
+                        imageVector = FolioIcons.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = stringResource(R.string.new_location),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (locations.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.existing_storage_pools),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                    ) {
+                        locations.forEach { location ->
+                            AssistChip(
+                                onClick = {
+                                    openingLocation = location.id
+                                    showLocationSheet = false
+                                },
+                                label = { Text(location.name) },
+                            )
+                        }
+                    }
+                }
+                FolioField(
+                    value = locationName,
+                    onValueChange = {
+                        locationName = it
+                        locationError = ""
+                    },
+                    label = stringResource(R.string.location_name),
+                    placeholder = stringResource(R.string.name),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = locationError.isNotBlank(),
+                    supportingText = locationError.takeIf(String::isNotBlank),
+                    singleLine = true,
+                )
+                FolioField(
+                    value = locationNotes,
+                    onValueChange = { locationNotes = it },
+                    label = stringResource(R.string.private_notes_optional),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+                    FolioPrimaryButton(
+                        text = stringResource(R.string.save_location),
+                        onClick = {
+                            if (locationName.isBlank()) {
+                                locationError = nameRequired
+                            } else {
+                                vm.saveLocationWithId(
+                                    name = locationName,
+                                    notes = locationNotes,
+                                    onError = { locationError = it },
+                                ) { savedId ->
+                                    openingLocation = savedId
+                                    locationName = ""
+                                    locationNotes = ""
+                                    locationError = ""
+                                    showLocationSheet = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isSaving,
+                    )
+                    FolioSecondaryButton(
+                        text = stringResource(R.string.cancel),
+                        onClick = { showLocationSheet = false },
+                        enabled = !isSaving,
+                    )
+                }
             }
         }
     }

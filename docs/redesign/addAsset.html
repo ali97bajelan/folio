@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary": "#472a00", "tertiary-fixed": "#e1e0ff", "background": "#051424", "error": "#ffb4ab", "surface": "#051424", "surface-variant": "#273647", "surface-container-highest": "#273647", "inverse-on-surface": "#233143", "surface-container-lowest": "#010f1f", "on-tertiary-fixed-variant": "#2f2ebe", "surface-container-low": "#0d1c2d", "outline": "#a08e7a", "on-tertiary": "#1000a9", "outline-variant": "#534434", "on-background": "#d4e4fa", "on-primary-container": "#613b00", "primary-fixed-dim": "#ffb95f", "surface-container": "#122131", "primary-container": "#f59e0b", "tertiary-fixed-dim": "#c0c1ff", "surface-bright": "#2c3a4c", "inverse-surface": "#d4e4fa", "on-tertiary-fixed": "#07006c", "secondary": "#4edea3", "on-secondary-container": "#00311f", "surface-tint": "#ffb95f", "inverse-primary": "#855300", "secondary-container": "#00a572", "on-surface-variant": "#d8c3ad", "surface-dim": "#051424", "tertiary": "#c7c8ff", "primary-fixed": "#ffddb8", "secondary-fixed-dim": "#4edea3", "surface-container-high": "#1c2b3c", "on-surface": "#d4e4fa", "on-secondary-fixed-variant": "#005236", "tertiary-container": "#a7a9ff", "on-secondary-fixed": "#002113", "on-primary-fixed": "#2a1700", "error-container": "#93000a", "on-primary-fixed-variant": "#653e00", "on-secondary": "#003824", "on-tertiary-container": "#2b29bb", "primary": "#ffc174", "on-error": "#690005", "on-error-container": "#ffdad6", "secondary-fixed": "#6ffbbe" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1.25rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter-sm": "0.75rem", "margin-sm": "1rem", "margin-lg": "3rem", "margin": "1.5rem", "gutter-lg": "1.5rem", "space-md": "1rem", "space-xl": "2.5rem" }, "fontFamily": { "headline-lg-mobile": [ "Plus Jakarta Sans" ], "headline-md": [ "Plus Jakarta Sans" ], "title-md": [ "Plus Jakarta Sans" ], "label-sm": [ "Inter" ], "headline-xl-mobile": [ "Plus Jakarta Sans" ], "body-lg": [ "Inter" ], "tabular-balance": [ "Inter" ], "tabular-balance-sm": [ "Inter" ], "label-md": [ "Inter" ], "headline-sm": [ "Plus Jakarta Sans" ], "headline-xl": [ "Plus Jakarta Sans" ], "body-md": [ "Inter" ], "headline-lg": [ "Plus Jakarta Sans" ], "body-sm": [ "Inter" ] }, "fontSize": { "headline-lg-mobile": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "headline-md": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "title-md": [ "16px", { "lineHeight": "24px", "fontWeight": "600" } ], "label-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "headline-xl-mobile": [ "30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "tabular-balance": [ "28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "tabular-balance-sm": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-md": [ "13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500" } ], "headline-sm": [ "20px", { "lineHeight": "28px", "fontWeight": "600" } ], "headline-xl": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-lg": [ "32px", { "lineHeight": "40px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-sm": [ "12px", { "lineHeight": "16px", "fontWeight": "400" } ] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#051424;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen selection:bg-secondary/30"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.25)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="Folio Brand Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrAyaaJpyBcmo1KuwOVWOnDvwb0lJ2RvaFpf2pR2nMEVo8Fc18I7fbxDje8fzrySreGm6lWbUGxAoAc0FeXOLJg_SgciGtXIWtg3mlHXghvXpax0QyN7MyeIpur9dWmIpTGmoPFWbFZfZzMhJs8kiByRPktJTspZrg0JV1rbZVa5d5gMF6OhXuEwZLzq_yq1zP9q2zWrsPuAZ24ozlSm3bbrVqa_ymhafadhkD5KCduV3w"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm font-bold tracking-tight text-on-surface">FOLIO</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant leading-none">Assets</span></div></div><div class="flex items-center gap-space-xs"><button aria-label="Refresh Live Quotes" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors active:scale-95"><span class="material-symbols-outlined text-[20px]">sync</span></button><button aria-label="Notifications" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface transition-colors relative active:scale-95"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-secondary ring-2 ring-surface"></span></button><div class="w-8 h-8 ml-space-xs rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-24 bg-surface"><div class="flex flex-col w-full px-margin-sm space-y-space-md pb-space-xl">
+<!-- Header Context Badge & Sub-heading -->
+<div class="flex items-center justify-between pt-space-xs">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="inline-flex items-center justify-center w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Asset Registry</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Add Asset</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Track digital tokens, physical bullion, or fiat balances</p>
+</div>
+<!-- Quick preset pill -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-primary hover:bg-surface-variant transition-all text-xs font-medium active:scale-95 shadow-sm" id="quick-preset-trigger" type="button">
+<span class="material-symbols-outlined text-[16px]">magic_button</span>
+<span>Quick Fill</span>
+</button>
+</div>
+<form class="space-y-space-md" id="add-asset-form" onsubmit="event.preventDefault();">
+<!-- Section 1: Asset Identity Card -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-md space-y-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[16px]">token</span>
+</span>
+<span class="font-title-md text-title-md text-on-surface">Asset Identity</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Step 1 of 4</span>
+</div>
+<!-- Asset Category Pill Selector -->
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">CATEGORY CLASSIFICATION</label>
+<div class="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-surface-container-lowest">
+<button class="cat-pill flex flex-col items-center py-2 px-1 rounded-lg bg-surface-container-high text-tertiary shadow-sm transition-all" data-cat="crypto" type="button">
+<span class="material-symbols-outlined text-[20px] mb-0.5" style="font-variation-settings: 'FILL' 1;">currency_bitcoin</span>
+<span class="font-label-sm text-[11px] font-semibold">Crypto</span>
+</button>
+<button class="cat-pill flex flex-col items-center py-2 px-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all" data-cat="metals" type="button">
+<span class="material-symbols-outlined text-[20px] mb-0.5">diamond</span>
+<span class="font-label-sm text-[11px] font-semibold">Metals</span>
+</button>
+<button class="cat-pill flex flex-col items-center py-2 px-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all" data-cat="fiat" type="button">
+<span class="material-symbols-outlined text-[20px] mb-0.5">payments</span>
+<span class="font-label-sm text-[11px] font-semibold">Fiat</span>
+</button>
+<button class="cat-pill flex flex-col items-center py-2 px-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all" data-cat="stocks" type="button">
+<span class="material-symbols-outlined text-[20px] mb-0.5">show_chart</span>
+<span class="font-label-sm text-[11px] font-semibold">Equities</span>
+</button>
+</div>
+</div>
+<!-- Name & Symbol Inputs -->
+<div class="space-y-space-sm">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">ASSET NAME</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-3 text-[18px] text-outline">badge</span>
+<input class="w-full bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors" id="asset-name" placeholder="e.g. Bitcoin, 18k Emami Coin, Tether" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">TICKER / SYMBOL</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-3 text-[18px] text-outline">tag</span>
+<input class="w-full uppercase bg-surface-container-low text-on-surface placeholder:text-outline font-body-md text-body-md pl-10 pr-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors font-semibold" id="asset-symbol" placeholder="BTC" type="text"/>
+</div>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">ACCOUNTING UNIT</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md px-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors" id="asset-unit">
+<option value="units">Units (Whole/Dec)</option>
+<option value="grams">Grams (gr)</option>
+<option value="ounces">Ounces (oz)</option>
+<option value="mesghal">Mesghal (مثقال)</option>
+<option value="lots">Standard Lots</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-[18px] text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Pricing & Market Sync -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-md space-y-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-6 h-6 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[16px]">sync_alt</span>
+</span>
+<span class="font-title-md text-title-md text-on-surface">Pricing &amp; Live Sync</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+          LIVE FEED
+        </span>
+</div>
+<!-- Pricing Mode Selector -->
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1.5">VALUATION METHOD</label>
+<div class="grid grid-cols-2 gap-2 p-1 rounded-lg bg-surface-container-lowest">
+<button class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" id="pricing-market-btn" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">candlestick_chart</span>
+<span>Market Live Feed</span>
+</button>
+<button class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-on-surface-variant font-label-md text-label-md transition-all" id="pricing-manual-btn" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>Manual Fixed</span>
+</button>
+</div>
+</div>
+<div class="space-y-space-sm" id="provider-fields">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">EXCHANGE / DATA ORACLE</label>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md pl-3 pr-10 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors" id="data-provider">
+<option value="nobitex">NOBITEX (Iran - IRT/USDT Pairs)</option>
+<option value="wallex">WALLEX (Tehran Orderbook)</option>
+<option value="coingecko">COINGECKO (Global Spot Index)</option>
+<option value="bonbast">BONBAST (Physical Gold &amp; Tehran FX)</option>
+<option value="binance">BINANCE (Aggregated Spot)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-[18px] text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant">FEED SYMBOL / PAIR</label>
+<span class="font-label-sm text-[11px] text-secondary">Verified Provider Pair</span>
+</div>
+<div class="relative">
+<input class="w-full uppercase bg-surface-container-low text-on-surface font-body-md text-body-md px-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors font-mono" id="market-pair" type="text" value="BTC/IRT"/>
+<div class="absolute right-2.5 top-2 flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-highest text-secondary text-xs font-mono">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>4,120,500,000 IRT</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Opening Custody & Vault Location -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-md space-y-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-6 h-6 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]">account_balance</span>
+</span>
+<span class="font-title-md text-title-md text-on-surface">Custody &amp; Opening Balance</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant italic">Optional</span>
+</div>
+<!-- Custody Location Select + Modal Trigger -->
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant">CUSTODY LOCATION / WALLET</label>
+<button class="font-label-sm text-[11px] text-primary hover:text-primary-fixed flex items-center gap-0.5 active:scale-95 transition-transform" id="open-loc-modal-btn" type="button">
+<span class="material-symbols-outlined text-[14px]">add_circle</span>
+<span>New Location</span>
+</button>
+</div>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-low text-on-surface font-body-md text-body-md pl-3 pr-10 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors" id="location-select">
+<option value="nobitex">Nobitex Hot Wallet (Exchange)</option>
+<option value="wallex">Wallex Account</option>
+<option value="aban">Aban Tether</option>
+<option value="digipay">Digipay Cash Stash</option>
+<option value="ledger">Ledger Nano X (Cold Vault)</option>
+<option value="safe">Physical Home Safe (Precious Metals)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-[18px] text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Opening Quantity & Purchase Price Rows -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">INITIAL QUANTITY</label>
+<input class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors font-mono" id="input-qty" placeholder="0.00" step="any" type="number"/>
+</div>
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant">AVG BUY PRICE</label>
+<button class="font-label-sm text-[10px] text-tertiary uppercase font-mono px-1 rounded bg-surface-container-highest" id="price-unit-toggle" type="button">USD</button>
+</div>
+<input class="w-full bg-surface-container-low text-on-surface font-body-md text-body-md px-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container-highest transition-colors font-mono" id="input-price" placeholder="$ 0.00" step="any" type="number"/>
+</div>
+</div>
+<!-- Calculated Real-Time Summary Chip -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">calculate</span>
+<div>
+<div class="font-label-sm text-[11px] text-on-surface-variant uppercase">Initial Book Value</div>
+<div class="font-body-md text-body-md font-semibold text-on-surface font-mono" id="est-value">$0.00 <span class="text-xs text-on-surface-variant font-normal">(~0 Toman)</span></div>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-secondary/10 text-secondary text-[11px] font-semibold">Zero Fees</span>
+</div>
+</div>
+<!-- Section 4: Risk Exposure, Active Status & Currency Tags -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-md space-y-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-6 h-6 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+</span>
+<span class="font-title-md text-title-md text-on-surface">Portfolio Integration</span>
+</div>
+</div>
+<!-- Active Toggle Switch -->
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">toggle_on</span>
+<div>
+<div class="font-body-md text-body-md font-medium text-on-surface">Asset is Active</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Include in Total Net Worth and Allocation Bars</div>
+</div>
+</div>
+<div class="relative inline-flex items-center">
+<input checked="" class="sr-only peer" id="active-toggle" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</div>
+</label>
+<!-- Currency Exposure Tags / Badges -->
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">CURRENCY BENCHMARK &amp; EXPOSURE TAGS</label>
+<div class="flex flex-wrap gap-2">
+<!-- Tag 1: USD Pegged -->
+<label class="tag-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer bg-surface-container-highest text-tertiary transition-all">
+<input checked="" class="sr-only" type="checkbox"/>
+<span class="material-symbols-outlined text-[14px]">attach_money</span>
+<span class="font-label-sm text-[12px]">دلاری / USD-Pegged</span>
+</label>
+<!-- Tag 2: IRT Pegged -->
+<label class="tag-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer bg-surface-container-low text-on-surface-variant transition-all hover:text-on-surface">
+<input class="sr-only" type="checkbox"/>
+<span class="material-symbols-outlined text-[14px]">price_change</span>
+<span class="font-label-sm text-[12px]">ریالی / IRT-Indexed</span>
+</label>
+<!-- Tag 3: Inflation Hedge -->
+<label class="tag-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer bg-surface-container-low text-on-surface-variant transition-all hover:text-on-surface">
+<input class="sr-only" type="checkbox"/>
+<span class="material-symbols-outlined text-[14px]">shield</span>
+<span class="font-label-sm text-[12px]">Inflation Hedge</span>
+</label>
+<!-- Tag 4: Staking Yield -->
+<label class="tag-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer bg-surface-container-low text-on-surface-variant transition-all hover:text-on-surface">
+<input class="sr-only" type="checkbox"/>
+<span class="material-symbols-outlined text-[14px]">savings</span>
+<span class="font-label-sm text-[12px]">Yield Generator</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="pt-2 space-y-2">
+<button class="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-primary text-on-primary font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary-fixed-dim transition-all active:scale-[0.98]" id="save-asset-btn" type="submit">
+<span class="material-symbols-outlined text-[20px]">add_task</span>
+<span>Save Asset to Portfolio</span>
+</button>
+<button class="w-full py-3 px-6 rounded-xl bg-surface-container-high text-on-surface font-body-md text-body-md font-medium hover:bg-surface-variant transition-colors active:scale-[0.98] text-center" id="cancel-btn" type="button">
+        Discard Changes
+      </button>
+</div>
+</form>
+<!-- Contextual Helper / Security Guarantee Footer -->
+<div class="p-space-sm rounded-lg bg-surface-container-lowest flex items-start gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">verified_user</span>
+<p class="font-body-sm text-[11px] text-on-surface-variant leading-relaxed">
+      Folio encrypts asset identities locally on this device. Live market sync queries public oracle feeds without exposing your custody holdings or wallet addresses.
+    </p>
+</div>
+<!-- Micro-Modal: Add / Manage Custody Location (Interactive Sheet) -->
+<div class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-background/80 backdrop-blur-md transition-opacity" id="location-modal">
+<div class="w-full max-w-md bg-surface-container-high rounded-t-2xl sm:rounded-2xl shadow-2xl p-space-md space-y-space-md animate-in slide-in-from-bottom duration-200">
+<!-- Modal Header -->
+<div class="flex items-center justify-between pb-2">
+<div class="flex items-center gap-2">
+<span class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">New Location</h2>
+</div>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface bg-surface-container" id="close-loc-modal-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Existing Locations List Quick Overview -->
+<div>
+<span class="block font-label-sm text-label-sm text-on-surface-variant mb-1.5 uppercase">Existing Storage Pools</span>
+<div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+<span class="px-2.5 py-1 rounded-md bg-surface-container text-xs text-on-surface">Nobitex</span>
+<span class="px-2.5 py-1 rounded-md bg-surface-container text-xs text-on-surface">Wallex</span>
+<span class="px-2.5 py-1 rounded-md bg-surface-container text-xs text-on-surface">Aban Tether</span>
+<span class="px-2.5 py-1 rounded-md bg-surface-container text-xs text-on-surface">Digipay</span>
+<span class="px-2.5 py-1 rounded-md bg-surface-container text-xs text-on-surface">Physical Vault</span>
+</div>
+</div>
+<!-- Add New Location Form Inputs -->
+<div class="space-y-space-sm pt-1">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">LOCATION / VAULT NAME</label>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-md text-body-md px-3 py-2.5 rounded-lg focus:outline-none focus:bg-surface-container" id="new-loc-name" placeholder="e.g. Trezor Model T, Safe Deposit Box #4" type="text"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">PRIVATE NOTES (OPTIONAL)</label>
+<textarea class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline font-body-md text-body-md px-3 py-2 rounded-lg focus:outline-none focus:bg-surface-container resize-none" id="new-loc-notes" placeholder="e.g. Offline multi-sig hardware in branch safety deposit" rows="2"></textarea>
+</div>
+</div>
+<!-- Modal Actions -->
+<div class="flex items-center gap-2 pt-2">
+<button class="flex-1 py-3 px-4 rounded-xl bg-primary text-on-primary font-title-md text-title-md font-bold hover:bg-primary-fixed-dim transition-colors text-center" id="confirm-add-location" type="button">
+          Save Location
+        </button>
+<button class="py-3 px-4 rounded-xl bg-surface-container text-on-surface font-body-md text-body-md hover:bg-surface-container-highest transition-colors" id="cancel-loc-modal-btn" type="button">
+          Cancel
+        </button>
+</div>
+</div>
+</div>
+<!-- Toast Notification Overlay -->
+<div class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-secondary text-on-secondary px-4 py-2.5 rounded-xl font-label-md text-label-md shadow-xl flex items-center gap-2 transition-all" id="toast">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span id="toast-text">Asset Saved Successfully!</span>
+</div>
+</div>
+<script>
+  (function initAddAssetFlow() {
+    // 1. Category Switcher
+    const catButtons = document.querySelectorAll('.cat-pill');
+    catButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        catButtons.forEach(b => {
+          b.className = 'cat-pill flex flex-col items-center py-2 px-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-all';
+        });
+        btn.className = 'cat-pill flex flex-col items-center py-2 px-1 rounded-lg bg-surface-container-high text-tertiary shadow-sm transition-all';
+      });
+    });
+
+    // 2. Pricing Method Toggle
+    const marketBtn = document.getElementById('pricing-market-btn');
+    const manualBtn = document.getElementById('pricing-manual-btn');
+    const providerFields = document.getElementById('provider-fields');
+
+    marketBtn.addEventListener('click', () => {
+      marketBtn.className = 'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm';
+      manualBtn.className = 'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-on-surface-variant font-label-md text-label-md transition-all';
+      providerFields.style.opacity = '1';
+      providerFields.style.pointerEvents = 'auto';
+    });
+
+    manualBtn.addEventListener('click', () => {
+      manualBtn.className = 'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm';
+      marketBtn.className = 'flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-on-surface-variant font-label-md text-label-md transition-all';
+      providerFields.style.opacity = '0.4';
+      providerFields.style.pointerEvents = 'none';
+    });
+
+    // 3. Currency Toggle & Real-time Book Value calculation
+    const qtyInput = document.getElementById('input-qty');
+    const priceInput = document.getElementById('input-price');
+    const estValueEl = document.getElementById('est-value');
+    const priceUnitToggle = document.getElementById('price-unit-toggle');
+    let currentCurrency = 'USD';
+
+    function recalculateValue() {
+      const q = parseFloat(qtyInput.value) || 0;
+      const p = parseFloat(priceInput.value) || 0;
+      const total = q * p;
+      if (currentCurrency === 'USD') {
+        const tomanVal = total * 61500;
+        estValueEl.innerHTML = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-xs text-on-surface-variant font-normal">(~${tomanVal.toLocaleString()} Toman)</span>`;
+      } else {
+        const usdVal = total > 0 ? (total / 61500) : 0;
+        estValueEl.innerHTML = `${total.toLocaleString()} Toman <span class="text-xs text-on-surface-variant font-normal">(~$${usdVal.toFixed(2)})</span>`;
+      }
+    }
+
+    qtyInput.addEventListener('input', recalculateValue);
+    priceInput.addEventListener('input', recalculateValue);
+
+    priceUnitToggle.addEventListener('click', () => {
+      if (currentCurrency === 'USD') {
+        currentCurrency = 'IRT';
+        priceUnitToggle.textContent = 'IRT / Toman';
+      } else {
+        currentCurrency = 'USD';
+        priceUnitToggle.textContent = 'USD';
+      }
+      recalculateValue();
+    });
+
+    // 4. Multi-Select Tags Logic
+    const tagChips = document.querySelectorAll('.tag-chip');
+    tagChips.forEach(chip => {
+      const checkbox = chip.querySelector('input[type="checkbox"]');
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        checkbox.checked = !checkbox.checked;
+        if (checkbox.checked) {
+          chip.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+          chip.classList.add('bg-surface-container-highest', 'text-tertiary');
+        } else {
+          chip.classList.remove('bg-surface-container-highest', 'text-tertiary');
+          chip.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+        }
+      });
+    });
+
+    // 5. Quick Preset Filler
+    const quickBtn = document.getElementById('quick-preset-trigger');
+    quickBtn.addEventListener('click', () => {
+      document.getElementById('asset-name').value = 'Ethereum';
+      document.getElementById('asset-symbol').value = 'ETH';
+      document.getElementById('market-pair').value = 'ETH/USDT';
+      document.getElementById('input-qty').value = '1.75';
+      document.getElementById('input-price').value = '3450';
+      recalculateValue();
+      showToast('Quick sample filled (Ethereum)');
+    });
+
+    // 6. Location Modal Interactions
+    const locModal = document.getElementById('location-modal');
+    const openLocBtn = document.getElementById('open-loc-modal-btn');
+    const closeLocBtn = document.getElementById('close-loc-modal-btn');
+    const cancelLocBtn = document.getElementById('cancel-loc-modal-btn');
+    const confirmAddLoc = document.getElementById('confirm-add-location');
+    const locSelect = document.getElementById('location-select');
+    const newLocName = document.getElementById('new-loc-name');
+
+    function openModal() { locModal.classList.remove('hidden'); }
+    function closeModal() { locModal.classList.add('hidden'); }
+
+    openLocBtn.addEventListener('click', openModal);
+    closeLocBtn.addEventListener('click', closeModal);
+    cancelLocBtn.addEventListener('click', closeModal);
+
+    confirmAddLoc.addEventListener('click', () => {
+      const val = newLocName.value.trim();
+      if (val) {
+        const opt = document.createElement('option');
+        opt.value = val.toLowerCase().replace(/\\s+/g, '-');
+        opt.textContent = val + ' (Custom)';
+        locSelect.appendChild(opt);
+        locSelect.value = opt.value;
+        newLocName.value = '';
+        closeModal();
+        showToast('Location added and selected');
+      } else {
+        newLocName.focus();
+      }
+    });
+
+    // 7. Toast Handler
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toast-text');
+    let toastTimeout;
+
+    function showToast(msg) {
+      clearTimeout(toastTimeout);
+      toastText.textContent = msg;
+      toast.classList.remove('hidden');
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // 8. Form Submission Simulation
+    const form = document.getElementById('add-asset-form');
+    form.addEventListener('submit', () => {
+      const name = document.getElementById('asset-name').value || 'Asset';
+      showToast(`Saved "${name}" to Folio Portfolio`);
+    });
+
+    const cancelBtn = document.getElementById('cancel-btn');
+    cancelBtn.addEventListener('click', () => {
+      form.reset();
+      recalculateValue();
+      showToast('Changes discarded');
+    });
+
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.35)]" data-active-classes="text-tertiary bg-surface-container-high/60 shadow-[0_0_16px_rgba(199,200,255,0.15)]"><div class="flex justify-around items-center h-20 px-gutter-sm"><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-space-sm py-1 rounded-xl text-on-surface-variant hover:text-on-surface transition-all duration-200 group" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">monitoring</span><span class="font-label-sm text-label-sm mt-0.5">Dashboard</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-space-sm py-1 rounded-xl transition-all duration-200 group text-tertiary bg-surface-container-high/60 shadow-[0_0_16px_rgba(199,200,255,0.15)]" data-path="assets" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">account_balance_wallet</span><span class="font-label-sm text-label-sm mt-0.5">Assets</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-space-sm py-1 rounded-xl text-on-surface-variant hover:text-on-surface transition-all duration-200 group" data-path="transactions" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">receipt_long</span><span class="font-label-sm text-label-sm mt-0.5">History</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] px-space-sm py-1 rounded-xl text-on-surface-variant hover:text-on-surface transition-all duration-200 group" data-path="more" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">tune</span><span class="font-label-sm text-label-sm mt-0.5">More</span></a></div></nav></body></html>

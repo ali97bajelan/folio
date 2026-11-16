@@ -231,6 +231,12 @@ class MainViewModel(
         save(onError, { _: Long -> done() }) { repo.saveTag(name) }
     fun saveLocation(name: String, notes: String, onError: (String) -> Unit = ::showError, done: () -> Unit = {}) =
         save(onError, { _: Long -> done() }) { repo.saveLocation(name, notes) }
+    fun saveLocationWithId(
+        name: String,
+        notes: String,
+        onError: (String) -> Unit = ::showError,
+        done: (Long) -> Unit,
+    ) = save(onError, done) { repo.saveLocation(name, notes) }
     fun refreshDashboard() { refresh.value++ }
     fun refreshPrices() {
         if (_isRefreshing.value) return
