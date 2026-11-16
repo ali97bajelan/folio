@@ -1268,7 +1268,11 @@ private fun assetSortLabelResource(sort: AssetSort) = when (sort) {
 }
 
 @Composable
-private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
+private fun Assets(
+    vm: MainViewModel,
+    open: (Long) -> Unit,
+    add: () -> Unit,
+) {
     val data by vm.dashboard.collectAsStateWithLifecycle()
     val history by vm.assetTypeHistory.collectAsStateWithLifecycle()
     var order by rememberSaveable { mutableStateOf(AssetSort.VALUE) }
@@ -1289,109 +1293,106 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium),
-        verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium)
+                .padding(bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
         ) {
-            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = FolioShapeTokens.pill) {
-                Text(
-                    text = data.assetRows.size.toString(),
-                    color = MaterialTheme.colorScheme.tertiary,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AssetStatusSelector(
+                    selected = filter,
+                    onSelected = { filter = it },
+                    modifier = Modifier.weight(1f),
                 )
-            }
-            FolioPrimaryButton(stringResource(R.string.add_asset), add)
-        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AssetStatusSelector(
-                selected = filter,
-                onSelected = { filter = it },
-                modifier = Modifier.weight(1f),
-            )
-
-            Box {
-                TextButton(
-                    onClick = { sortMenuExpanded = true },
-                    modifier = Modifier.widthIn(min = 96.dp, max = 140.dp)
-                        .heightIn(min = FolioMinimumTouchTarget),
-                    contentPadding = PaddingValues(horizontal = FolioSpacing.small, vertical = 0.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                Box {
+                    TextButton(
+                        onClick = { sortMenuExpanded = true },
+                        modifier = Modifier.widthIn(min = 96.dp, max = 140.dp)
+                            .heightIn(min = FolioMinimumTouchTarget),
+                        contentPadding = PaddingValues(horizontal = FolioSpacing.small, vertical = 0.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.assets_sort_by),
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = stringResource(assetSortLabelResource(order)),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.assets_sort_by),
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = stringResource(assetSortLabelResource(order)),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+
+                    DropdownMenu(
+                        expanded = sortMenuExpanded,
+                        onDismissRequest = { sortMenuExpanded = false },
+                    ) {
+                        AssetSort.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(assetSortLabelResource(option))) },
+                                onClick = {
+                                    order = option
+                                    sortMenuExpanded = false
+                                },
+                                trailingIcon = {
+                                    if (order == option) {
+                                        Icon(Icons.Filled.Check, contentDescription = null)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (rows.isEmpty()) {
+                PanelCard(Modifier.fillMaxWidth()) {
+                    FolioStateMessage(
+                        message = stringResource(R.string.assets_empty_copy),
+                        title = stringResource(R.string.assets_empty_title),
+                        kind = FolioMessageKind.Empty,
                     )
                 }
-
-                DropdownMenu(
-                    expanded = sortMenuExpanded,
-                    onDismissRequest = { sortMenuExpanded = false },
-                ) {
-                    AssetSort.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(assetSortLabelResource(option))) },
-                            onClick = {
-                                order = option
-                                sortMenuExpanded = false
-                            },
-                            trailingIcon = {
-                                if (order == option) {
-                                    Icon(Icons.Filled.Check, contentDescription = null)
-                                }
-                            },
-                        )
-                    }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+                    rows.forEach { item -> AssetRowItem(item, open) }
                 }
             }
+
+            PanelCard(Modifier.fillMaxWidth()) { AssetTypeHistoryChart(history) }
         }
 
-        if (rows.isEmpty()) {
-            Empty(
-                title = stringResource(R.string.assets_empty_title),
-                copy = stringResource(R.string.assets_empty_copy),
-                action = add,
-            )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
-                rows.forEach { item -> AssetRowItem(item, open) }
-            }
-        }
-
-        PanelCard(Modifier.fillMaxWidth()) { AssetTypeHistoryChart(history) }
+        ExtendedFloatingActionButton(
+            onClick = add,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = FolioSpacing.large, bottom = FolioSpacing.medium),
+            icon = { Icon(FolioIcons.AccountBalanceWallet, contentDescription = null) },
+            text = { Text(stringResource(R.string.add_asset)) },
+        )
     }
 }
 
@@ -1513,63 +1514,70 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
     val assets by vm.assets.collectAsStateWithLifecycle()
     val assetsById = assets.associateBy { it.id }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium),
-        verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium)
+                .padding(bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
         ) {
-            FolioPrimaryButton(stringResource(R.string.add_transaction), add)
-        }
-        if (transactions.isEmpty()) {
-            Empty(
-                title = stringResource(R.string.transactions_empty_title),
-                copy = stringResource(R.string.transactions_empty_copy),
-                actionLabel = stringResource(R.string.add_transaction),
-                action = add,
-            )
-        }
+            if (transactions.isEmpty()) {
+                PanelCard(Modifier.fillMaxWidth()) {
+                    FolioStateMessage(
+                        message = stringResource(R.string.transactions_empty_copy),
+                        title = stringResource(R.string.transactions_empty_title),
+                        kind = FolioMessageKind.Empty,
+                    )
+                }
+            }
 
-        if (transactions.isNotEmpty()) {
-            PanelCard(Modifier.fillMaxWidth()) {
-                transactions.forEachIndexed { index, transaction ->
-                    val isPurchase = transaction.transactionType == PortfolioCodes.BUY
-                    val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
-                    val assetSymbol = assetsById[transaction.assetId]?.symbol
-                        ?: stringResource(R.string.empty_value)
+            if (transactions.isNotEmpty()) {
+                PanelCard(Modifier.fillMaxWidth()) {
+                    transactions.forEachIndexed { index, transaction ->
+                        val isPurchase = transaction.transactionType == PortfolioCodes.BUY
+                        val transactionLabel = stringResource(if (isPurchase) R.string.buy else R.string.sell)
+                        val assetSymbol = assetsById[transaction.assetId]?.symbol
+                            ?: stringResource(R.string.empty_value)
 
-                    FolioListRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { edit(transaction.id) },
-                        trailing = {
-                            Pill(
-                                transactionLabel,
-                                if (isPurchase) LocalFolioSemanticColors.current.gain
-                                else LocalFolioSemanticColors.current.loss,
+                        FolioListRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { edit(transaction.id) },
+                            trailing = {
+                                Pill(
+                                    transactionLabel,
+                                    if (isPurchase) LocalFolioSemanticColors.current.gain
+                                    else LocalFolioSemanticColors.current.loss,
+                                )
+                            },
+                        ) {
+                            Text(
+                                "$transactionLabel · ${isolateFinancialText(assetSymbol)}",
+                                fontWeight = FontWeight.SemiBold,
                             )
-                        },
-                    ) {
-                        Text(
-                            "$transactionLabel · ${isolateFinancialText(assetSymbol)}",
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        FolioFinancialValue(
-                            value = "${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            isolateDirection = false,
-                        )
-                    }
-                    if (index < transactions.lastIndex) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+                            FolioFinancialValue(
+                                value = "${number(transaction.quantity)} · ${dateFormat.format(transaction.executedAt)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                isolateDirection = false,
+                            )
+                        }
+                        if (index < transactions.lastIndex) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+                        }
                     }
                 }
             }
         }
+
+        ExtendedFloatingActionButton(
+            onClick = add,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = FolioSpacing.large, bottom = FolioSpacing.medium),
+            icon = { Icon(FolioIcons.ReceiptLong, contentDescription = null) },
+            text = { Text(stringResource(R.string.add_transaction)) },
+        )
     }
 }
 
@@ -2888,14 +2896,4 @@ private fun <T> SingleChoiceRow(
     onSelected = select,
     optionLabel = render,
 )
-@Composable
-private fun Empty(
-    title: String,
-    copy: String,
-    actionLabel: String = stringResource(R.string.add_asset),
-    action: () -> Unit,
-) = PanelCard(Modifier.fillMaxWidth()) {
-    FolioStateMessage(message = copy, title = title, kind = FolioMessageKind.Empty)
-    Spacer(Modifier.height(FolioSpacing.small))
-    FolioPrimaryButton(actionLabel, action)
-}
+
