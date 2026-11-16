@@ -218,6 +218,7 @@ fun PortfolioApp(
     val contextualTitle = when (currentRoute) {
         "tags" -> stringResource(R.string.tags)
         "locations" -> stringResource(R.string.locations)
+        "appearance-language" -> stringResource(R.string.appearance_language)
         "asset/new" -> stringResource(R.string.nav_assets)
         "asset/{id}" -> stringResource(R.string.asset_details)
         "asset/edit/{id}" -> stringResource(R.string.nav_assets)
@@ -235,12 +236,12 @@ fun PortfolioApp(
             topBar = {
                 if (isTopLevelRoute) {
                     FolioBrandTopBar(
-                        sectionLabel = when (currentRoute) {
+                        sectionTitle = when (currentRoute) {
                             "dashboard" -> stringResource(R.string.dashboard_title)
                             "assets" -> stringResource(R.string.nav_assets)
                             "transactions" -> stringResource(R.string.nav_transactions)
                             "settings" -> stringResource(R.string.nav_more)
-                            else -> null
+                            else -> stringResource(R.string.dashboard_title)
                         },
                     )
                 } else {
@@ -293,8 +294,13 @@ fun PortfolioApp(
                 }
                 composable("settings") {
                     Settings(
+                        appearanceLanguage = { navigationController.navigate("appearance-language") },
                         tags = { navigationController.navigate("tags") },
                         locations = { navigationController.navigate("locations") },
+                    )
+                }
+                composable("appearance-language") {
+                    AppearanceLanguageSettings(
                         languagePreferences = languagePreferences,
                         theme = theme,
                         onThemeSelected = { selected ->
@@ -364,7 +370,7 @@ fun PortfolioApp(
 }
 
 @Composable
-private fun FolioBrandTopBar(sectionLabel: String?) {
+private fun FolioBrandTopBar(sectionTitle: String) {
     Surface(
         color = MaterialTheme.colorScheme.background,
         tonalElevation = FolioElevation.level1,
@@ -384,21 +390,14 @@ private fun FolioBrandTopBar(sectionLabel: String?) {
                 },
             )
             Spacer(Modifier.width(FolioSpacing.medium))
-            Column {
-                Text(
-                    text = "FOLIO",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
-                )
-                sectionLabel?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            Text(
+                text = sectionTitle,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -437,7 +436,7 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
 private fun Page(
     title: String,
     modifier: Modifier = Modifier,
-    subtitle: String = stringResource(R.string.personal_wealth),
+    subtitle: String? = stringResource(R.string.personal_wealth),
     actionAlignment: Alignment.Horizontal = Alignment.End,
     action: (@Composable () -> Unit)? = null,
     showHeading: Boolean = true,
@@ -1245,25 +1244,14 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = FolioShapeTokens.pill) {
                 Text(
-                    text = stringResource(R.string.nav_assets),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    text = data.assetRows.size.toString(),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 )
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = FolioShapeTokens.pill) {
-                    Text(
-                        text = data.assetRows.size.toString(),
-                        color = MaterialTheme.colorScheme.tertiary,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    )
-                }
             }
             FolioPrimaryButton(stringResource(R.string.add_asset), add)
         }
@@ -1445,11 +1433,19 @@ private fun Transactions(vm: MainViewModel, add: () -> Unit, edit: (Long) -> Uni
     val assets by vm.assets.collectAsStateWithLifecycle()
     val assetsById = assets.associateBy { it.id }
 
-    Page(
-        stringResource(R.string.nav_transactions),
-        actionAlignment = Alignment.Start,
-        action = { FolioPrimaryButton(stringResource(R.string.add_transaction), add) },
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium),
+        verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            FolioPrimaryButton(stringResource(R.string.add_transaction), add)
+        }
         if (transactions.isEmpty()) {
             Empty(
                 title = stringResource(R.string.transactions_empty_title),
@@ -2599,43 +2595,18 @@ private fun TransactionForm(
 @Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf(PortfolioCodes.IRT)};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf(PortfolioCodes.IRT,PortfolioCodes.USD,PortfolioCodes.USDT)){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
 @Composable
 private fun Settings(
+    appearanceLanguage: () -> Unit,
     tags: () -> Unit,
     locations: () -> Unit,
-    languagePreferences: LanguagePreferences,
-    theme: AppTheme,
-    onThemeSelected: (AppTheme) -> Unit,
 ) {
-    var language by remember { mutableStateOf(languagePreferences.current()) }
-    Page(stringResource(R.string.nav_more)) {
+    Page(stringResource(R.string.nav_more), subtitle = null, showHeading = false) {
         PanelCard(Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.appearance), fontWeight = FontWeight.Bold)
-            Tiny(stringResource(R.string.appearance_hint))
-            Spacer(Modifier.height(8.dp))
-            SingleChoiceRow(
-                theme,
-                listOf(AppTheme.DARK, AppTheme.LIGHT, AppTheme.SYSTEM),
-                render = { item ->
-                    stringResource(
-                        when (item) {
-                            AppTheme.DARK -> R.string.theme_dark
-                            AppTheme.LIGHT -> R.string.theme_light
-                            AppTheme.SYSTEM -> R.string.theme_system
-                        },
-                    )
-                },
-                select = onThemeSelected,
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        PanelCard(Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.language), fontWeight=FontWeight.Bold)
-            Tiny(stringResource(R.string.language_hint))
-            Spacer(Modifier.height(8.dp))
-            SingleChoiceRow(language, AppLanguage.entries.toList(), render = { item ->
-                stringResource(if (item == AppLanguage.PERSIAN) R.string.language_persian else R.string.language_english)
-            }) { selected ->
-                language = selected
-                languagePreferences.set(selected)
+            FolioListRow(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = appearanceLanguage,
+            ) {
+                Text(stringResource(R.string.appearance_language), fontWeight = FontWeight.Bold)
+                Tiny(stringResource(R.string.appearance_language_hint))
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -2659,6 +2630,50 @@ private fun Settings(
             }
         }
         Spacer(Modifier.height(20.dp));Tiny(stringResource(R.string.local_data_hint))
+    }
+}
+
+@Composable
+private fun AppearanceLanguageSettings(
+    languagePreferences: LanguagePreferences,
+    theme: AppTheme,
+    onThemeSelected: (AppTheme) -> Unit,
+) {
+    var language by remember { mutableStateOf(languagePreferences.current()) }
+    Page(stringResource(R.string.appearance_language), subtitle = null, showHeading = false) {
+        PanelCard(Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.appearance), fontWeight = FontWeight.Bold)
+            Tiny(stringResource(R.string.appearance_hint))
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceRow(
+                theme,
+                listOf(AppTheme.DARK, AppTheme.LIGHT, AppTheme.SYSTEM),
+                render = { item ->
+                    stringResource(
+                        when (item) {
+                            AppTheme.DARK -> R.string.theme_dark
+                            AppTheme.LIGHT -> R.string.theme_light
+                            AppTheme.SYSTEM -> R.string.theme_system
+                        },
+                    )
+                },
+                select = onThemeSelected,
+            )
+
+            Spacer(Modifier.height(FolioSpacing.medium))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+            Spacer(Modifier.height(FolioSpacing.medium))
+
+            Text(stringResource(R.string.language), fontWeight = FontWeight.Bold)
+            Tiny(stringResource(R.string.language_hint))
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceRow(language, AppLanguage.entries.toList(), render = { item ->
+                stringResource(if (item == AppLanguage.PERSIAN) R.string.language_persian else R.string.language_english)
+            }) { selected ->
+                language = selected
+                languagePreferences.set(selected)
+            }
+        }
     }
 }
 @Composable

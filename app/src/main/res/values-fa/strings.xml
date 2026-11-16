@@ -55,6 +55,8 @@
     <string name="language_hint">زبان نمایش برنامه را انتخاب کنید.</string>
     <string name="language_persian">فارسی</string>
     <string name="language_english">English</string>
+    <string name="appearance_language">ظاهر و زبان</string>
+    <string name="appearance_language_hint">تم برنامه و زبان نمایش را انتخاب کنید.</string>
     <string name="appearance">پوسته</string>
     <string name="appearance_hint">تم تیره، روشن یا هماهنگ با تنظیمات دستگاه را انتخاب کنید.</string>
     <string name="theme_dark">تیره</string>
