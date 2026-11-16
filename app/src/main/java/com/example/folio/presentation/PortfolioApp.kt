@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -234,10 +235,12 @@ fun PortfolioApp(
             topBar = {
                 if (isTopLevelRoute) {
                     FolioBrandTopBar(
-                        sectionLabel = if (currentRoute == "dashboard") {
-                            stringResource(R.string.dashboard_title)
-                        } else {
-                            null
+                        sectionLabel = when (currentRoute) {
+                            "dashboard" -> stringResource(R.string.dashboard_title)
+                            "assets" -> stringResource(R.string.nav_assets)
+                            "transactions" -> stringResource(R.string.nav_transactions)
+                            "settings" -> stringResource(R.string.nav_more)
+                            else -> null
                         },
                     )
                 } else {
@@ -370,6 +373,17 @@ private fun FolioBrandTopBar(sectionLabel: String?) {
             Modifier.fillMaxWidth().height(64.dp).padding(horizontal = FolioSpacing.large),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            AndroidView(
+                modifier = Modifier.size(40.dp),
+                factory = { context ->
+                    android.widget.ImageView(context).apply {
+                        setImageResource(R.mipmap.ic_launcher)
+                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        contentDescription = null
+                    }
+                },
+            )
+            Spacer(Modifier.width(FolioSpacing.medium))
             Column {
                 Text(
                     text = "FOLIO",
