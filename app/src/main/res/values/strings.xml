@@ -45,6 +45,11 @@
     <string name="language_hint">Choose the app display language.</string>
     <string name="language_persian">فارسی</string>
     <string name="language_english">English</string>
+    <string name="appearance">Theme</string>
+    <string name="appearance_hint">Choose dark, light, or follow your system setting.</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">System</string>
     <string name="tags">Tags</string>
     <string name="tags_hint">Organize your assets</string>
     <string name="locations">Locations</string>

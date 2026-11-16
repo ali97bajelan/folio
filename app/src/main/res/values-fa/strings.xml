@@ -45,6 +45,11 @@
     <string name="language_hint">زبان نمایش برنامه را انتخاب کنید.</string>
     <string name="language_persian">فارسی</string>
     <string name="language_english">English</string>
+    <string name="appearance">پوسته</string>
+    <string name="appearance_hint">تم تیره، روشن یا هماهنگ با تنظیمات دستگاه را انتخاب کنید.</string>
+    <string name="theme_dark">تیره</string>
+    <string name="theme_light">روشن</string>
+    <string name="theme_system">سیستم</string>
     <string name="tags">برچسب‌ها</string>
     <string name="tags_hint">دسته‌بندی دارایی‌ها</string>
     <string name="locations">محل نگهداری</string>

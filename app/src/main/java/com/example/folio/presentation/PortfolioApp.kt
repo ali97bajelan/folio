@@ -172,7 +172,9 @@ internal fun isFolioTopLevelRoute(route: String): Boolean =
 fun PortfolioApp(
     factory: ViewModelProvider.Factory,
     languagePreferences: LanguagePreferences,
+    themePreferences: ThemePreferences,
 ) {
+    var theme by remember { mutableStateOf(themePreferences.current()) }
     val viewModel: MainViewModel = viewModel(factory = factory)
     val navigationController = rememberNavController()
     val snackbarHost = remember { SnackbarHostState() }
@@ -201,7 +203,7 @@ fun PortfolioApp(
     }
     val backDescription = stringResource(R.string.back)
 
-    FolioTheme {
+    FolioTheme(theme = theme) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHost) },
@@ -259,6 +261,11 @@ fun PortfolioApp(
                         tags = { navigationController.navigate("tags") },
                         locations = { navigationController.navigate("locations") },
                         languagePreferences = languagePreferences,
+                        theme = theme,
+                        onThemeSelected = { selected ->
+                            theme = selected
+                            themePreferences.set(selected)
+                        },
                     )
                 }
                 composable("tags") {
@@ -1540,9 +1547,36 @@ private fun TransactionForm(
     }
 }
 @Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf(PortfolioCodes.IRT)};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf(PortfolioCodes.IRT,PortfolioCodes.USD,PortfolioCodes.USDT)){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
-@Composable private fun Settings(tags:()->Unit,locations:()->Unit,languagePreferences: LanguagePreferences) {
+@Composable
+private fun Settings(
+    tags: () -> Unit,
+    locations: () -> Unit,
+    languagePreferences: LanguagePreferences,
+    theme: AppTheme,
+    onThemeSelected: (AppTheme) -> Unit,
+) {
     var language by remember { mutableStateOf(languagePreferences.current()) }
     Page(stringResource(R.string.nav_more)) {
+        PanelCard(Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.appearance), fontWeight = FontWeight.Bold)
+            Tiny(stringResource(R.string.appearance_hint))
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceRow(
+                theme,
+                listOf(AppTheme.DARK, AppTheme.LIGHT, AppTheme.SYSTEM),
+                render = { item ->
+                    stringResource(
+                        when (item) {
+                            AppTheme.DARK -> R.string.theme_dark
+                            AppTheme.LIGHT -> R.string.theme_light
+                            AppTheme.SYSTEM -> R.string.theme_system
+                        },
+                    )
+                },
+                select = onThemeSelected,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         PanelCard(Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.language), fontWeight=FontWeight.Bold)
             Tiny(stringResource(R.string.language_hint))

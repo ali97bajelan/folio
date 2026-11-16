@@ -19,6 +19,7 @@ import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetRepository
 import com.example.folio.data.network.PriceRefreshWorker
 import com.example.folio.presentation.LanguagePreferences
+import com.example.folio.presentation.ThemePreferences
 import com.example.folio.presentation.design.FolioTheme
 import kotlinx.coroutines.CancellationException
 import com.example.folio.presentation.widget.WidgetRefreshScheduler
@@ -37,6 +38,7 @@ class WidgetConfigurationActivity : AppCompatActivity() {
 
         val languagePreferences = LanguagePreferences(applicationContext)
         languagePreferences.set(languagePreferences.current())
+        val themePreferences = ThemePreferences(applicationContext)
 
         appWidgetId = intent?.getIntExtra(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -66,7 +68,7 @@ class WidgetConfigurationActivity : AppCompatActivity() {
         )[WidgetConfigurationViewModel::class.java]
 
         setContent {
-            FolioTheme {
+            FolioTheme(theme = themePreferences.current()) {
                 val state by configurationViewModel.state.collectAsStateWithLifecycle()
                 WidgetConfigurationScreen(
                     state = state,
