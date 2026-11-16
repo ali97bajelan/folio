@@ -18,6 +18,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.selectable
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -41,11 +43,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selectableGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -1088,40 +1092,72 @@ private fun Metric(
     if (detail.isNotBlank()) Tiny(detail)
 }
 @Composable
-private fun AssetChoiceChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    selectedColor: Color = MaterialTheme.colorScheme.primary,
-    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+private fun AssetStatusSelector(
+    selected: AssetFilter,
+    onSelected: (AssetFilter) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = label,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            )
-        },
-        modifier = Modifier.heightIn(min = FolioMinimumTouchTarget),
-        shape = FolioShapeTokens.pill,
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedContainerColor = selectedColor,
-            selectedLabelColor = selectedContentColor,
-        ),
-    )
+    Row(
+        modifier = modifier
+            .clip(FolioShapeTokens.pill)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .semantics { selectableGroup() }
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AssetFilter.entries.forEach { option ->
+            val isSelected = selected == option
+            val segmentWeight = when (option) {
+                AssetFilter.ALL -> 0.8f
+                AssetFilter.ACTIVE -> 1f
+                AssetFilter.INACTIVE -> 1.3f
+            }
+            Surface(
+                modifier = Modifier
+                    .weight(segmentWeight)
+                    .heightIn(min = FolioMinimumTouchTarget)
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSelected(option) },
+                        role = Role.RadioButton,
+                    ),
+                shape = FolioShapeTokens.pill,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                contentColor = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = FolioMinimumTouchTarget),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(
+                            when (option) {
+                                AssetFilter.ALL -> R.string.assets_filter_all
+                                AssetFilter.ACTIVE -> R.string.assets_filter_active
+                                AssetFilter.INACTIVE -> R.string.assets_filter_inactive
+                            },
+                        ),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
-    val values = if (row.tomanValue == null || row.usdValue == null) {
-        stringResource(R.string.asset_values_unavailable)
-    } else {
-        "${compact(row.tomanValue)} · ${wholeUsd(row.usdValue)}"
-    }
+    val quantity = "${number(row.quantity, places = 4)}${if (row.asset.unit == PortfolioCodes.GRAM) " g" else ""}"
     val semanticColors = LocalFolioSemanticColors.current
     val accent = when (row.asset.assetType) {
         PortfolioCodes.USD -> semanticColors.gain
@@ -1148,8 +1184,8 @@ private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
                     .background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = .2f)))),
             )
             Column(
-                modifier = Modifier.padding(FolioSpacing.large),
-                verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+                modifier = Modifier.padding(FolioSpacing.medium),
+                verticalArrangement = Arrangement.spacedBy(FolioSpacing.small),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1177,24 +1213,24 @@ private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
                     Pill(typeLabel(row.asset.assetType), accent)
                 }
 
-                FolioFinancialValue(
-                    value = "${number(row.quantity, places = 4)}${if (row.asset.unit == PortfolioCodes.GRAM) " g" else ""}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-
-                Surface(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background.copy(alpha = .5f),
-                    shape = FolioShapeTokens.medium,
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
                 ) {
-                    FolioFinancialValue(
-                        value = values,
-                        modifier = Modifier.padding(horizontal = FolioSpacing.medium, vertical = FolioSpacing.small),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        isolateDirection = false,
+                    AssetRowMetric(
+                        label = stringResource(R.string.quantity),
+                        value = quantity,
+                        modifier = Modifier.weight(1.15f),
+                    )
+                    AssetRowMetric(
+                        label = "IRT",
+                        value = compact(row.tomanValue),
+                        modifier = Modifier.weight(1f),
+                    )
+                    AssetRowMetric(
+                        label = "USD",
+                        value = wholeUsd(row.usdValue),
+                        modifier = Modifier.weight(1f),
                     )
                 }
 
@@ -1206,17 +1242,38 @@ private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
     }
 }
 
+@Composable
+private fun AssetRowMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+    ) {
+        Tiny(label)
+        FolioFinancialValue(
+            value = value,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
 private enum class AssetFilter { ALL, ACTIVE, INACTIVE }
+private enum class AssetSort { VALUE, NAME, QUANTITY }
+
+private fun assetSortLabelResource(sort: AssetSort) = when (sort) {
+    AssetSort.VALUE -> R.string.sort_value
+    AssetSort.NAME -> R.string.sort_name
+    AssetSort.QUANTITY -> R.string.sort_quantity
+}
 
 @Composable
 private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
     val data by vm.dashboard.collectAsStateWithLifecycle()
     val history by vm.assetTypeHistory.collectAsStateWithLifecycle()
-    val valueOrder = stringResource(R.string.sort_value)
-    val nameOrder = stringResource(R.string.sort_name)
-    val quantityOrder = stringResource(R.string.sort_quantity)
-    var order by remember { mutableStateOf(valueOrder) }
+    var order by rememberSaveable { mutableStateOf(AssetSort.VALUE) }
     var filter by rememberSaveable { mutableStateOf(AssetFilter.ALL) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     val rows = remember(data.assetRows, order, filter) {
         val visible = data.assetRows.filter {
             when (filter) {
@@ -1226,9 +1283,9 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
             }
         }
         when (order) {
-            nameOrder -> visible.sortedBy { it.asset.name.lowercase() }
-            quantityOrder -> visible.sortedByDescending { it.quantity }
-            else -> visible
+            AssetSort.NAME -> visible.sortedBy { it.asset.name.lowercase() }
+            AssetSort.QUANTITY -> visible.sortedByDescending { it.quantity }
+            AssetSort.VALUE -> visible
         }
     }
 
@@ -1257,44 +1314,67 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            AssetFilter.entries.forEach { option ->
-                AssetChoiceChip(
-                    label = stringResource(
-                        when (option) {
-                            AssetFilter.ALL -> R.string.assets_filter_all
-                            AssetFilter.ACTIVE -> R.string.assets_filter_active
-                            AssetFilter.INACTIVE -> R.string.assets_filter_inactive
-                        },
-                    ),
-                    selected = filter == option,
-                    onClick = { filter = option },
-                )
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.assets_sort_by),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
+            AssetStatusSelector(
+                selected = filter,
+                onSelected = { filter = it },
+                modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(FolioSpacing.small))
-            Row(
-                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
-            ) {
-                listOf(valueOrder, nameOrder, quantityOrder).forEach { option ->
-                    AssetChoiceChip(
-                        label = option,
-                        selected = order == option,
-                        onClick = { order = option },
-                        selectedColor = MaterialTheme.colorScheme.secondary,
-                        selectedContentColor = MaterialTheme.colorScheme.onSecondary,
+
+            Box {
+                TextButton(
+                    onClick = { sortMenuExpanded = true },
+                    modifier = Modifier.widthIn(min = 96.dp, max = 140.dp)
+                        .heightIn(min = FolioMinimumTouchTarget),
+                    contentPadding = PaddingValues(horizontal = FolioSpacing.small, vertical = 0.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.assets_sort_by),
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = stringResource(assetSortLabelResource(order)),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
                     )
+                }
+
+                DropdownMenu(
+                    expanded = sortMenuExpanded,
+                    onDismissRequest = { sortMenuExpanded = false },
+                ) {
+                    AssetSort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(assetSortLabelResource(option))) },
+                            onClick = {
+                                order = option
+                                sortMenuExpanded = false
+                            },
+                            trailingIcon = {
+                                if (order == option) {
+                                    Icon(Icons.Filled.Check, contentDescription = null)
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
