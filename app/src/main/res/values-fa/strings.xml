@@ -74,7 +74,7 @@
     <string name="personal_wealth">دارایی شخصی</string>
     <string name="unavailable">نامشخص</string><string name="empty_value">—</string>
     <string name="dashboard_empty_title">هنوز دارایی ندارید</string><string name="dashboard_empty_copy">اولین دارایی خود را اضافه کنید تا وضعیت پرتفوی نمایش داده شود.</string>
-    <string name="asset_values_unavailable">نامشخص</string><string name="sort_value">ارزش</string><string name="sort_name">نام</string><string name="sort_quantity">تعداد</string>
+    <string name="asset_values_unavailable">نامشخص</string><string name="sort_value">ارزش</string><string name="sort_name">نام</string><string name="sort_quantity">تعداد</string><string name="assets_sort_by">مرتب‌سازی بر اساس</string>
     <string name="assets_empty_title">دارایی مطابق با فیلتر وجود ندارد</string><string name="assets_empty_copy">یک دارایی ایجاد کنید.</string>
     <string name="transactions_empty_title">تراکنشی ندارید</string><string name="transactions_empty_copy">خرید و فروش‌ها منبع اصلی موجودی هستند.</string>
     <string name="buy">خرید</string><string name="sell">فروش</string><string name="loading">در حال بارگذاری…</string><string name="edit">ویرایش</string>

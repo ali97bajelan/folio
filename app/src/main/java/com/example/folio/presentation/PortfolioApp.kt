@@ -1,9 +1,11 @@
 package com.example.folio.presentation
 
 import com.example.folio.PortfolioCodes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -1199,31 +1201,124 @@ private fun Metric(
     if (detail.isNotBlank()) Tiny(detail)
 }
 @Composable
+private fun AssetChoiceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    selectedColor: Color = MaterialTheme.colorScheme.primary,
+    selectedContentColor: Color = MaterialTheme.colorScheme.onPrimary,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = label,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            )
+        },
+        modifier = Modifier.heightIn(min = FolioMinimumTouchTarget),
+        shape = FolioShapeTokens.pill,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedContainerColor = selectedColor,
+            selectedLabelColor = selectedContentColor,
+        ),
+    )
+}
+
+@Composable
 private fun AssetRowItem(row: AssetRow, open: (Long) -> Unit) {
     val values = if (row.tomanValue == null || row.usdValue == null) {
         stringResource(R.string.asset_values_unavailable)
     } else {
         "${compact(row.tomanValue)} · ${wholeUsd(row.usdValue)}"
     }
-    FolioListRow(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = { open(row.asset.id) },
-        trailing = { Pill(typeLabel(row.asset.assetType)) },
+    val semanticColors = LocalFolioSemanticColors.current
+    val accent = when (row.asset.assetType) {
+        PortfolioCodes.USD -> semanticColors.gain
+        PortfolioCodes.GOLD -> semanticColors.warning
+        PortfolioCodes.SILVER -> MaterialTheme.colorScheme.onSurfaceVariant
+        PortfolioCodes.CRYPTO -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { open(row.asset.id) },
+        shape = FolioShapeTokens.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = FolioElevation.level0,
+            pressedElevation = FolioElevation.level1,
+        ),
     ) {
-        Text(
-            text = "${isolateFinancialText(row.asset.symbol)} · ${row.asset.name}",
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        FolioFinancialValue(
-            value = "${number(row.quantity, places = 4)}${if (row.asset.unit == PortfolioCodes.GRAM) " g" else ""}  ·  $values",
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            isolateDirection = false,
-        )
+        Column {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Brush.horizontalGradient(listOf(accent, accent.copy(alpha = .2f)))),
+            )
+            Column(
+                modifier = Modifier.padding(FolioSpacing.large),
+                verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall)) {
+                        Text(
+                            text = isolateFinancialText(row.asset.symbol),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = row.asset.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Spacer(Modifier.width(FolioSpacing.small))
+                    Pill(typeLabel(row.asset.assetType), accent)
+                }
+
+                FolioFinancialValue(
+                    value = "${number(row.quantity, places = 4)}${if (row.asset.unit == PortfolioCodes.GRAM) " g" else ""}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background.copy(alpha = .5f),
+                    shape = FolioShapeTokens.medium,
+                ) {
+                    FolioFinancialValue(
+                        value = values,
+                        modifier = Modifier.padding(horizontal = FolioSpacing.medium, vertical = FolioSpacing.small),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        isolateDirection = false,
+                    )
+                }
+
+                if (!row.asset.isActive) {
+                    Tiny(stringResource(R.string.assets_filter_inactive))
+                }
+            }
+        }
     }
 }
+
 private enum class AssetFilter { ALL, ACTIVE, INACTIVE }
 
 @Composable
@@ -1249,30 +1344,97 @@ private fun Assets(vm: MainViewModel, open: (Long) -> Unit, add: () -> Unit) {
             else -> visible
         }
     }
-    Page(stringResource(R.string.nav_assets), actionAlignment = Alignment.Start,
-        action = { FolioPrimaryButton(stringResource(R.string.add_asset), add) }) {
-        SingleChoiceRow(filter, AssetFilter.entries.toList(), render = {
-            stringResource(when (it) {
-                AssetFilter.ALL -> R.string.assets_filter_all
-                AssetFilter.ACTIVE -> R.string.assets_filter_active
-                AssetFilter.INACTIVE -> R.string.assets_filter_inactive
-            })
-        }) { filter = it }
-        SingleChoiceRow(order, listOf(valueOrder, nameOrder, quantityOrder)) { order = it }
-        Spacer(Modifier.height(10.dp))
-        if (rows.isEmpty()) {
-            Empty(title = stringResource(R.string.assets_empty_title),
-                copy = stringResource(R.string.assets_empty_copy), action = add)
-        } else {
-            PanelCard(Modifier.fillMaxWidth()) {
-                rows.forEachIndexed { index, item ->
-                    AssetRowItem(item, open)
-                    if (!item.asset.isActive) Tiny(stringResource(R.string.assets_filter_inactive))
-                    if (index < rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = FolioSpacing.large, vertical = FolioSpacing.medium),
+        verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.nav_assets),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = FolioShapeTokens.pill) {
+                    Text(
+                        text = data.assetRows.size.toString(),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    )
+                }
+            }
+            FolioPrimaryButton(stringResource(R.string.add_asset), add)
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+        ) {
+            AssetFilter.entries.forEach { option ->
+                AssetChoiceChip(
+                    label = stringResource(
+                        when (option) {
+                            AssetFilter.ALL -> R.string.assets_filter_all
+                            AssetFilter.ACTIVE -> R.string.assets_filter_active
+                            AssetFilter.INACTIVE -> R.string.assets_filter_inactive
+                        },
+                    ),
+                    selected = filter == option,
+                    onClick = { filter = option },
+                )
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.assets_sort_by),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.width(FolioSpacing.small))
+            Row(
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+            ) {
+                listOf(valueOrder, nameOrder, quantityOrder).forEach { option ->
+                    AssetChoiceChip(
+                        label = option,
+                        selected = order == option,
+                        onClick = { order = option },
+                        selectedColor = MaterialTheme.colorScheme.secondary,
+                        selectedContentColor = MaterialTheme.colorScheme.onSecondary,
+                    )
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+
+        if (rows.isEmpty()) {
+            Empty(
+                title = stringResource(R.string.assets_empty_title),
+                copy = stringResource(R.string.assets_empty_copy),
+                action = add,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+                rows.forEach { item -> AssetRowItem(item, open) }
+            }
+        }
+
         PanelCard(Modifier.fillMaxWidth()) { AssetTypeHistoryChart(history) }
     }
 }
@@ -2140,17 +2302,6 @@ private fun Choice(
     label = label,
     modifier = Modifier.fillMaxWidth().padding(bottom = FolioSpacing.small),
     optionLabel = render,
-)
-@Composable
-private fun SingleChoiceRow(
-    selected: String,
-    values: List<String>,
-    select: (String) -> Unit,
-) = FolioChoiceChips(
-    options = values,
-    selected = selected,
-    onSelected = select,
-    optionLabel = { isolateFinancialText(it) },
 )
 
 @Composable

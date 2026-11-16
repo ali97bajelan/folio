@@ -80,6 +80,7 @@
     <string name="sort_value">Value</string>
     <string name="sort_name">Name</string>
     <string name="sort_quantity">Quantity</string>
+    <string name="assets_sort_by">Sort by</string>
     <string name="assets_empty_title">No matching assets</string>
     <string name="assets_empty_copy">Create an asset to get started.</string>
     <string name="transactions_empty_title">No transactions</string>
