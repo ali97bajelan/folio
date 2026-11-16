@@ -2,7 +2,7 @@
     <string name="app_name">Folio</string>
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_assets">Assets</string>
-    <string name="nav_transactions">Transactions</string>
+    <string name="nav_transactions">History</string>
     <string name="nav_more">More</string>
     <string name="dashboard_title">Dashboard</string>
     <string name="refresh_prices">Prices</string>
@@ -15,6 +15,16 @@
     <string name="asset_allocation_by_class">Allocation by asset class</string>
     <string name="total_portfolio_value">Total portfolio value</string>
     <string name="portfolio_value_history">Portfolio value history</string>
+    <string name="sync_prices">Sync prices</string>
+    <string name="portfolio_trajectory">Portfolio trajectory</string>
+    <string name="portfolio_performance_hint">Volatility &amp; performance</string>
+    <string name="chart_low">Low</string>
+    <string name="chart_peak">Peak</string>
+    <string name="total_assets">Total assets</string>
+    <string name="weighted_distribution">Weighted distribution</string>
+    <string name="total_exposure">100% total exposure</string>
+    <string name="recent_portfolio_movements">Recent portfolio movements</string>
+    <string name="view_all">View all</string>
     <string name="portfolio_history_empty">Save at least two valuation snapshots to display a chart.</string>
     <string name="asset_type_percentage_history">Asset type percentage history</string>
     <string name="asset_type_history_empty">Save at least two valuation snapshots to display allocation history.</string>

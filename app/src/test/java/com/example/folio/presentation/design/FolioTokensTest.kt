@@ -9,34 +9,34 @@ import org.junit.Test
 class FolioTokensTest {
     @Test
     fun darkAndLightSchemesUseTheApprovedBrandPalettes() {
-        assertEquals(Color(0xFF0B1020), FolioDarkColorScheme.background)
-        assertEquals(Color(0xFF131B2B), FolioDarkColorScheme.surface)
-        assertEquals(Color(0xFF172137), FolioDarkColorScheme.surfaceVariant)
-        assertEquals(Color(0xFF668FFC), FolioDarkColorScheme.primary)
-        assertEquals(Color(0xFF76D8B0), FolioDarkColorScheme.secondary)
-        assertEquals(Color(0xFFF4F6FC), FolioDarkColorScheme.onBackground)
+        assertEquals(Color(0xFF051424), FolioDarkColorScheme.background)
+        assertEquals(Color(0xFF051424), FolioDarkColorScheme.surface)
+        assertEquals(Color(0xFF122131), FolioDarkColorScheme.surfaceVariant)
+        assertEquals(Color(0xFFFFC174), FolioDarkColorScheme.primary)
+        assertEquals(Color(0xFF4EDEA3), FolioDarkColorScheme.secondary)
+        assertEquals(Color(0xFFD4E4FA), FolioDarkColorScheme.onBackground)
 
-        assertEquals(Color(0xFFF5F7FB), FolioLightColorScheme.background)
+        assertEquals(Color(0xFFF7F8FA), FolioLightColorScheme.background)
         assertEquals(Color.White, FolioLightColorScheme.surface)
-        assertEquals(Color(0xFFEEF2F9), FolioLightColorScheme.surfaceVariant)
-        assertEquals(Color(0xFF315FC8), FolioLightColorScheme.primary)
-        assertEquals(Color(0xFF087F5D), FolioLightColorScheme.secondary)
-        assertEquals(Color(0xFF172033), FolioLightColorScheme.onBackground)
+        assertEquals(Color(0xFFF0F2F5), FolioLightColorScheme.surfaceVariant)
+        assertEquals(Color(0xFF855300), FolioLightColorScheme.primary)
+        assertEquals(Color(0xFF006B4F), FolioLightColorScheme.secondary)
+        assertEquals(Color(0xFF171C25), FolioLightColorScheme.onBackground)
     }
 
     @Test
     fun semanticColorsIncludeStatusAndSharedAllocationSeries() {
-        assertEquals(Color(0xFF76D8B0), FolioDarkSemanticColors.gain)
-        assertEquals(Color(0xFFF47783), FolioDarkSemanticColors.loss)
-        assertEquals(Color(0xFFFFC857), FolioDarkSemanticColors.warning)
-        assertEquals(Color(0xFF788297), FolioDarkSemanticColors.disabled)
-        assertEquals(Color(0xFF2C3950), FolioDarkSemanticColors.border)
+        assertEquals(Color(0xFF4EDEA3), FolioDarkSemanticColors.gain)
+        assertEquals(Color(0xFFFFB4AB), FolioDarkSemanticColors.loss)
+        assertEquals(Color(0xFFFFC174), FolioDarkSemanticColors.warning)
+        assertEquals(Color(0xFFA08E7A), FolioDarkSemanticColors.disabled)
+        assertEquals(Color(0xFF273647), FolioDarkSemanticColors.border)
 
-        assertEquals(Color(0xFF087F5D), FolioLightSemanticColors.gain)
-        assertEquals(Color(0xFFB42336), FolioLightSemanticColors.loss)
-        assertEquals(Color(0xFF885D00), FolioLightSemanticColors.warning)
-        assertEquals(Color(0xFF929BAD), FolioLightSemanticColors.disabled)
-        assertEquals(Color(0xFFD4DCE8), FolioLightSemanticColors.border)
+        assertEquals(Color(0xFF006B4F), FolioLightSemanticColors.gain)
+        assertEquals(Color(0xFFB3261E), FolioLightSemanticColors.loss)
+        assertEquals(Color(0xFF855300), FolioLightSemanticColors.warning)
+        assertEquals(Color(0xFF79716A), FolioLightSemanticColors.disabled)
+        assertEquals(Color(0xFFE3DAD0), FolioLightSemanticColors.border)
 
         assertEquals(8, FolioDarkSemanticColors.allocationSeries.size)
         assertEquals(FolioDarkSemanticColors.allocationSeries, FolioLightSemanticColors.allocationSeries)

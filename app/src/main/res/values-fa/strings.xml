@@ -2,7 +2,7 @@
     <string name="app_name">فولیو</string>
     <string name="nav_dashboard">نمای کلی</string>
     <string name="nav_assets">دارایی‌ها</string>
-    <string name="nav_transactions">تراکنش‌ها</string>
+    <string name="nav_transactions">تاریخچه</string>
     <string name="nav_more">بیشتر</string>
     <string name="dashboard_title">داشبورد</string>
     <string name="refresh_prices">قیمت</string>
@@ -15,6 +15,16 @@
     <string name="asset_allocation_by_class">تخصیص بر اساس کلاس دارایی</string>
     <string name="total_portfolio_value">ارزش کل پرتفوی</string>
     <string name="portfolio_value_history">تاریخچه ارزش پرتفوی</string>
+    <string name="sync_prices">همگام‌سازی قیمت‌ها</string>
+    <string name="portfolio_trajectory">روند پرتفوی</string>
+    <string name="portfolio_performance_hint">نوسان و عملکرد</string>
+    <string name="chart_low">کمترین</string>
+    <string name="chart_peak">بیشترین</string>
+    <string name="total_assets">مجموع دارایی‌ها</string>
+    <string name="weighted_distribution">توزیع وزنی</string>
+    <string name="total_exposure">مجموع سهم‌ها ۱۰۰٪</string>
+    <string name="recent_portfolio_movements">تغییرات اخیر پرتفوی</string>
+    <string name="view_all">مشاهده همه</string>
     <string name="portfolio_history_empty">برای نمایش نمودار، حداقل دو اسنپ‌شات ارزش‌گذاری ذخیره کنید.</string>
     <string name="asset_type_percentage_history">تاریخچه درصد نوع دارایی</string>
     <string name="asset_type_history_empty">برای نمایش تاریخچه تخصیص، حداقل دو اسنپ‌شات ارزش‌گذاری ذخیره کنید.</string>

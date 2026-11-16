@@ -2,12 +2,18 @@ package com.example.folio.presentation
 
 import com.example.folio.PortfolioCodes
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -28,7 +34,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -208,7 +213,15 @@ fun PortfolioApp(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHost) },
             topBar = {
-                if (!isTopLevelRoute) {
+                if (isTopLevelRoute) {
+                    FolioBrandTopBar(
+                        sectionLabel = if (currentRoute == "dashboard") {
+                            stringResource(R.string.dashboard_title)
+                        } else {
+                            null
+                        },
+                    )
+                } else {
                     FolioTopBar(
                         title = contextualTitle,
                         onBack = { navigationController.popBackStack() },
@@ -240,6 +253,7 @@ fun PortfolioApp(
                         viewModel,
                         addAsset = { navigationController.navigate("asset/new") },
                         addTx = { navigationController.navigate("transaction/new") },
+                        openHistory = { navigationController.navigate("transactions") },
                     )
                 }
                 composable("assets") {
@@ -318,6 +332,35 @@ fun PortfolioApp(
 }
 
 @Composable
+private fun FolioBrandTopBar(sectionLabel: String?) {
+    Surface(
+        color = MaterialTheme.colorScheme.background,
+        tonalElevation = FolioElevation.level1,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(64.dp).padding(horizontal = FolioSpacing.large),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text(
+                    text = "FOLIO",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                )
+                sectionLabel?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit) {
     val destinations = listOf(
         Triple("dashboard", stringResource(R.string.nav_dashboard), FolioIcons.Dashboard),
@@ -326,13 +369,23 @@ private fun AppNavigationBar(currentRoute: String, onNavigate: (String) -> Unit)
         Triple("settings", stringResource(R.string.nav_more), Icons.Outlined.Settings),
     )
 
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.background,
+        tonalElevation = FolioElevation.level1,
+    ) {
         destinations.forEach { (route, label, icon) ->
             NavigationBarItem(
                 selected = currentRoute == route,
                 onClick = { onNavigate(route) },
                 icon = { Icon(icon, contentDescription = label) },
                 label = { Text(label) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                    selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         }
     }
@@ -390,117 +443,382 @@ private fun Dashboard(
     vm: MainViewModel,
     addAsset: () -> Unit,
     addTx: () -> Unit,
+    openHistory: () -> Unit,
 ) {
     val isRefreshing by vm.isRefreshing.collectAsStateWithLifecycle()
     val dash by vm.dashboard.collectAsStateWithLifecycle()
     val history by vm.portfolioHistory.collectAsStateWithLifecycle()
+    val transactions by vm.transactions.collectAsStateWithLifecycle()
+    val assets by vm.assets.collectAsStateWithLifecycle()
     val dashboardLoadedAt = remember(dash) { Instant.now() }
     var displayCurrency by rememberSaveable { mutableStateOf(PortfolioCodes.IRT) }
 
     Page(
         title = stringResource(R.string.dashboard_title),
+        showHeading = false,
         action = {
             Row(
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
             ) {
-                FolioSecondaryButton(
-                    text = stringResource(R.string.refresh_prices),
+                DashboardAction(
+                    text = stringResource(R.string.sync_prices),
+                    icon = Icons.Outlined.Refresh,
+                    tint = MaterialTheme.colorScheme.primary,
                     onClick = vm::refreshPrices,
-                    modifier = Modifier.weight(1f),
                     enabled = !isRefreshing,
-                    leadingIcon = Icons.Outlined.Refresh,
+                    isLoading = isRefreshing,
                 )
-                FolioSecondaryButton(
-                    text = "+ ${stringResource(R.string.transaction)}",
+                DashboardAction(
+                    text = stringResource(R.string.transaction),
+                    icon = FolioIcons.ReceiptLong,
+                    tint = MaterialTheme.colorScheme.secondary,
                     onClick = addTx,
-                    modifier = Modifier.weight(1f),
                 )
-                FolioPrimaryButton(
-                    text = "+ ${stringResource(R.string.asset)}",
+                DashboardAction(
+                    text = stringResource(R.string.asset),
+                    icon = FolioIcons.AccountBalanceWallet,
+                    tint = MaterialTheme.colorScheme.primary,
                     onClick = addAsset,
-                    modifier = Modifier.weight(1f),
                 )
             }
         },
     ) {
-        PanelCard(Modifier.fillMaxWidth()) {
-            PortfolioValue(dash, displayCurrency, dashboardLoadedAt) { displayCurrency = it }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = FolioShapeTokens.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = FolioElevation.level1),
+        ) {
+            Column {
+                Box(
+                    Modifier.fillMaxWidth().height(3.dp).background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                    ),
+                )
+                Column(Modifier.padding(FolioSpacing.large)) {
+                    PortfolioValue(dash, displayCurrency, dashboardLoadedAt) {
+                        displayCurrency = it
+                    }
+                }
+            }
         }
         Spacer(Modifier.height(FolioSpacing.medium))
         PanelCard(Modifier.fillMaxWidth()) { PortfolioHistoryChart(history, displayCurrency) }
         Spacer(Modifier.height(FolioSpacing.medium))
         PanelCard(Modifier.fillMaxWidth()) { AllocationCakeChart(dash.rows, displayCurrency) }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        PanelCard(Modifier.fillMaxWidth()) { WeightedDistribution(dash.rows, displayCurrency) }
+        Spacer(Modifier.height(FolioSpacing.medium))
+        PanelCard(Modifier.fillMaxWidth()) {
+            RecentMovements(
+                transactions = transactions.take(2),
+                assetsById = assets.associateBy { it.id },
+                onViewAll = openHistory,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardAction(
+    text: String,
+    icon: ImageVector,
+    tint: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = FolioShapeTokens.pill,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            Modifier.heightIn(min = 40.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(FolioIconSize.small),
+                    color = tint,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(FolioIconSize.small))
+            }
+            Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
+        }
     }
 }
 
 private data class AllocationSlice(val assetType: String, val value: BigDecimal)
 
-@Composable
-private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
-    val slices = rows.groupBy { it.asset.assetType }
+private fun allocationSlices(rows: List<AssetRow>, currency: String): List<AllocationSlice> =
+    rows.groupBy { it.asset.assetType }
         .map { (assetType, typeRows) ->
-            val value = if (currency == PortfolioCodes.USD) {
-                typeRows.mapNotNull { it.usdValue }.fold(BigDecimal.ZERO, BigDecimal::add)
-            } else {
-                typeRows.mapNotNull { it.tomanValue }.fold(BigDecimal.ZERO, BigDecimal::add)
-            }
+            val value = typeRows.asSequence()
+                .mapNotNull { if (currency == PortfolioCodes.USD) it.usdValue else it.tomanValue }
+                .fold(BigDecimal.ZERO, BigDecimal::add)
             AllocationSlice(assetType, value)
         }
         .filter { it.value.signum() > 0 }
         .sortedByDescending { it.value }
+
+@Composable
+private fun AllocationCakeChart(rows: List<AssetRow>, currency: String) {
+    val slices = allocationSlices(rows, currency)
     val total = slices.fold(BigDecimal.ZERO) { sum, slice -> sum.add(slice.value) }
     val colors = LocalFolioSemanticColors.current.allocationSeries
+    val trackColor = MaterialTheme.colorScheme.surface
 
     Text(stringResource(R.string.asset_allocation_by_class), fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(12.dp))
-    if (slices.isEmpty() || total.signum() == 0) {
+    Tiny(stringResource(R.string.entire_portfolio))
+    Spacer(Modifier.height(FolioSpacing.medium))
+    if (slices.isEmpty() || (total.signum() == 0)) {
         Tiny(stringResource(R.string.unavailable))
         return
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Canvas(Modifier.size(148.dp)) {
-            var startAngle = -90f
-            slices.forEachIndexed { index, slice ->
-                // Do not shrink the arcs to create spacing: the panel colour then shows
-                // through as dark cracks, which makes the pie look like it contains extra
-                // slices.  Let the final segment absorb rounding so the circle closes cleanly.
-                val sweepAngle = if (index == slices.lastIndex) {
-                    270f - startAngle
-                } else {
-                    slice.value.divide(total, 8, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal("360")).toFloat()
-                }
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+    ) {
+        Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val strokeWidth = 18.dp.toPx()
+                val inset = strokeWidth / 2
+                val diameter = size.minDimension - strokeWidth
+                val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
                 drawArc(
-                    color = colors[index % colors.size],
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = true,
+                    color = trackColor,
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = arcSize,
+                    style = Stroke(strokeWidth),
                 )
-                startAngle += sweepAngle
+                var startAngle = -90f
+                slices.forEachIndexed { index, slice ->
+                    val sweepAngle = if (index == slices.lastIndex) {
+                        270f - startAngle
+                    } else {
+                        slice.value.divide(total, 8, RoundingMode.HALF_UP)
+                            .multiply(BigDecimal("360")).toFloat()
+                    }
+                    drawArc(
+                        color = colors[index % colors.size],
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = arcSize,
+                        style = Stroke(strokeWidth),
+                    )
+                    startAngle += sweepAngle
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    stringResource(R.string.total_assets),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FolioFinancialValue(
+                    value = money(total, currency),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    isolateDirection = false,
+                )
             }
         }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+        ) {
             slices.forEachIndexed { index, slice ->
                 val percentage = slice.value.divide(total, 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal("100"))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = colors[index % colors.size], shape = FolioShapeTokens.pill) {
-                        Spacer(Modifier.size(10.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+                ) {
+                    Surface(
+                        color = colors[index % colors.size],
+                        shape = FolioShapeTokens.pill,
+                    ) { Spacer(Modifier.size(9.dp)) }
                     Column(Modifier.weight(1f)) {
-                        Text(typeLabel(slice.assetType), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val allocationValue = if (currency == PortfolioCodes.USD) {
-                            formattedNumber(slice.value, PortfolioCodes.USD, 0, 0)
-                        } else {
-                            compact(slice.value)
-                        }
-                        Tiny(ltrValue("${formattedNumber(percentage, "%", 1, 0)} · $allocationValue"))
+                        Text(
+                            typeLabel(slice.assetType),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Tiny(ltrValue(formattedNumber(percentage, "%", 1, 0)))
                     }
+                    FolioFinancialValue(
+                        value = money(slice.value, currency),
+                        color = colors[index % colors.size],
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.widthIn(max = 88.dp),
+                        isolateDirection = false,
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WeightedDistribution(rows: List<AssetRow>, currency: String) {
+    val slices = allocationSlices(rows, currency)
+    val total = slices.fold(BigDecimal.ZERO) { sum, slice -> sum.add(slice.value) }
+    val colors = LocalFolioSemanticColors.current.allocationSeries
+    if (slices.isEmpty() || total.signum() == 0) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tiny(stringResource(R.string.weighted_distribution))
+            Text(
+                stringResource(R.string.total_exposure),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth().height(10.dp).clip(FolioShapeTokens.pill)
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
+            slices.forEachIndexed { index, slice ->
+                val weight = slice.value.divide(total, 8, RoundingMode.HALF_UP).toFloat()
+                    .coerceAtLeast(.001f)
+                Box(
+                    Modifier.weight(weight).fillMaxHeight()
+                        .background(colors[index % colors.size]),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentMovements(
+    transactions: List<TransactionEntity>,
+    assetsById: Map<Long, AssetEntity>,
+    onViewAll: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small),
+        ) {
+            Icon(
+                FolioIcons.ReceiptLong,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(FolioIconSize.medium),
+            )
+            Text(
+                stringResource(R.string.recent_portfolio_movements),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        TextButton(onClick = onViewAll, contentPadding = PaddingValues(horizontal = 4.dp)) {
+            Text(stringResource(R.string.view_all), color = MaterialTheme.colorScheme.tertiary)
+        }
+    }
+    if (transactions.isEmpty()) {
+        Tiny(stringResource(R.string.transactions_empty_copy))
+        return
+    }
+    Spacer(Modifier.height(FolioSpacing.small))
+    transactions.forEachIndexed { index, transaction ->
+        val isPurchase = transaction.transactionType == PortfolioCodes.BUY
+        val accent = if (isPurchase) {
+            LocalFolioSemanticColors.current.gain
+        } else {
+            LocalFolioSemanticColors.current.loss
+        }
+        val asset = assetsById[transaction.assetId]
+        val label = stringResource(if (isPurchase) R.string.buy else R.string.sell)
+        val symbol = asset?.symbol?.let(::isolateFinancialText) ?: stringResource(R.string.empty_value)
+        val assetType = asset?.let { typeLabel(it.assetType) } ?: ""
+        val quantity = "${if (isPurchase) "+" else "−"}${detailQuantity(transaction.quantity)} ${asset?.unit.orEmpty()}".trim()
+        val amount = transaction.pricePerUnit?.multiply(transaction.quantity)?.let {
+            ltrValue("${if (isPurchase) "−" else "+"}${formattedNumber(it, transaction.transactionCurrency, 2, 0)}")
+        } ?: stringResource(R.string.unavailable)
+
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = FolioSpacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
+        ) {
+            Surface(
+                color = accent.copy(alpha = .14f),
+                shape = FolioShapeTokens.pill,
+            ) {
+                Icon(
+                    FolioIcons.ReceiptLong,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.padding(9.dp).size(FolioIconSize.medium),
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "$label · $symbol",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Tiny(
+                    listOfNotNull(
+                        assetType.takeIf(String::isNotBlank),
+                        ltrValue(dateFormat.format(transaction.executedAt)),
+                    ).joinToString(" · "),
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                FolioFinancialValue(
+                    value = quantity,
+                    color = accent,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    isolateDirection = false,
+                )
+                FolioFinancialValue(
+                    value = amount,
+                    color = if (isPurchase) MaterialTheme.colorScheme.error else LocalFolioSemanticColors.current.gain,
+                    style = MaterialTheme.typography.labelSmall,
+                    isolateDirection = false,
+                )
+            }
+        }
+        if (index < transactions.lastIndex) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
         }
     }
 }
@@ -516,13 +834,37 @@ private fun PortfolioValue(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.total_portfolio_value), fontWeight = FontWeight.SemiBold)
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.total_portfolio_value),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    color = if (dash.updatedAt != null) MaterialTheme.colorScheme.secondary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = FolioShapeTokens.pill,
+                ) { Spacer(Modifier.size(6.dp)) }
+                Text(
+                    lastUpdatedText(dash.updatedAt, dashboardLoadedAt),
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         CurrencySelector(currency, onCurrencyChange)
     }
 
     val total = if (currency == PortfolioCodes.USD) dash.usdTotal else dash.tomanTotal
     val alternateTotal = if (currency == PortfolioCodes.USD) compact(dash.tomanTotal) else wholeUsd(dash.usdTotal)
-    Spacer(Modifier.height(14.dp))
+    Spacer(Modifier.height(FolioSpacing.small))
     FolioFinancialValue(
         value = if (currency == PortfolioCodes.USD) wholeUsd(total) else compact(total),
         style = MaterialTheme.typography.headlineLarge,
@@ -530,19 +872,19 @@ private fun PortfolioValue(
         maxLines = 1,
         isolateDirection = false,
     )
-    Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(FolioSpacing.extraSmall))
     FolioFinancialValue(
         value = "≈ $alternateTotal",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.tertiary,
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
         isolateDirection = false,
     )
 
-    Spacer(Modifier.height(16.dp))
-    Surface(color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.medium) {
+    Spacer(Modifier.height(FolioSpacing.large))
+    Surface(color = MaterialTheme.colorScheme.surface, shape = FolioShapeTokens.medium) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().padding(horizontal = FolioSpacing.medium, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -553,7 +895,7 @@ private fun PortfolioValue(
                 Tiny(stringResource(R.string.last_updated))
                 Text(
                     lastUpdatedText(dash.updatedAt, dashboardLoadedAt),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -563,13 +905,13 @@ private fun PortfolioValue(
     }
 
     if (dash.missing > 0) {
-        Spacer(Modifier.height(12.dp))
-        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+        Spacer(Modifier.height(FolioSpacing.medium))
+        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = FolioShapeTokens.medium) {
             Text(
                 pluralStringResource(R.plurals.assets_waiting_for_price, dash.missing, dash.missing),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                modifier = Modifier.padding(horizontal = FolioSpacing.small, vertical = FolioSpacing.extraSmall),
             )
         }
     }
@@ -577,12 +919,26 @@ private fun PortfolioValue(
 
 @Composable
 private fun CurrencySelector(currency: String, onCurrencyChange: (String) -> Unit) {
-    FolioChoiceChips(
-        options = listOf(PortfolioCodes.IRT, PortfolioCodes.USD),
-        selected = currency,
-        onSelected = onCurrencyChange,
-        optionLabel = { isolateFinancialText(it) },
-    )
+    Surface(color = MaterialTheme.colorScheme.surface, shape = FolioShapeTokens.pill) {
+        Row(Modifier.padding(3.dp), verticalAlignment = Alignment.CenterVertically) {
+            listOf(PortfolioCodes.USD, PortfolioCodes.IRT).forEach { item ->
+                val selected = item == currency
+                Surface(
+                    onClick = { onCurrencyChange(item) },
+                    shape = FolioShapeTokens.pill,
+                    color = if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                ) {
+                    Text(
+                        text = isolateFinancialText(item),
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
 }
 
 private fun timelineFractions(times: List<Instant>): List<Float> {
@@ -619,8 +975,9 @@ private fun TimeSeriesCanvas(
     modifier: Modifier,
 ) {
     val selection = rememberUpdatedState(selectedIndex)
+    val pinColor = MaterialTheme.colorScheme.secondary
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .45f)
-    val drawing = remember(series, fractions, lower, upper, ticks, colors, gridColor) {
+    val drawing = remember(series, fractions, lower, upper, ticks, colors, gridColor, pinColor) {
         Modifier.drawWithCache {
             val left = 4.dp.toPx()
             val right = size.width - left
@@ -647,8 +1004,8 @@ private fun TimeSeriesCanvas(
                     drawPath(path, color, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
                     val point = selection.value
                     val center = Offset(x(point), y(series[index][point]))
-                    drawCircle(color.copy(alpha = .22f), 12.dp.toPx(), center)
-                    drawCircle(color, 5.dp.toPx(), center)
+                    drawCircle(pinColor.copy(alpha = .22f), 12.dp.toPx(), center)
+                    drawCircle(pinColor, 5.dp.toPx(), center)
                 }
             }
         }
@@ -691,32 +1048,61 @@ private enum class HistoryRange(val duration: Duration?) { DAY(Duration.ofDays(1
 @Composable private fun chartValue(value: BigDecimal, currency: String) =
     if (currency == PortfolioCodes.USD) wholeUsd(value) else compact(value)
 @Composable
-private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:String) {
-    var range by rememberSaveable { mutableStateOf(HistoryRange.DAY) }
+private fun HistoryRangeSelector(selected: HistoryRange, onSelected: (HistoryRange) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = FolioShapeTokens.medium) {
+        Row(Modifier.padding(3.dp)) {
+            HistoryRange.entries.forEach { item ->
+                val selectedItem = item == selected
+                Surface(
+                    onClick = { onSelected(item) },
+                    color = if (selectedItem) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                    shape = FolioShapeTokens.small,
+                ) {
+                    Text(
+                        text = stringResource(
+                            when (item) {
+                                HistoryRange.DAY -> R.string.chart_1_day
+                                HistoryRange.WEEK -> R.string.chart_1_week
+                                HistoryRange.MONTH -> R.string.chart_1_month
+                                HistoryRange.ALL -> R.string.chart_all_time
+                            },
+                        ),
+                        color = if (selectedItem) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (selectedItem) FontWeight.SemiBold else FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortfolioHistoryChart(history: List<PortfolioHistoryPoint>, currency: String) {
+    var range by rememberSaveable { mutableStateOf(HistoryRange.MONTH) }
     var selectedAt by rememberSaveable { mutableStateOf<Long?>(null) }
     val now = remember(history) { Instant.now() }
     val points = remember(history, range, currency) {
         history.filter { range.duration?.let { duration -> !it.capturedAt.isBefore(now.minus(duration)) } ?: true }
             .map { it.capturedAt to if (currency == PortfolioCodes.USD) it.usdValue else it.tomanValue }
     }
-    Text(stringResource(R.string.portfolio_value_history), fontWeight = FontWeight.Bold)
-    Spacer(Modifier.height(8.dp))
-    FolioChoiceChips(
-        options = HistoryRange.entries,
-        selected = range,
-        onSelected = { range = it },
-        optionLabel = { item ->
-            stringResource(
-                when (item) {
-                    HistoryRange.DAY -> R.string.chart_1_day
-                    HistoryRange.WEEK -> R.string.chart_1_week
-                    HistoryRange.MONTH -> R.string.chart_1_month
-                    HistoryRange.ALL -> R.string.chart_all_time
-                },
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(
+                stringResource(R.string.portfolio_trajectory),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
             )
-        },
-    )
-    Spacer(Modifier.height(12.dp))
+            Tiny(stringResource(R.string.portfolio_performance_hint))
+        }
+        HistoryRangeSelector(range) { range = it }
+    }
+    Spacer(Modifier.height(FolioSpacing.medium))
     if (points.size < 2) { Tiny(stringResource(R.string.portfolio_history_empty)); return }
     val first = points.first().second
     val last = points.last().second
@@ -735,9 +1121,26 @@ private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:S
     val times = remember(points) { points.map { it.first } }
     val timeFractions = remember(times) { timelineFractions(times) }
     val chartInsetPx = with(LocalDensity.current) { 4.dp.toPx() }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text((if (change.signum() >= 0) "+" else "") + chartValue(change, currency), color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss, fontWeight = FontWeight.SemiBold)
-        percentChange?.let { Text("(${if (it.signum() >= 0) "+" else ""}${formattedNumber(it, "%", 1, 1)})", color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss, style = MaterialTheme.typography.labelMedium) }
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                (if (change.signum() >= 0) "+" else "") + chartValue(change, currency),
+                color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss,
+                fontWeight = FontWeight.SemiBold,
+            )
+            percentChange?.let {
+                Text(
+                    "(${if (it.signum() >= 0) "+" else ""}${formattedNumber(it, "%", 1, 1)})",
+                    color = if (change.signum() >= 0) LocalFolioSemanticColors.current.gain else LocalFolioSemanticColors.current.loss,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+        Tiny("${stringResource(R.string.chart_low)} ${chartValue(low, currency)} · ${stringResource(R.string.chart_peak)} ${chartValue(high, currency)}")
     }
     Row(Modifier.fillMaxWidth().height(156.dp)) {
         Column(Modifier.width(72.dp).fillMaxHeight().padding(end=6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
@@ -752,8 +1155,15 @@ private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:S
                 ((chartWidthPx - tooltipWidth.roundToPx()).coerceAtLeast(0) * selectedFraction).toDp()
             }
             val summary = "${stringResource(R.string.portfolio_value_history)} · ${dateFormat.format(selected.first)} · ${chartValue(selected.second, currency)}"
-            TimeSeriesCanvas(series, timeFractions, selectedIndex, 0f, 1f, listOf(0f, .5f, 1f), listOf(MaterialTheme.colorScheme.primary),
-                Modifier.fillMaxSize().padding(vertical = 10.dp)
+            TimeSeriesCanvas(
+                series = series,
+                fractions = timeFractions,
+                selectedIndex = selectedIndex,
+                lower = 0f,
+                upper = 1f,
+                ticks = listOf(0f, .5f, 1f),
+                colors = listOf(MaterialTheme.colorScheme.tertiary),
+                modifier = Modifier.fillMaxSize().padding(vertical = 10.dp)
                     .chartNavigation(summary, times, selectedIndex) { selectedAt = it }
                     .pointerInput(points) {
                         detectTapGestures { tap ->
@@ -761,7 +1171,8 @@ private fun PortfolioHistoryChart(history:List<PortfolioHistoryPoint>,currency:S
                             val nearest = timeFractions.indices.minByOrNull { kotlin.math.abs(timeFractions[it] - fraction) }!!
                             selectedAt = points[nearest].first.toEpochMilli()
                         }
-                    })
+                    },
+            )
             Surface(
                 modifier = Modifier.align(Alignment.TopStart).offset(x = tooltipX).padding(top = 2.dp),
                 color = MaterialTheme.colorScheme.surface,
