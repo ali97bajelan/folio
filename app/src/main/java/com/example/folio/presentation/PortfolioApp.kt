@@ -71,7 +71,13 @@ import com.example.folio.data.PortfolioHistoryPoint
 import com.example.folio.data.local.*
 import com.example.folio.data.widget.MarketKey
 import com.example.folio.data.widget.MarketSelection
+import com.example.folio.presentation.components.AddAssetMarketLookupField
+import com.example.folio.presentation.components.IdentifierValidationStatus
 import com.example.folio.presentation.components.MarketInstrumentPicker
+import com.example.folio.presentation.components.MarketInstrumentPickerViewModel
+import com.example.folio.presentation.components.MarketSelectionOrigin
+import com.example.folio.presentation.components.MarketProviderIdentifierField
+import com.example.folio.presentation.components.ProviderDropdown
 import com.example.folio.presentation.design.*
 import com.example.folio.presentation.icons.FolioIcons
 import java.math.BigDecimal
@@ -1842,6 +1848,9 @@ private fun AssetForm(
     var pricingMode by rememberSaveable(id) { mutableStateOf(PortfolioCodes.MARKET) }
     var provider by rememberSaveable(id) { mutableStateOf(PortfolioCodes.NOBITEX) }
     var providerSymbol by rememberSaveable(id) { mutableStateOf("") }
+    var addAssetQueryOverride by rememberSaveable(id) { mutableStateOf<String?>(null) }
+    var searchPickedTicker by rememberSaveable(id) { mutableStateOf<String?>(null) }
+    var marketSuggestionsExpanded by rememberSaveable(id) { mutableStateOf(false) }
     var currency by rememberSaveable(id) { mutableStateOf(PortfolioCodes.IRT) }
     var active by rememberSaveable(id) { mutableStateOf(true) }
     var selectedTagIds by rememberSaveable(id, stateSaver = listSaver<Set<Long>, Long>(
@@ -1855,6 +1864,13 @@ private fun AssetForm(
     var locationName by rememberSaveable(id) { mutableStateOf("") }
     var locationNotes by rememberSaveable(id) { mutableStateOf("") }
     var locationError by rememberSaveable(id) { mutableStateOf("") }
+
+    val addAssetMarketPicker = if (id == null) {
+        viewModel<MarketInstrumentPickerViewModel>(key = "add-asset-market-picker")
+    } else {
+        null
+    }
+    val addAssetPickerState = addAssetMarketPicker?.state?.collectAsStateWithLifecycle()?.value
 
     val noLocation = stringResource(R.string.no_location)
     val nameRequired = stringResource(R.string.error_name_required)
@@ -1884,6 +1900,45 @@ private fun AssetForm(
             tagsInitialized = true
         }
     }
+    LaunchedEffect(addAssetMarketPicker) {
+        val picker = addAssetMarketPicker ?: return@LaunchedEffect
+        if (picker.state.value.initialized) return@LaunchedEffect
+
+        val restoredSearchTicker = searchPickedTicker
+        val restoredSelection = providerSymbol.takeIf(String::isNotBlank)?.let { identifier ->
+            MarketSelection(
+                key = MarketKey(provider, identifier),
+                displayName = name.ifBlank { symbol.ifBlank { identifier } },
+                symbol = restoredSearchTicker
+                    ?: addAssetQueryOverride?.takeIf(String::isNotBlank)
+                    ?: name.trim().uppercase().replace(Regex("\\s+"), "-"),
+                assetType = assetType,
+            )
+        }
+        picker.initializeOrUpdate(
+            assetType = assetType,
+            initialSelection = restoredSelection,
+            initialSelectionValidated = restoredSearchTicker != null,
+        )
+        if (restoredSelection == null && picker.state.value.provider != provider) {
+            picker.changeProvider(provider)
+        }
+        if (
+            pricingMode == PortfolioCodes.MARKET &&
+            restoredSearchTicker == null &&
+            providerSymbol.isBlank()
+        ) {
+            picker.updateAddAssetQuery(addAssetQueryOverride ?: name)
+        }
+    }
+    LaunchedEffect(addAssetPickerState?.selection, addAssetPickerState?.selectionOrigin) {
+        val selection = addAssetPickerState?.selection ?: return@LaunchedEffect
+        provider = selection.key.provider
+        providerSymbol = selection.key.providerSymbol
+        if (addAssetPickerState.selectionOrigin == MarketSelectionOrigin.SEARCH) {
+            searchPickedTicker = selection.symbol
+        }
+    }
     if (!assetInitialized || !tagsInitialized) return Page(
         title = stringResource(R.string.edit_asset_title),
         showHeading = false,
@@ -1910,6 +1965,98 @@ private fun AssetForm(
         selectedContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
         selectedLabelColor = MaterialTheme.colorScheme.tertiary,
     )
+
+    fun updateSearchQuery(query: String) {
+        val picker = addAssetMarketPicker ?: return
+        picker.updateAddAssetQuery(query)
+        marketSuggestionsExpanded = query.trim().length >= 2
+    }
+
+    fun onAssetTypeSelected(newType: String) {
+        if (newType == assetType) return
+        assetType = newType
+        if (id == null) {
+            provider = defaultProviderFor(newType)
+            providerSymbol = ""
+            searchPickedTicker = null
+            marketSuggestionsExpanded = false
+            val picker = addAssetMarketPicker ?: return
+            picker.updateAssetType(newType)
+            if (pricingMode == PortfolioCodes.MARKET) {
+                val query = addAssetQueryOverride ?: name
+                picker.updateAddAssetQuery(query)
+                marketSuggestionsExpanded = query.trim().length >= 2
+            }
+        }
+    }
+
+    fun onProviderSelected(newProvider: String) {
+        if (newProvider == provider) return
+        provider = newProvider
+        if (id == null) {
+            providerSymbol = ""
+            searchPickedTicker = null
+            val picker = addAssetMarketPicker ?: return
+            picker.changeProvider(newProvider)
+            val query = addAssetQueryOverride ?: name
+            picker.updateAddAssetQuery(query)
+            marketSuggestionsExpanded =
+                pricingMode == PortfolioCodes.MARKET && query.trim().length >= 2
+        }
+    }
+
+    fun onPricingModeSelected(newMode: String) {
+        if (newMode == pricingMode) return
+        if (id == null) {
+            val picker = addAssetMarketPicker
+            if (newMode == PortfolioCodes.MANUAL) {
+                val current = picker?.state?.value
+                val pickedTicker = searchPickedTicker
+                    ?: current?.selection
+                        ?.takeIf { current.selectionOrigin == MarketSelectionOrigin.SEARCH }
+                        ?.symbol
+                if (!pickedTicker.isNullOrBlank()) {
+                    symbol = pickedTicker
+                } else if (symbol.isBlank()) {
+                    symbol = name.trim().uppercase().replace(Regex("\\s+"), "-")
+                }
+                providerSymbol = ""
+                addAssetQueryOverride = null
+                searchPickedTicker = null
+                marketSuggestionsExpanded = false
+                picker?.updateAddAssetQuery("")
+            } else {
+                providerSymbol = ""
+                addAssetQueryOverride = null
+                searchPickedTicker = null
+                updateSearchQuery(name)
+            }
+        }
+        pricingMode = newMode
+    }
+
+    fun applyQuickFill() {
+        addAssetMarketPicker?.updateAddAssetQuery("")
+        if (assetType != PortfolioCodes.CRYPTO) {
+            addAssetMarketPicker?.updateAssetType(PortfolioCodes.CRYPTO)
+        } else if (provider != PortfolioCodes.NOBITEX) {
+            addAssetMarketPicker?.changeProvider(PortfolioCodes.NOBITEX)
+        }
+        name = "Ethereum"
+        symbol = "ETH"
+        assetType = PortfolioCodes.CRYPTO
+        unit = PortfolioCodes.UNIT
+        pricingMode = PortfolioCodes.MANUAL
+        provider = PortfolioCodes.NOBITEX
+        providerSymbol = ""
+        addAssetQueryOverride = null
+        searchPickedTicker = null
+        marketSuggestionsExpanded = false
+        currency = PortfolioCodes.USD
+        openingQuantity = "1.75"
+        openingAverage = "3450"
+        error = ""
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -1967,19 +2114,7 @@ private fun AssetForm(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
                         TextButton(
-                            onClick = {
-                                name = "Ethereum"
-                                symbol = "ETH"
-                                assetType = PortfolioCodes.CRYPTO
-                                unit = PortfolioCodes.UNIT
-                                pricingMode = PortfolioCodes.MANUAL
-                                provider = PortfolioCodes.NOBITEX
-                                providerSymbol = ""
-                                currency = PortfolioCodes.USD
-                                openingQuantity = "1.75"
-                                openingAverage = "3450"
-                                error = ""
-                            },
+                            onClick = { applyQuickFill() },
                         ) {
                             Text(stringResource(R.string.quick_fill))
                         }
@@ -2020,12 +2155,7 @@ private fun AssetForm(
                                     selected = selected,
                                     role = Role.RadioButton,
                                     onClick = {
-                                        val newType = category.types.first()
-                                        assetType = newType
-                                        if (id == null) {
-                                            provider = defaultProviderFor(newType)
-                                            providerSymbol = ""
-                                        }
+                                        onAssetTypeSelected(category.types.first())
                                     },
                                 )
                                 .padding(horizontal = FolioSpacing.extraSmall, vertical = FolioSpacing.small),
@@ -2059,13 +2189,7 @@ private fun AssetForm(
                         selectedCategory.types.forEach { type ->
                             FilterChip(
                                 selected = assetType == type,
-                                onClick = {
-                                    assetType = type
-                                    if (id == null) {
-                                        provider = defaultProviderFor(type)
-                                        providerSymbol = ""
-                                    }
-                                },
+                                onClick = { onAssetTypeSelected(type) },
                                 label = { Text(typeLabel(type)) },
                                 modifier = Modifier.heightIn(min = FolioMinimumTouchTarget),
                                 colors = accentChipColors,
@@ -2075,9 +2199,20 @@ private fun AssetForm(
                 }
                 FolioField(
                     value = name,
-                    onValueChange = {
-                        name = it
-                        if (symbol.isBlank()) symbol = it.uppercase().replace(' ', '-')
+                    onValueChange = { newName ->
+                        name = newName
+                        if (
+                            id == null &&
+                            pricingMode == PortfolioCodes.MARKET &&
+                            addAssetPickerState?.selection == null &&
+                            providerSymbol.isBlank()
+                        ) {
+                            addAssetQueryOverride = null
+                            searchPickedTicker = null
+                            updateSearchQuery(newName)
+                        } else if (symbol.isBlank() && !(id == null && pricingMode == PortfolioCodes.MARKET)) {
+                            symbol = newName.uppercase().replace(' ', '-')
+                        }
                     },
                     label = stringResource(R.string.name),
                     placeholder = stringResource(R.string.asset_name_hint),
@@ -2085,17 +2220,42 @@ private fun AssetForm(
                     singleLine = true,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
-                    FolioField(
-                        value = symbol,
-                        onValueChange = { symbol = it.uppercase() },
-                        label = stringResource(R.string.symbol),
-                        placeholder = stringResource(R.string.symbol_hint),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                        ),
-                    )
+                    if (id == null && pricingMode == PortfolioCodes.MARKET) {
+                        AddAssetMarketLookupField(
+                            value = searchPickedTicker ?: addAssetQueryOverride ?: name,
+                            state = requireNotNull(addAssetPickerState),
+                            expanded = marketSuggestionsExpanded,
+                            onExpandedChange = { marketSuggestionsExpanded = it },
+                            onValueChange = { query ->
+                                addAssetQueryOverride = query
+                                searchPickedTicker = null
+                                providerSymbol = ""
+                                updateSearchQuery(query)
+                            },
+                            onInstrumentSelected = { instrument ->
+                                val picker = requireNotNull(addAssetMarketPicker)
+                                picker.selectInstrument(instrument)
+                                val selectedMarket = picker.state.value.selection
+                                searchPickedTicker = selectedMarket?.symbol ?: instrument.assetSymbol
+                                provider = selectedMarket?.key?.provider ?: provider
+                                providerSymbol = selectedMarket?.key?.providerSymbol ?: ""
+                                marketSuggestionsExpanded = false
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        FolioField(
+                            value = symbol,
+                            onValueChange = { symbol = it.uppercase() },
+                            label = stringResource(R.string.symbol),
+                            placeholder = stringResource(R.string.symbol_hint),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Characters,
+                            ),
+                        )
+                    }
                     FolioSelector(
                         options = listOf(PortfolioCodes.UNIT, PortfolioCodes.GRAM),
                         selected = unit,
@@ -2138,7 +2298,7 @@ private fun AssetForm(
                                 .selectable(
                                     selected = selected,
                                     role = Role.RadioButton,
-                                    onClick = { pricingMode = mode },
+                                    onClick = { onPricingModeSelected(mode) },
                                 )
                                 .padding(horizontal = FolioSpacing.small),
                             contentAlignment = Alignment.Center,
@@ -2152,7 +2312,23 @@ private fun AssetForm(
                         }
                     }
                 }
-                if (pricingMode == PortfolioCodes.MARKET) {
+                if (pricingMode == PortfolioCodes.MARKET && id == null) {
+                    ProviderDropdown(
+                        selected = provider,
+                        onSelected = ::onProviderSelected,
+                    )
+                    MarketProviderIdentifierField(
+                        value = providerSymbol,
+                        status = addAssetPickerState?.validationStatus
+                            ?: IdentifierValidationStatus.IDLE,
+                        onValueChange = { identifier ->
+                            providerSymbol = identifier
+                            searchPickedTicker = null
+                            marketSuggestionsExpanded = false
+                            addAssetMarketPicker?.updateAddAssetProviderSymbol(identifier)
+                        },
+                    )
+                } else if (pricingMode == PortfolioCodes.MARKET) {
                     val initialMarketSelection = remember(provider, providerSymbol, symbol, name, assetType) {
                         providerSymbol.takeIf(String::isNotBlank)?.let { identifier ->
                             MarketSelection(
@@ -2179,7 +2355,7 @@ private fun AssetForm(
                             provider = selection.key.provider
                             providerSymbol = selection.key.providerSymbol
                         },
-                        initialSelectionValidated = id != null,
+                        initialSelectionValidated = true,
                     )
                 } else {
                     Choice(
@@ -2359,23 +2535,47 @@ private fun AssetForm(
                 else stringResource(R.string.save),
                 onClick = {
                     error = ""
+                    val selectedMarket = if (id == null && pricingMode == PortfolioCodes.MARKET) {
+                        addAssetMarketPicker?.state?.value?.selection
+                    } else {
+                        null
+                    }
+                    val assetSymbol = if (id == null && pricingMode == PortfolioCodes.MARKET) {
+                        val pickedMarketSymbol = searchPickedTicker
+                            ?: selectedMarket
+                                ?.takeIf {
+                                    addAssetMarketPicker?.state?.value?.selectionOrigin ==
+                                        MarketSelectionOrigin.SEARCH
+                                }
+                                ?.symbol
+                        pickedMarketSymbol
+                            ?: addAssetQueryOverride?.takeIf(String::isNotBlank)
+                                ?.trim()
+                                ?.uppercase()
+                            ?: name.trim().uppercase().replace(Regex("\\s+"), "-")
+                    } else {
+                        symbol.uppercase()
+                    }
+                    val assetProvider = selectedMarket?.key?.provider ?: provider
+                    val assetProviderSymbol = selectedMarket?.key?.providerSymbol ?: providerSymbol
                     val asset = AssetEntity(
                         id ?: 0,
                         name,
-                        symbol.uppercase(),
+                        assetSymbol,
                         assetType,
                         unit,
                         pricingMode,
-                        if (pricingMode == PortfolioCodes.MANUAL) PortfolioCodes.MANUAL else provider,
-                        providerSymbol,
+                        if (pricingMode == PortfolioCodes.MANUAL) PortfolioCodes.MANUAL else assetProvider,
+                        assetProviderSymbol,
                         currency,
                         active,
                     )
                     when {
                         name.isBlank() -> error = nameRequired
-                        symbol.isBlank() -> error = symbolRequired
+                        assetSymbol.isBlank() -> error = symbolRequired
                         pricingMode == PortfolioCodes.MARKET &&
-                            (provider.isBlank() || providerSymbol.isBlank()) -> error = marketRequired
+                            (if (id == null) selectedMarket == null
+                            else assetProvider.isBlank() || assetProviderSymbol.isBlank()) -> error = marketRequired
                         id == null -> vm.saveAssetWithOpening(
                             asset = asset,
                             tags = selectedTagIds.toList(),

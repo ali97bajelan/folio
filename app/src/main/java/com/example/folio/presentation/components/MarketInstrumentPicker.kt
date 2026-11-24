@@ -158,31 +158,19 @@ fun MarketInstrumentPicker(
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
-        val identifierError = state.validationStatus == IdentifierValidationStatus.ERROR
-        val identifierMessage = when (state.validationStatus) {
-            IdentifierValidationStatus.LOADING -> stringResource(R.string.provider_identifier_checking)
-            IdentifierValidationStatus.ERROR -> stringResource(R.string.provider_identifier_invalid)
-            IdentifierValidationStatus.IDLE,
-            IdentifierValidationStatus.VALID -> null
-        }
-        FolioField(
+        MarketProviderIdentifierField(
             value = state.providerSymbol,
+            status = state.validationStatus,
             onValueChange = { providerSymbol ->
                 pickerViewModel.updateProviderSymbol(providerSymbol)
                 currentProviderSymbolChanged(providerSymbol)
             },
-            label = stringResource(R.string.provider_symbol),
-            placeholder = stringResource(R.string.provider_symbol_hint),
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            singleLine = true,
-            supportingText = identifierMessage,
-            isError = identifierError,
         )
     }
 }
 
 @Composable
-private fun ProviderDropdown(
+internal fun ProviderDropdown(
     selected: String,
     onSelected: (String) -> Unit,
 ) {
@@ -199,6 +187,30 @@ private fun ProviderDropdown(
         label = stringResource(R.string.provider),
         modifier = Modifier.padding(bottom = 8.dp),
         optionLabel = { providerLabel(it) },
+    )
+}
+
+@Composable
+internal fun MarketProviderIdentifierField(
+    value: String,
+    status: IdentifierValidationStatus,
+    onValueChange: (String) -> Unit,
+) {
+    val identifierMessage = when (status) {
+        IdentifierValidationStatus.LOADING -> stringResource(R.string.provider_identifier_checking)
+        IdentifierValidationStatus.ERROR -> stringResource(R.string.provider_identifier_invalid)
+        IdentifierValidationStatus.IDLE,
+        IdentifierValidationStatus.VALID -> null
+    }
+    FolioField(
+        value = value,
+        onValueChange = onValueChange,
+        label = stringResource(R.string.provider_symbol),
+        placeholder = stringResource(R.string.provider_symbol_hint),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        singleLine = true,
+        supportingText = identifierMessage,
+        isError = status == IdentifierValidationStatus.ERROR,
     )
 }
 
