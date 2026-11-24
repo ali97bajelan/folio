@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuBoxScope
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -23,19 +24,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.folio.R
 import com.example.folio.data.network.Instrument
-import com.example.folio.presentation.design.FolioField
 import com.example.folio.presentation.design.FolioFinancialValue
+
+internal enum class AddAssetMarketLookupAnchor {
+    NAME,
+    SYMBOL,
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AddAssetMarketLookupField(
-    value: String,
+internal fun AddAssetMarketLookupMenu(
     state: MarketInstrumentPickerState,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onValueChange: (String) -> Unit,
     onInstrumentSelected: (Instrument) -> Unit,
     modifier: Modifier = Modifier,
+    content: @Composable ExposedDropdownMenuBoxScope.() -> Unit,
 ) {
     val hasEligibleQuery = state.query.trim().length >= MIN_QUERY_LENGTH
     val menuExpanded = expanded &&
@@ -47,21 +51,9 @@ internal fun AddAssetMarketLookupField(
         onExpandedChange = { requested ->
             onExpandedChange(requested && hasEligibleQuery)
         },
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
     ) {
-        FolioField(
-            value = value,
-            onValueChange = onValueChange,
-            label = stringResource(R.string.asset_symbol_or_market),
-            placeholder = stringResource(R.string.market_search_hint),
-            modifier = Modifier
-                .menuAnchor(MenuAnchorType.PrimaryEditable)
-                .fillMaxWidth(),
-            singleLine = true,
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded)
-            },
-        )
+        content()
 
         if (menuExpanded) {
             key(state.provider, state.assetType, state.query) {

@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.folio"
         minSdk = 28
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.1.261116-3"
+        versionCode = 6
+        versionName = "1.2.261124-2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

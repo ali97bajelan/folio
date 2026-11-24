@@ -68,10 +68,12 @@ import com.example.folio.data.AssetRow
 import com.example.folio.data.AssetTypeHistoryPoint
 import com.example.folio.data.DashboardData
 import com.example.folio.data.PortfolioHistoryPoint
+import com.example.folio.data.network.Instrument
 import com.example.folio.data.local.*
 import com.example.folio.data.widget.MarketKey
 import com.example.folio.data.widget.MarketSelection
-import com.example.folio.presentation.components.AddAssetMarketLookupField
+import com.example.folio.presentation.components.AddAssetMarketLookupAnchor
+import com.example.folio.presentation.components.AddAssetMarketLookupMenu
 import com.example.folio.presentation.components.IdentifierValidationStatus
 import com.example.folio.presentation.components.MarketInstrumentPicker
 import com.example.folio.presentation.components.MarketInstrumentPickerViewModel
@@ -1850,7 +1852,10 @@ private fun AssetForm(
     var providerSymbol by rememberSaveable(id) { mutableStateOf("") }
     var addAssetQueryOverride by rememberSaveable(id) { mutableStateOf<String?>(null) }
     var searchPickedTicker by rememberSaveable(id) { mutableStateOf<String?>(null) }
-    var marketSuggestionsExpanded by rememberSaveable(id) { mutableStateOf(false) }
+    var marketSuggestionsExpanded by remember(id) { mutableStateOf(false) }
+    var marketSuggestionsAnchor by remember(id) {
+        mutableStateOf(AddAssetMarketLookupAnchor.NAME)
+    }
     var currency by rememberSaveable(id) { mutableStateOf(PortfolioCodes.IRT) }
     var active by rememberSaveable(id) { mutableStateOf(true) }
     var selectedTagIds by rememberSaveable(id, stateSaver = listSaver<Set<Long>, Long>(
@@ -1969,7 +1974,34 @@ private fun AssetForm(
     fun updateSearchQuery(query: String) {
         val picker = addAssetMarketPicker ?: return
         picker.updateAddAssetQuery(query)
+        marketSuggestionsAnchor = if (addAssetQueryOverride == null) {
+            AddAssetMarketLookupAnchor.NAME
+        } else {
+            AddAssetMarketLookupAnchor.SYMBOL
+        }
         marketSuggestionsExpanded = query.trim().length >= 2
+    }
+
+    fun onAssetNameChanged(newName: String) {
+        name = newName
+        if (id == null && pricingMode == PortfolioCodes.MARKET) {
+            addAssetQueryOverride = null
+            searchPickedTicker = null
+            providerSymbol = ""
+            updateSearchQuery(newName)
+        } else if (symbol.isBlank()) {
+            symbol = newName.uppercase().replace(' ', '-')
+        }
+    }
+
+    fun onMarketInstrumentSelected(instrument: Instrument) {
+        val picker = requireNotNull(addAssetMarketPicker)
+        picker.selectInstrument(instrument)
+        val selectedMarket = picker.state.value.selection
+        searchPickedTicker = selectedMarket?.symbol ?: instrument.assetSymbol
+        provider = selectedMarket?.key?.provider ?: provider
+        providerSymbol = selectedMarket?.key?.providerSymbol ?: ""
+        marketSuggestionsExpanded = false
     }
 
     fun onAssetTypeSelected(newType: String) {
@@ -2197,52 +2229,76 @@ private fun AssetForm(
                         }
                     }
                 }
-                FolioField(
-                    value = name,
-                    onValueChange = { newName ->
-                        name = newName
-                        if (
-                            id == null &&
-                            pricingMode == PortfolioCodes.MARKET &&
-                            addAssetPickerState?.selection == null &&
-                            providerSymbol.isBlank()
-                        ) {
-                            addAssetQueryOverride = null
-                            searchPickedTicker = null
-                            updateSearchQuery(newName)
-                        } else if (symbol.isBlank() && !(id == null && pricingMode == PortfolioCodes.MARKET)) {
-                            symbol = newName.uppercase().replace(' ', '-')
-                        }
-                    },
-                    label = stringResource(R.string.name),
-                    placeholder = stringResource(R.string.asset_name_hint),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
+                if (id == null && pricingMode == PortfolioCodes.MARKET) {
+                    AddAssetMarketLookupMenu(
+                        state = requireNotNull(addAssetPickerState),
+                        expanded = marketSuggestionsExpanded &&
+                            marketSuggestionsAnchor == AddAssetMarketLookupAnchor.NAME,
+                        onExpandedChange = { requested ->
+                            marketSuggestionsAnchor = AddAssetMarketLookupAnchor.NAME
+                            marketSuggestionsExpanded = requested
+                        },
+                        onInstrumentSelected = ::onMarketInstrumentSelected,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        FolioField(
+                            value = name,
+                            onValueChange = { onAssetNameChanged(it) },
+                            label = stringResource(R.string.name),
+                            placeholder = stringResource(R.string.asset_name_hint),
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
+                } else {
+                    FolioField(
+                        value = name,
+                        onValueChange = { onAssetNameChanged(it) },
+                        label = stringResource(R.string.name),
+                        placeholder = stringResource(R.string.asset_name_hint),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
                     if (id == null && pricingMode == PortfolioCodes.MARKET) {
-                        AddAssetMarketLookupField(
-                            value = searchPickedTicker ?: addAssetQueryOverride ?: name,
-                            state = requireNotNull(addAssetPickerState),
-                            expanded = marketSuggestionsExpanded,
-                            onExpandedChange = { marketSuggestionsExpanded = it },
-                            onValueChange = { query ->
-                                addAssetQueryOverride = query
-                                searchPickedTicker = null
-                                providerSymbol = ""
-                                updateSearchQuery(query)
+                        val pickerState = requireNotNull(addAssetPickerState)
+                        AddAssetMarketLookupMenu(
+                            state = pickerState,
+                            expanded = marketSuggestionsExpanded &&
+                                marketSuggestionsAnchor == AddAssetMarketLookupAnchor.SYMBOL,
+                            onExpandedChange = { requested ->
+                                marketSuggestionsAnchor = AddAssetMarketLookupAnchor.SYMBOL
+                                marketSuggestionsExpanded = requested
                             },
-                            onInstrumentSelected = { instrument ->
-                                val picker = requireNotNull(addAssetMarketPicker)
-                                picker.selectInstrument(instrument)
-                                val selectedMarket = picker.state.value.selection
-                                searchPickedTicker = selectedMarket?.symbol ?: instrument.assetSymbol
-                                provider = selectedMarket?.key?.provider ?: provider
-                                providerSymbol = selectedMarket?.key?.providerSymbol ?: ""
-                                marketSuggestionsExpanded = false
-                            },
+                            onInstrumentSelected = ::onMarketInstrumentSelected,
                             modifier = Modifier.weight(1f),
-                        )
+                        ) {
+                            FolioField(
+                                value = searchPickedTicker ?: addAssetQueryOverride ?: name,
+                                onValueChange = { query ->
+                                    marketSuggestionsAnchor = AddAssetMarketLookupAnchor.SYMBOL
+                                    addAssetQueryOverride = query
+                                    searchPickedTicker = null
+                                    providerSymbol = ""
+                                    updateSearchQuery(query)
+                                },
+                                label = stringResource(R.string.asset_symbol_or_market),
+                                placeholder = stringResource(R.string.market_search_hint),
+                                modifier = Modifier
+                                    .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                    .fillMaxWidth(),
+                                singleLine = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = marketSuggestionsExpanded &&
+                                            marketSuggestionsAnchor == AddAssetMarketLookupAnchor.SYMBOL,
+                                    )
+                                },
+                            )
+                        }
                     } else {
                         FolioField(
                             value = symbol,
