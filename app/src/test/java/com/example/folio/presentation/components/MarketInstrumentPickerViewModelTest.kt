@@ -153,6 +153,163 @@ class MarketInstrumentPickerViewModelTest {
         }
     }
 
+    @Test
+    fun add_asset_query_preserves_provider_type_and_name_text() {
+        val searches = mutableListOf<Triple<String, String, String>>()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = pickerViewModel(
+            scope = scope,
+            search = { provider, query, assetType ->
+                searches += Triple(provider, query, assetType)
+                emptyList()
+            },
+        )
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.GOLD, null)
+            viewModel.updateAddAssetQuery("  طلای آب شده  ")
+
+            assertEquals(
+                listOf(Triple(PortfolioCodes.RAHAVARD, "طلای آب شده", PortfolioCodes.GOLD)),
+                searches,
+            )
+            assertEquals("  طلای آب شده  ", viewModel.state.value.query)
+
+            viewModel.updateAddAssetQuery("x")
+            viewModel.updateAddAssetQuery("")
+
+            assertEquals(1, searches.size)
+            assertEquals(InstrumentSearchStatus.IDLE, viewModel.state.value.searchStatus)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun add_asset_search_keeps_all_returned_matches_in_order() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val matches = (1..6).map { instrument("SYMBOL$it", "Asset $it") }
+        val viewModel = pickerViewModel(scope = scope, search = { _, _, _ -> matches })
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.CRYPTO, null)
+            viewModel.updateAddAssetQuery("assets")
+
+            assertEquals(matches, viewModel.state.value.instruments)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun new_add_asset_query_clears_selected_market_and_ignores_late_validation() {
+        val pending = PendingValidations()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = pickerViewModel(scope = scope, validate = pending::validate)
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.CRYPTO, null)
+            viewModel.selectInstrument(instrument("BTCIRT", "Bitcoin"))
+            assertEquals("BTC-RLS", viewModel.state.value.selection?.key?.providerSymbol)
+
+            viewModel.updateAddAssetQuery("Ethereum")
+            assertNull(viewModel.state.value.selection)
+            assertEquals("", viewModel.state.value.providerSymbol)
+
+            viewModel.updateProviderSymbol("ETHIRT")
+            assertEquals(IdentifierValidationStatus.LOADING, viewModel.state.value.validationStatus)
+            viewModel.updateAddAssetQuery("Ethereum")
+            assertEquals(IdentifierValidationStatus.IDLE, viewModel.state.value.validationStatus)
+
+            pending.complete("ETH-RLS")
+            assertNull(viewModel.state.value.selection)
+            assertEquals("", viewModel.state.value.providerSymbol)
+            assertEquals("Ethereum", viewModel.state.value.query)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun direct_identifier_edit_cancels_search_and_requires_validation() {
+        val pendingSearches = PendingSearches()
+        val pendingValidations = PendingValidations()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = pickerViewModel(
+            scope = scope,
+            search = { _, query, _ -> pendingSearches.search(query) },
+            validate = pendingValidations::validate,
+        )
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.CRYPTO, null)
+            viewModel.updateAddAssetQuery("bitcoin")
+            viewModel.updateAddAssetProviderSymbol("BTCIRT")
+
+            pendingSearches.complete("bitcoin", listOf(instrument("OLD", "Old result")))
+            assertTrue(viewModel.state.value.instruments.isEmpty())
+            assertEquals(InstrumentSearchStatus.IDLE, viewModel.state.value.searchStatus)
+            assertEquals(IdentifierValidationStatus.LOADING, viewModel.state.value.validationStatus)
+            assertNull(viewModel.state.value.selection)
+
+            pendingValidations.complete("BTC-RLS")
+            assertEquals("BTC-RLS", viewModel.state.value.selection?.key?.providerSymbol)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun add_asset_provider_switch_uses_new_provider_and_rejects_old_response() {
+        val pending = ProviderPendingSearches()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = pickerViewModel(
+            scope = scope,
+            search = { provider, query, _ -> pending.search(provider, query) },
+        )
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.CRYPTO, null)
+            viewModel.updateAddAssetQuery("bitcoin")
+            viewModel.changeProvider(PortfolioCodes.ABANTETHER)
+            viewModel.updateAddAssetQuery("bitcoin")
+
+            pending.complete(PortfolioCodes.NOBITEX, "bitcoin", listOf(instrument("OLD", "Old result")))
+            assertTrue(viewModel.state.value.instruments.isEmpty())
+            assertEquals(InstrumentSearchStatus.LOADING, viewModel.state.value.searchStatus)
+
+            val current = instrument("BTC", "Bitcoin")
+            pending.complete(PortfolioCodes.ABANTETHER, "bitcoin", listOf(current))
+            assertEquals(listOf(current), viewModel.state.value.instruments)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun clearing_add_asset_lookup_ignores_pending_search() {
+        val pending = PendingSearches()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val viewModel = pickerViewModel(
+            scope = scope,
+            search = { _, query, _ -> pending.search(query) },
+        )
+
+        try {
+            viewModel.initializeOrUpdate(PortfolioCodes.CRYPTO, null)
+            viewModel.updateAddAssetQuery("bitcoin")
+            viewModel.updateAddAssetQuery("")
+
+            pending.complete("bitcoin", listOf(instrument("BTC", "Bitcoin")))
+
+            assertEquals(InstrumentSearchStatus.IDLE, viewModel.state.value.searchStatus)
+            assertTrue(viewModel.state.value.instruments.isEmpty())
+            assertNull(viewModel.state.value.selection)
+        } finally {
+            scope.cancel()
+        }
+    }
+
     private fun pickerViewModel(
         scope: CoroutineScope,
         search: suspend (provider: String, query: String, assetType: String) -> List<Instrument> = { _, _, _ -> emptyList() },
@@ -191,6 +348,29 @@ class MarketInstrumentPickerViewModelTest {
 
         fun complete(query: String, result: List<Instrument>) {
             requests.getValue(query).resume(result)
+        }
+    }
+
+    private class ProviderPendingSearches {
+        private val requests =
+            mutableMapOf<Pair<String, String>, Continuation<List<Instrument>>>()
+
+        suspend fun search(provider: String, query: String): List<Instrument> {
+            var result: List<Instrument>? = null
+            try {
+                withContext(NonCancellable) {
+                    result = suspendCoroutine { continuation ->
+                        requests[provider to query] = continuation
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                if (result == null) throw cancellation
+            }
+            return requireNotNull(result)
+        }
+
+        fun complete(provider: String, query: String, result: List<Instrument>) {
+            requests.getValue(provider to query).resume(result)
         }
     }
 

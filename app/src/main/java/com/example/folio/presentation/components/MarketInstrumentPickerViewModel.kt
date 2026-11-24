@@ -164,6 +164,21 @@ class MarketInstrumentPickerViewModel internal constructor(
         if (current.selection != null) publishSelectionChange(null, null)
     }
 
+    fun updateAddAssetQuery(query: String) {
+        val hadSelection = _state.value.selection != null
+        cancelValidation()
+        _state.update {
+            it.copy(
+                providerSymbol = "",
+                validationStatus = IdentifierValidationStatus.IDLE,
+                selection = null,
+                selectionOrigin = null,
+            )
+        }
+        if (hadSelection) publishSelectionChange(null, null)
+        updateQuery(query)
+    }
+
     fun updateQuery(query: String) {
         val current = _state.value
         _state.update { it.copy(query = query) }
@@ -213,6 +228,17 @@ class MarketInstrumentPickerViewModel internal constructor(
             )
         }
         publishSelectionChange(selection, MarketSelectionOrigin.SEARCH)
+    }
+
+    fun updateAddAssetProviderSymbol(providerSymbol: String) {
+        cancelSearch()
+        _state.update {
+            it.copy(
+                instruments = emptyList(),
+                searchStatus = InstrumentSearchStatus.IDLE,
+            )
+        }
+        updateProviderSymbol(providerSymbol)
     }
 
     fun updateProviderSymbol(providerSymbol: String) {
