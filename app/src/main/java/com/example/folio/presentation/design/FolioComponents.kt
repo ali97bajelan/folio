@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -67,6 +68,7 @@ fun FolioPage(
     showHeading: Boolean = true,
     actionAlignment: Alignment.Horizontal = Alignment.End,
     actions: (@Composable () -> Unit)? = null,
+    contentTopSpacing: Dp = FolioSpacing.extraLarge,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -103,7 +105,7 @@ fun FolioPage(
                 actions()
             }
         }
-        Spacer(Modifier.height(FolioSpacing.extraLarge))
+        Spacer(Modifier.height(contentTopSpacing))
         content()
     }
 }
@@ -232,6 +234,7 @@ fun FolioIconAction(
 @Composable
 fun FolioCard(
     modifier: Modifier = Modifier,
+    contentPadding: Dp = FolioSpacing.large,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
@@ -249,7 +252,7 @@ fun FolioCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(FolioSpacing.large),
+            modifier = Modifier.padding(contentPadding),
             content = content,
         )
     }
@@ -261,6 +264,7 @@ fun FolioListRow(
     onClick: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    verticalPadding: Dp = FolioSpacing.small,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val clickableModifier = if (onClick != null) {
@@ -272,7 +276,7 @@ fun FolioListRow(
         modifier
             .then(clickableModifier)
             .heightIn(min = FolioMinimumTouchTarget)
-            .padding(horizontal = FolioSpacing.medium, vertical = FolioSpacing.small),
+            .padding(horizontal = FolioSpacing.medium, vertical = verticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(FolioSpacing.medium),
     ) {

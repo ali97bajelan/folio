@@ -238,6 +238,7 @@ private fun PortfolioWidgetActionButtons(
 @Composable
 internal fun WidgetHeader(
     title: String?,
+    subtitle: String? = null,
     actions: @Composable () -> Unit,
 ) {
     Row(
@@ -247,19 +248,32 @@ internal fun WidgetHeader(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (title == null) {
+        if (title == null && subtitle == null) {
             Spacer(GlanceModifier.defaultWeight())
         } else {
-            Text(
-                text = title,
-                modifier = GlanceModifier.defaultWeight(),
-                maxLines = 1,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                title?.let {
+                    Text(
+                        text = it,
+                        maxLines = 1,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                    )
+                }
+                subtitle?.let {
+                    Text(
+                        text = it,
+                        maxLines = 1,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 9.sp,
+                        ),
+                    )
+                }
+            }
         }
         actions()
     }

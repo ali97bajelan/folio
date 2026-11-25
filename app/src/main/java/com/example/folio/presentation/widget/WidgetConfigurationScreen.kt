@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
@@ -39,6 +43,8 @@ import com.example.folio.data.widget.WidgetKind
 import com.example.folio.presentation.components.MarketInstrumentPicker
 import com.example.folio.presentation.design.FolioCard
 import com.example.folio.presentation.design.FolioChoiceChips
+import com.example.folio.presentation.design.FolioIconAction
+import com.example.folio.presentation.design.FolioIconSize
 import com.example.folio.presentation.design.FolioListRow
 import com.example.folio.presentation.design.FolioMessageKind
 import com.example.folio.presentation.design.FolioPage
@@ -46,6 +52,7 @@ import com.example.folio.presentation.design.FolioPrimaryButton
 import com.example.folio.presentation.design.FolioSecondaryButton
 import com.example.folio.presentation.design.FolioSelector
 import com.example.folio.presentation.design.FolioStateMessage
+import com.example.folio.presentation.design.FolioSpacing
 import com.example.folio.presentation.design.isolateFinancialText
 
 @Composable
@@ -72,7 +79,26 @@ internal fun WidgetConfigurationScreen(
     FolioPage(
         title = title,
         modifier = Modifier.imePadding(),
+        showHeading = false,
+        contentTopSpacing = FolioSpacing.small,
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FolioIconAction(
+                onClick = onCancel,
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.back),
+            )
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineMedium,
+                maxLines = 2,
+            )
+        }
+
         when {
             state.isLoading -> FolioStateMessage(
                 message = stringResource(R.string.widget_config_loading),
@@ -86,7 +112,10 @@ internal fun WidgetConfigurationScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            state.kind == WidgetKind.PORTFOLIO -> FolioCard(Modifier.fillMaxWidth()) {
+            state.kind == WidgetKind.PORTFOLIO -> FolioCard(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = FolioSpacing.medium,
+            ) {
                 PortfolioOptions(
                     state = state,
                     onCurrencyChanged = onCurrencyChanged,
@@ -94,7 +123,10 @@ internal fun WidgetConfigurationScreen(
                 )
             }
 
-            state.kind == WidgetKind.ASSET_PRICE -> FolioCard(Modifier.fillMaxWidth()) {
+            state.kind == WidgetKind.ASSET_PRICE -> FolioCard(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = FolioSpacing.medium,
+            ) {
                 PriceOptions(
                     state = state,
                     onAssetTypeChanged = onAssetTypeChanged,
@@ -117,7 +149,7 @@ internal fun WidgetConfigurationScreen(
             )
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(FolioSpacing.extraSmall))
         FolioPrimaryButton(
             text = stringResource(R.string.save),
             onClick = onSave,
@@ -139,7 +171,7 @@ private fun PortfolioOptions(
     onCurrencyChanged: (String) -> Unit,
     onHideTotalChanged: (Boolean) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
         FolioChoiceChips(
             options = listOf(PortfolioCodes.IRT, PortfolioCodes.USD),
             selected = state.currency,
@@ -183,7 +215,7 @@ private fun PriceOptions(
     onRemoveMarket: (com.example.folio.data.widget.MarketKey) -> Unit,
     onMoveMarket: (Int, Int) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.small)) {
         Text(
             text = stringResource(R.string.widget_selected_assets),
             style = MaterialTheme.typography.titleSmall,
@@ -340,7 +372,7 @@ private fun ReorderableMarketList(
                     val handleColor = MaterialTheme.colorScheme.onSurfaceVariant
                     androidx.compose.foundation.Canvas(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(FolioIconSize.large)
                             .semantics { contentDescription = handleDescription },
                     ) {
                         val radius = 1.5.dp.toPx()
@@ -366,20 +398,15 @@ private fun ReorderableMarketList(
                         R.string.widget_remove_asset,
                         selected.displayName,
                     )
-                    androidx.compose.material3.IconButton(
+                    FolioIconAction(
                         onClick = { onRemove(selected.key) },
-                        modifier = Modifier.semantics {
-                            contentDescription = removeDescription
-                        },
-                    ) {
-                        androidx.compose.material3.Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Close,
-                            contentDescription = null,
-                        )
-                    }
+                        icon = Icons.Default.Close,
+                        contentDescription = removeDescription,
+                    )
                 },
+                verticalPadding = FolioSpacing.extraSmall,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(FolioSpacing.extraSmall)) {
                     Text(
                         text = stringResource(
                             R.string.widget_market_selected,

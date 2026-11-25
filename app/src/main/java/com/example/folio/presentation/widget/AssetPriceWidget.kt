@@ -147,6 +147,18 @@ internal fun AssetPriceWidgetLayout(
         LayoutDirection.Ltr
     }
     val title = context.getString(R.string.widget_asset_price_name)
+    val now = Instant.now()
+    val quoteAge = configuration?.markets.orEmpty()
+        .mapNotNull { selection ->
+            quotes[selection.key]
+                ?.takeIf { it.key == selection.key }
+                ?.let { presentAssetPriceQuote(it, isUpdating, now).quoteAt }
+        }
+        .maxOrNull()
+        ?.let { formatAssetPriceQuoteAge(context, it, now) }
+    val headerSubtitle = quoteAge?.let {
+        context.getString(R.string.widget_asset_price_quote_age, it)
+    }
     val configureAction = configureWidgetAction(appWidgetId)
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
@@ -157,7 +169,10 @@ internal fun AssetPriceWidgetLayout(
                 horizontalPadding = FolioWidgetSpacing.contentHorizontal,
                 titleBar = {
                     Column(modifier = GlanceModifier.padding(top = if (compact) 4.dp else 8.dp)) {
-                        WidgetHeader(title = title.takeIf { size.width >= 208.dp }) {
+                        WidgetHeader(
+                            title = title.takeIf { size.width >= 208.dp },
+                            subtitle = headerSubtitle,
+                        ) {
                             AssetPriceWidgetActionButtons(context, appWidgetId)
                         }
                     }
@@ -256,6 +271,15 @@ private fun AssetPriceWidgetBody(
             quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, now),
         )
     }
+    val sharedQuoteAt = displayRows.mapNotNull { it.presentation.quoteAt }.maxOrNull()
+    val sharedQuoteAge = formatAssetPriceQuoteAge(context, sharedQuoteAt, now)
+    val rowsWithIndividualAges = displayRows.map { displayRow ->
+        displayRow.copy(
+            quoteAge = displayRow.quoteAge.takeIf {
+                it != null && it != sharedQuoteAge
+            },
+        )
+    }
 
     LazyColumn(
         modifier = modifier
@@ -263,7 +287,7 @@ private fun AssetPriceWidgetBody(
             .height(listHeightDp.dp),
     ) {
         items(
-            items = displayRows,
+            items = rowsWithIndividualAges,
             itemId = { displayRow -> displayRow.row.stableId },
         ) { displayRow ->
             AssetPriceQuoteRow(

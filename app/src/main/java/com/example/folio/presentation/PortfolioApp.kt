@@ -479,7 +479,7 @@ private fun Page(
 private fun PanelCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
-) = FolioCard(modifier, content)
+) = FolioCard(modifier = modifier, content = content)
 
 @Composable
 private fun Tiny(text: String) = Text(

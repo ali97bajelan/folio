@@ -14,6 +14,10 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import com.example.folio.FolioApplication
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetRepository
@@ -68,22 +72,27 @@ class WidgetConfigurationActivity : AppCompatActivity() {
 
         setContent {
             FolioTheme(theme = themePreferences.current()) {
-                val state by configurationViewModel.state.collectAsStateWithLifecycle()
-                WidgetConfigurationScreen(
-                    state = state,
-                    onCurrencyChanged = configurationViewModel::updateCurrency,
-                    onHideTotalChanged = configurationViewModel::updateHideTotal,
-                    onAssetTypeChanged = configurationViewModel::updateAssetType,
-                    onProviderChanged = configurationViewModel::updateProvider,
-                    onQueryChanged = configurationViewModel::updateQuery,
-                    onProviderSymbolChanged = configurationViewModel::updateProviderSymbol,
-                    onMarketSelectionChanged = configurationViewModel::updateMarketSelection,
-                    onAddMarket = configurationViewModel::addPendingMarket,
-                    onRemoveMarket = configurationViewModel::removeMarket,
-                    onMoveMarket = configurationViewModel::moveMarket,
-                    onSave = ::saveConfiguration,
-                    onCancel = ::cancelConfiguration,
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    val state by configurationViewModel.state.collectAsStateWithLifecycle()
+                    WidgetConfigurationScreen(
+                        state = state,
+                        onCurrencyChanged = configurationViewModel::updateCurrency,
+                        onHideTotalChanged = configurationViewModel::updateHideTotal,
+                        onAssetTypeChanged = configurationViewModel::updateAssetType,
+                        onProviderChanged = configurationViewModel::updateProvider,
+                        onQueryChanged = configurationViewModel::updateQuery,
+                        onProviderSymbolChanged = configurationViewModel::updateProviderSymbol,
+                        onMarketSelectionChanged = configurationViewModel::updateMarketSelection,
+                        onAddMarket = configurationViewModel::addPendingMarket,
+                        onRemoveMarket = configurationViewModel::removeMarket,
+                        onMoveMarket = configurationViewModel::moveMarket,
+                        onSave = ::saveConfiguration,
+                        onCancel = ::cancelConfiguration,
+                    )
+                }
             }
         }
 
