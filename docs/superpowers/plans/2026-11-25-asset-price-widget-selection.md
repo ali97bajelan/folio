@@ -1,8 +1,8 @@
 # Configurable Asset Price Widget Implementation Plan
 
-Date 2026-11-25 · PW01 and PW02 implemented
+Date 2026-11-25 · PW01–PW05 implemented
 
-Build status: `:app:assembleDebug` passed and generated Room schema 5. Unit tests and emulator QA have not been run. PW03–PW05 remain pending.
+Verification status: `:app:testDebugUnitTest`, `:app:lintDebug`, and `:app:assembleDebug` passed. A host SQLite fixture verified migration 4→5 data preservation, selection cascades, shared quote retention, and final quote pruning. Emulator QA was not run.
 
 [Specification](../specs/2026-11-25-asset-price-widget-selection-design.md) · [Task checklist](../tasks/2026-11-25-asset-price-widget-selection.md)
 

@@ -60,6 +60,18 @@ class PriceRefreshWorker(
             )
         }
 
+        /** Append a refresh after current work so it includes a newly saved widget selection. */
+        fun refreshAfterConfigurationSaved(context: Context): Operation {
+            val request = OneTimeWorkRequestBuilder<PriceRefreshWorker>()
+                .setConstraints(networkConstraints())
+                .build()
+            return WorkManager.getInstance(context).enqueueUniqueWork(
+                IMMEDIATE_WORK_NAME,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
+                request,
+            )
+        }
+
         private fun networkConstraints() = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()

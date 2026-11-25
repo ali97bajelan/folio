@@ -17,7 +17,6 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.ImageProvider
-import com.example.folio.presentation.design.isolateFinancialText
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
@@ -26,6 +25,8 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.components.Scaffold
 import androidx.glance.appwidget.components.TitleBar
+import androidx.glance.appwidget.lazy.LazyColumn
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -45,15 +46,44 @@ import com.example.folio.FolioApplication
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
 import com.example.folio.data.network.PriceRefreshWorker
+import com.example.folio.data.widget.MarketKey
+import com.example.folio.data.widget.MarketSelection
 import com.example.folio.data.widget.WidgetConfiguration
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetQuote
+import com.example.folio.presentation.design.isolateFinancialText
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+
+private const val ASSET_PRICE_ROW_HEIGHT_DP = 72
+private const val ASSET_PRICE_MAX_VISIBLE_ROWS = 3
+
+internal data class AssetPriceViewport(
+    val visibleRows: Int,
+    val heightDp: Int,
+)
+
+internal fun calculateAssetPriceViewport(
+    rowCount: Int,
+    widgetHeightDp: Float,
+    compact: Boolean,
+): AssetPriceViewport {
+    if (rowCount <= 0) return AssetPriceViewport(visibleRows = 0, heightDp = 0)
+    val fixedHeaderHeight = if (compact) 44f else 56f
+    val verticalInsets = if (compact) 16f else 8f
+    val availableHeight = (widgetHeightDp - fixedHeaderHeight - verticalInsets)
+        .coerceAtLeast(ASSET_PRICE_ROW_HEIGHT_DP.toFloat())
+    val fittingRows = (availableHeight / ASSET_PRICE_ROW_HEIGHT_DP).toInt().coerceAtLeast(1)
+    val visibleRows = minOf(rowCount, fittingRows, ASSET_PRICE_MAX_VISIBLE_ROWS)
+    return AssetPriceViewport(
+        visibleRows = visibleRows,
+        heightDp = visibleRows * ASSET_PRICE_ROW_HEIGHT_DP,
+    )
+}
 
 class AssetPriceWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -78,7 +108,7 @@ class AssetPriceWidget : GlanceAppWidget() {
                 context = localizedContext,
                 appWidgetId = appWidgetId,
                 configuration = state.data?.configuration,
-                quote = state.data?.quote,
+                quotes = state.data?.quotes.orEmpty(),
                 isUpdating = isUpdating,
                 loadFailed = state.loadFailed,
             )
@@ -91,25 +121,24 @@ internal fun AssetPriceWidgetLayout(
     context: Context,
     appWidgetId: Int,
     configuration: WidgetConfiguration?,
-    quote: WidgetQuote?,
+    quotes: Map<MarketKey, WidgetQuote>,
     isUpdating: Boolean,
     loadFailed: Boolean,
 ) {
     val size = LocalSize.current
-    val expanded = size.width >= 280.dp && size.height >= 220.dp
+    val compact = !(size.width >= 280.dp && size.height >= 220.dp)
     val language = com.example.folio.presentation.LanguagePreferences(context).current()
     val direction = if (language == com.example.folio.presentation.AppLanguage.PERSIAN) {
         LayoutDirection.Rtl
     } else {
         LayoutDirection.Ltr
     }
-    val selection = configuration?.market
-    val title = selection?.displayName ?: context.getString(R.string.widget_asset_price_name)
+    val title = context.getString(R.string.widget_asset_price_name)
     val configureAction = configureWidgetAction(appWidgetId)
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
         FolioWidgetTheme {
-            if (expanded) {
+            if (!compact) {
                 Scaffold(
                     modifier = GlanceModifier
                         .fillMaxSize()
@@ -120,23 +149,22 @@ internal fun AssetPriceWidgetLayout(
                             startIcon = ImageProvider(R.mipmap.ic_launcher),
                             title = title,
                             iconColor = GlanceTheme.colors.primary,
-                            actions = {
-                                AssetPriceWidgetActionButtons(context, appWidgetId)
-                            },
+                            actions = { AssetPriceWidgetActionButtons(context, appWidgetId) },
                         )
                     },
                 ) {
                     AssetPriceWidgetBody(
                         context = context,
                         configuration = configuration,
-                        quote = quote,
+                        quotes = quotes,
                         isUpdating = isUpdating,
                         loadFailed = loadFailed,
                         configureAction = configureAction,
                         compact = false,
+                        totalHeightDp = size.height.value,
                         modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
                     )
                 }
             } else {
@@ -144,10 +172,7 @@ internal fun AssetPriceWidgetLayout(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.surface)
-                        .padding(
-                            horizontal = FolioWidgetSpacing.contentHorizontal,
-                            vertical = FolioWidgetSpacing.compactContentVertical,
-                        ),
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
@@ -159,14 +184,15 @@ internal fun AssetPriceWidgetLayout(
                     AssetPriceWidgetBody(
                         context = context,
                         configuration = configuration,
-                        quote = quote,
+                        quotes = quotes,
                         isUpdating = isUpdating,
                         loadFailed = loadFailed,
                         configureAction = configureAction,
                         compact = true,
+                        totalHeightDp = size.height.value,
                         modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
                     )
                 }
             }
@@ -195,15 +221,16 @@ private fun AssetPriceWidgetActionButtons(
 private fun AssetPriceWidgetBody(
     context: Context,
     configuration: WidgetConfiguration?,
-    quote: WidgetQuote?,
+    quotes: Map<MarketKey, WidgetQuote>,
     isUpdating: Boolean,
     loadFailed: Boolean,
     configureAction: Action,
     compact: Boolean,
+    totalHeightDp: Float,
     modifier: GlanceModifier,
 ) {
-    val selection = configuration?.market
-    if (selection == null) {
+    val markets = configuration?.markets.orEmpty()
+    if (markets.isEmpty()) {
         Column(
             modifier = modifier
                 .clickable(configureAction)
@@ -230,36 +257,79 @@ private fun AssetPriceWidgetBody(
         return
     }
 
+    val viewport = calculateAssetPriceViewport(markets.size, totalHeightDp, compact)
+    val rows = assetPriceWidgetRows(markets, quotes)
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(viewport.heightDp.dp),
+    ) {
+        items(
+            items = rows,
+            itemId = { row -> row.stableId },
+        ) { row ->
+            AssetPriceQuoteRow(
+                context = context,
+                row = row,
+                isUpdating = isUpdating,
+                loadFailed = loadFailed,
+                compact = compact,
+            )
+        }
+    }
+}
+
+internal data class AssetPriceWidgetRow(
+    val selection: MarketSelection,
+    val quote: WidgetQuote?,
+) {
+    val stableId: Long
+        get() = if (selection.selectionId > 0L) {
+            selection.selectionId
+        } else {
+            val hash = 31L * selection.key.provider.hashCode() + selection.key.providerSymbol.hashCode()
+            (hash and Long.MAX_VALUE).coerceAtLeast(1L)
+        }
+}
+
+internal fun assetPriceWidgetRows(
+    markets: List<MarketSelection>,
+    quotes: Map<MarketKey, WidgetQuote>,
+): List<AssetPriceWidgetRow> = markets.map { selection ->
+    AssetPriceWidgetRow(
+        selection = selection,
+        quote = quotes[selection.key]?.takeIf { it.key == selection.key },
+    )
+}
+
+@Composable
+private fun AssetPriceQuoteRow(
+    context: Context,
+    row: AssetPriceWidgetRow,
+    isUpdating: Boolean,
+    loadFailed: Boolean,
+    compact: Boolean,
+) {
+    val selection = row.selection
     val presentation = presentAssetPriceQuote(
-        quote = if (loadFailed) null else quote,
+        quote = row.quote,
         isUpdating = isUpdating,
         now = Instant.now(),
     )
     val provider = assetPriceProviderLabel(context, selection.key.provider)
-    val instrumentLabel = context.getString(
-        R.string.widget_asset_price_instrument,
+    val title = context.getString(
+        R.string.widget_asset_price_row_title,
+        provider,
         isolateFinancialText(selection.symbol),
         selection.displayName,
     )
-    val instrumentDescription = context.getString(
-        R.string.widget_asset_price_instrument,
+    val titleDescription = context.getString(
+        R.string.widget_asset_price_row_title,
+        provider,
         selection.symbol,
         selection.displayName,
     )
-    val compactInstrumentLabel = context.getString(
-        R.string.widget_asset_price_instrument,
-        provider,
-        instrumentLabel,
-    )
-    val compactInstrumentDescription = context.getString(
-        R.string.widget_asset_price_instrument,
-        provider,
-        instrumentDescription,
-    )
-    val quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, Instant.now())
-    val age = quoteAge?.let {
-        context.getString(R.string.widget_asset_price_quote_age, it)
-    }.orEmpty()
     val amount = presentation.price?.let { price ->
         formatAssetPriceAmount(
             price = price,
@@ -269,162 +339,79 @@ private fun AssetPriceWidgetBody(
     }
     val priceText = amount?.let(::isolateFinancialText)
         ?: context.getString(R.string.widget_asset_price_unavailable)
-    val priceDescription = amount ?: priceText
-    val status = buildList {
-        if (presentation.unsupported) add(context.getString(R.string.widget_asset_price_unsupported))
-        if (presentation.isUpdating) add(context.getString(R.string.widget_asset_price_updating))
-        if (presentation.refreshFailed) {
-            add(
-                context.getString(
-                    if (presentation.price == null) {
-                        R.string.widget_asset_price_refresh_failed_unavailable
-                    } else {
-                        R.string.widget_asset_price_refresh_failed
-                    },
-                ),
-            )
-        }
-        if (presentation.freshness == AssetPriceQuoteFreshness.STALE) {
-            add(context.getString(R.string.widget_asset_price_stale))
-        }
-        if (loadFailed) add(context.getString(R.string.widget_asset_price_load_error))
-    }.joinToString(" · ")
-    val compactStatus = compactAssetPriceStatus(context, presentation, loadFailed)
-    val compactMetadata = listOf(compactStatus, age)
+    val quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, Instant.now())
+    val metadata = listOf(
+        assetPriceQuoteStatus(context, presentation, loadFailed),
+        quoteAge?.let { context.getString(R.string.widget_asset_price_quote_age, it) },
+    ).filterNotNull().filter(String::isNotBlank).joinToString(" · ")
+    val rowDescription = listOf(titleDescription, amount ?: priceText, metadata)
         .filter(String::isNotBlank)
-        .joinToString(" · ")
+        .joinToString(". ")
 
     Column(
-        modifier = modifier
-            .clickable(configureAction)
-            .padding(vertical = 2.dp),
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .height(ASSET_PRICE_ROW_HEIGHT_DP.dp)
+            .padding(vertical = 3.dp)
+            .semantics { contentDescription = rowDescription },
     ) {
-        if (compact) {
-            Text(
-                text = compactInstrumentLabel,
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = compactInstrumentDescription },
-                maxLines = 1,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-        } else {
-            Text(
-                text = provider,
-                maxLines = 1,
-                style = TextStyle(
-                    color = GlanceTheme.colors.primary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-            Spacer(GlanceModifier.height(1.dp))
-            Text(
-                text = instrumentLabel,
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = instrumentDescription },
-                maxLines = 1,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = if (selection.displayName.length + selection.symbol.length > 20) 16.sp else 19.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-        }
-        Spacer(GlanceModifier.height(1.dp))
+        Text(
+            text = title,
+            modifier = GlanceModifier.fillMaxWidth(),
+            maxLines = 1,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = if (compact) 10.sp else 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
         Text(
             text = priceText,
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .semantics { contentDescription = priceDescription },
+            modifier = GlanceModifier.fillMaxWidth(),
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = when {
-                    priceText.length > 23 -> 14.sp
-                    priceText.length > 17 -> 17.sp
-                    else -> 21.sp
-                },
+                fontSize = if (compact) 17.sp else 20.sp,
                 fontWeight = FontWeight.Bold,
             ),
         )
-        if (compact) {
-            if (compactMetadata.isNotBlank()) {
-                Spacer(GlanceModifier.height(1.dp))
-                Text(
-                    text = compactMetadata,
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    maxLines = 2,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 9.sp,
-                    ),
-                )
-            }
-        } else {
-            if (status.isNotBlank()) {
-                Spacer(GlanceModifier.height(1.dp))
-                Text(
-                    text = status,
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    maxLines = 2,
-                    style = TextStyle(
-                        color = LocalFolioWidgetSemanticColors.current.warning,
-                        fontSize = 11.sp,
-                    ),
-                )
-            }
-            if (age.isNotBlank()) {
-                Spacer(GlanceModifier.height(1.dp))
-                Text(
-                    text = age,
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    maxLines = 1,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 11.sp,
-                    ),
-                )
-            }
+        if (metadata.isNotBlank()) {
+            Text(
+                text = metadata,
+                modifier = GlanceModifier.fillMaxWidth(),
+                maxLines = 1,
+                style = TextStyle(
+                    color = if (presentation.refreshFailed || presentation.unsupported) {
+                        LocalFolioWidgetSemanticColors.current.warning
+                    } else {
+                        GlanceTheme.colors.onSurfaceVariant
+                    },
+                    fontSize = if (compact) 9.sp else 10.sp,
+                ),
+            )
         }
     }
 }
 
-private fun compactAssetPriceStatus(
+private fun assetPriceQuoteStatus(
     context: Context,
     presentation: AssetPriceWidgetPresentation,
     loadFailed: Boolean,
-): String {
-    val isStale = presentation.freshness == AssetPriceQuoteFreshness.STALE
-    return when {
-        loadFailed -> context.getString(R.string.widget_asset_price_load_error)
-        presentation.unsupported -> context.getString(R.string.widget_asset_price_unsupported)
-        presentation.isUpdating && presentation.refreshFailed && isStale ->
-            context.getString(R.string.widget_asset_price_compact_updating_failed_stale)
-        presentation.isUpdating && presentation.refreshFailed ->
-            context.getString(R.string.widget_asset_price_compact_updating_failed)
-        presentation.isUpdating && isStale ->
-            context.getString(R.string.widget_asset_price_compact_updating_stale)
-        presentation.refreshFailed && isStale ->
-            context.getString(R.string.widget_asset_price_compact_failed_stale)
-        presentation.refreshFailed && presentation.price == null ->
-            context.getString(R.string.widget_asset_price_refresh_failed_unavailable)
-        presentation.refreshFailed ->
-            context.getString(R.string.widget_asset_price_compact_refresh_failed)
-        presentation.isUpdating -> context.getString(R.string.widget_asset_price_updating)
-        isStale -> context.getString(R.string.widget_asset_price_stale)
-        else -> ""
-    }
+): String = when {
+    loadFailed -> context.getString(R.string.widget_asset_price_load_error)
+    presentation.unsupported -> context.getString(R.string.widget_asset_price_unsupported)
+    presentation.refreshFailed && presentation.price == null ->
+        context.getString(R.string.widget_asset_price_refresh_failed_unavailable)
+    presentation.refreshFailed -> context.getString(R.string.widget_asset_price_refresh_failed)
+    presentation.isUpdating -> context.getString(R.string.widget_asset_price_updating)
+    presentation.freshness == AssetPriceQuoteFreshness.STALE ->
+        context.getString(R.string.widget_asset_price_stale)
+    else -> ""
 }
 
 private data class LoadedAssetPriceWidgetState(
     val configuration: WidgetConfiguration?,
-    val quote: WidgetQuote?,
+    val quotes: Map<MarketKey, WidgetQuote>,
 )
 
 private data class AssetPriceWidgetRenderState(
@@ -456,23 +443,29 @@ private suspend fun loadAssetPriceWidgetState(
     repeat(2) {
         val loaded = app.widgetRepository.configuration(appWidgetId)
             ?.takeIf { it.kind == WidgetKind.ASSET_PRICE }
-        val key = loaded?.market?.key
-        val quote = key?.let { marketKey ->
-            app.widgetRepository.quote(marketKey)?.takeIf { it.key == marketKey }
-        }
+        val quotes = loaded?.markets.orEmpty().mapNotNull { selection ->
+            val quote = try {
+                app.widgetRepository.quote(selection.key)?.takeIf { it.key == selection.key }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                null
+            }
+            quote?.let { selection.key to it }
+        }.toMap()
         val latest = app.widgetRepository.configuration(appWidgetId)
             ?.takeIf { it.kind == WidgetKind.ASSET_PRICE }
         if (loaded == null && latest == null) {
-            return LoadedAssetPriceWidgetState(configuration = null, quote = null)
+            return LoadedAssetPriceWidgetState(configuration = null, quotes = emptyMap())
         }
         if (isCurrentAssetPriceConfiguration(loaded, latest)) {
-            return LoadedAssetPriceWidgetState(configuration = loaded, quote = quote)
+            return LoadedAssetPriceWidgetState(configuration = loaded, quotes = quotes)
         }
     }
 
     val latest = app.widgetRepository.configuration(appWidgetId)
         ?.takeIf { it.kind == WidgetKind.ASSET_PRICE }
-    return LoadedAssetPriceWidgetState(configuration = latest, quote = null)
+    return LoadedAssetPriceWidgetState(configuration = latest, quotes = emptyMap())
 }
 
 private fun assetPriceProviderLabel(context: Context, provider: String): String =

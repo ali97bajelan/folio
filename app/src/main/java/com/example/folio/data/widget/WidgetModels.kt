@@ -19,6 +19,7 @@ data class MarketSelection(
     val displayName: String,
     val symbol: String,
     val assetType: String,
+    val selectionId: Long = 0L,
 )
 
 data class WidgetConfiguration(

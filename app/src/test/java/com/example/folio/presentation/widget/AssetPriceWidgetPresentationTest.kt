@@ -125,6 +125,51 @@ class AssetPriceWidgetPresentationTest {
         assertFalse(isCurrentAssetPriceConfiguration(loaded, current))
     }
 
+    @Test
+    fun viewport_caps_visible_rows_at_three_and_fits_small_widgets() {
+        assertEquals(
+            AssetPriceViewport(visibleRows = 1, heightDp = 72),
+            calculateAssetPriceViewport(rowCount = 5, widgetHeightDp = 132f, compact = true),
+        )
+        assertEquals(
+            AssetPriceViewport(visibleRows = 2, heightDp = 144),
+            calculateAssetPriceViewport(rowCount = 5, widgetHeightDp = 220f, compact = false),
+        )
+        assertEquals(
+            AssetPriceViewport(visibleRows = 3, heightDp = 216),
+            calculateAssetPriceViewport(rowCount = 5, widgetHeightDp = 320f, compact = false),
+        )
+        assertEquals(
+            AssetPriceViewport(visibleRows = 1, heightDp = 72),
+            calculateAssetPriceViewport(rowCount = 1, widgetHeightDp = 320f, compact = false),
+        )
+        assertEquals(
+            AssetPriceViewport(visibleRows = 0, heightDp = 0),
+            calculateAssetPriceViewport(rowCount = 0, widgetHeightDp = 320f, compact = false),
+        )
+    }
+
+    @Test
+    fun widget_rows_keep_every_selection_when_only_three_fit_the_viewport() {
+        val markets = (1..5).map { index ->
+            MarketSelection(
+                key = MarketKey(PortfolioCodes.NOBITEX, "ASSET$index-USDT"),
+                displayName = "Asset $index",
+                symbol = "A$index",
+                assetType = PortfolioCodes.CRYPTO,
+                selectionId = index.toLong(),
+            )
+        }
+        val rows = assetPriceWidgetRows(markets, emptyMap())
+
+        assertEquals(5, rows.size)
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), rows.map { it.stableId })
+        assertEquals(
+            3,
+            calculateAssetPriceViewport(rows.size, widgetHeightDp = 320f, compact = false).visibleRows,
+        )
+    }
+
     private fun availableQuote(quoteAt: Instant) = WidgetQuote(
         key = market,
         price = BigDecimal("65000.25"),

@@ -63,14 +63,16 @@ internal fun buildMarketRefreshTargets(
     configurations
         .filter { it.kind == WidgetKind.ASSET_PRICE }
         .forEach { configuration ->
-            val savedKey = configuration.market?.key ?: return@forEach
-            val token = WidgetSelectionToken(configuration.appWidgetId, configuration.revision, savedKey)
-            try {
-                val canonicalKey = quoteClient.canonicalKey(savedKey.provider, savedKey.providerSymbol)
-                requestedKeys += canonicalKey
-                widgetSelectionsByKey.getOrPut(canonicalKey) { mutableListOf() } += token
-            } catch (error: Exception) {
-                unsupportedWidgetSelections += token to error
+            configuration.markets.forEach { market ->
+                val savedKey = market.key
+                val token = WidgetSelectionToken(configuration.appWidgetId, configuration.revision, savedKey)
+                try {
+                    val canonicalKey = quoteClient.canonicalKey(savedKey.provider, savedKey.providerSymbol)
+                    requestedKeys += canonicalKey
+                    widgetSelectionsByKey.getOrPut(canonicalKey) { mutableListOf() } += token
+                } catch (error: Exception) {
+                    unsupportedWidgetSelections += token to error
+                }
             }
         }
 
@@ -93,7 +95,7 @@ internal fun isCurrentWidgetSelection(
     configuration.appWidgetId == token.appWidgetId &&
         configuration.revision == token.revision &&
         configuration.kind == WidgetKind.ASSET_PRICE &&
-        configuration.market?.key == token.key
+        configuration.markets.any { it.key == token.key }
 }
 
 internal fun widgetQuoteForAttempt(

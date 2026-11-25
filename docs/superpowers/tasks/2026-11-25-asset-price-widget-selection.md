@@ -1,8 +1,8 @@
 # Configurable Asset Price Widget Tasks
 
-Date 2026-11-25 · PW01 and PW02 implemented
+Date 2026-11-25 · PW01–PW05 implemented
 
-`:app:assembleDebug` passed and exported schema 5. Unit tests were not run. Emulator QA is not part of this request. PW03–PW05 remain open.
+`:app:testDebugUnitTest`, `:app:lintDebug`, and `:app:assembleDebug` passed. A host SQLite fixture verified migration 4→5 data preservation, cascades, and quote pruning. Emulator QA was not run.
 
 [Specification](../specs/2026-11-25-asset-price-widget-selection-design.md) · [Implementation plan](../plans/2026-11-25-asset-price-widget-selection.md)
 
@@ -24,22 +24,22 @@ Depends on PW01.
 
 Depends on PW01 and PW02.
 
-- [ ] Fetch every selected market through the shared refresh operation, deduplicating provider requests across price widgets and portfolio holdings.
-- [ ] Preserve exact cache-key lookup and reject writes from stale selection tokens. Publish the saved list from cache and schedule a follow-up when an in-flight refresh has already captured the old list.
-- [ ] Load quote data in saved order with per-market status. Confirm that a cache miss, provider failure, or unsupported market leaves the other prices visible.
+- [x] Fetch every selected market through the shared refresh operation, deduplicating provider requests across price widgets and portfolio holdings.
+- [x] Preserve exact cache-key lookup and reject writes from stale selection tokens. Publish the saved list from cache and enqueue a follow-up refresh when an in-flight refresh may have captured an older list.
+- [x] Load quote data in saved order with per-market status. A cache miss, provider failure, or unsupported market remains local to its row.
 
 ## PW04 — Scrollable price list
 
 Depends on PW03.
 
-- [ ] Render the full selection in a Glance lazy list with stable item IDs and fixed Refresh and Configure actions.
-- [ ] Size the viewport for at most three full rows. Check fixture cases for one item, three items, five items, and a widget height that fits only one or two rows.
-- [ ] Update the fictional widget-picker preview and review the English and Persian layouts and accessible row labels.
+- [x] Render all selected assets in a Glance lazy list with persisted stable item IDs and fixed Refresh and Configure actions.
+- [x] Size the viewport for at most three full rows. JVM fixtures cover one, three, and five items and compact and expanded widget heights.
+- [x] Update the fictional widget-picker preview and provide localized, accessible row labels in English and Persian.
 
 ## PW05 — Host verification
 
 Depends on PW01–PW04.
 
-- [ ] Run focused JVM coverage for draft edits and restore, duplicate identities, independent widgets, multi-market refresh, mixed quote states, and viewport calculations.
-- [ ] Exercise migration SQL with host SQLite, check the exported Room schema, and cover widget ID remap, deletion, and shared cache retention.
-- [ ] Pass `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug` and record the results and any gaps. No emulator QA is required.
+- [x] Run focused JVM coverage for draft restoration, canonical duplicates, multi-market refresh, quote states, and viewport calculations.
+- [x] Exercise migration SQL with host SQLite. Verify schema 5, quote and settings preservation, widget ID remap/delete cascades, shared quote retention, and final quote pruning.
+- [x] Pass `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`. No emulator QA was run. Launcher gesture and visual behavior remain unverified.

@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_portfolio_card"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="10dp">
 
     <TextView
         android:layout_width="match_parent"
@@ -12,44 +12,38 @@
         android:maxLines="1"
         android:text="@string/widget_asset_price_preview_title"
         android:textColor="#FFB1BDCE"
-        android:textSize="11sp" />
+        android:textSize="10sp" />
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
         android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_provider"
-        android:textColor="#FF76D8B0"
+        android:text="@string/widget_asset_price_preview_row_one"
+        android:textColor="#FFF7F8FC"
         android:textSize="11sp"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
         android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_instrument"
+        android:text="@string/widget_asset_price_preview_row_two"
         android:textColor="#FFF7F8FC"
-        android:textSize="15sp"
+        android:textSize="11sp"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
         android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_price"
+        android:text="@string/widget_asset_price_preview_row_three"
         android:textColor="#FFF7F8FC"
-        android:textSize="18sp"
+        android:textSize="11sp"
         android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_age"
-        android:textColor="#FFB1BDCE"
-        android:textSize="11sp" />
 </LinearLayout>

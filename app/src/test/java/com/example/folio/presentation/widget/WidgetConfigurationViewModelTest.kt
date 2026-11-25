@@ -71,6 +71,38 @@ class WidgetConfigurationViewModelTest {
     }
 
     @Test
+    fun selected_markets_restore_in_order_and_canonical_duplicates_are_ignored() {
+        val savedState = SavedStateHandle()
+        val viewModel = WidgetConfigurationViewModel(WidgetRepository(EmptyWidgetDao), savedState)
+        viewModel.initialize(appWidgetId = 22, kind = WidgetKind.ASSET_PRICE, existing = null)
+
+        val bitcoin = MarketSelection(
+            key = MarketKey(PortfolioCodes.NOBITEX, "BTCUSDT"),
+            displayName = "Bitcoin",
+            symbol = "BTC",
+            assetType = PortfolioCodes.CRYPTO,
+        )
+        val ethereum = MarketSelection(
+            key = MarketKey(PortfolioCodes.NOBITEX, "ETHUSDT"),
+            displayName = "Ethereum",
+            symbol = "ETH",
+            assetType = PortfolioCodes.CRYPTO,
+        )
+        viewModel.updateMarketSelection(bitcoin)
+        viewModel.addPendingMarket()
+        viewModel.updateMarketSelection(bitcoin.copy(key = MarketKey(PortfolioCodes.NOBITEX, "BTC-USDT")))
+        viewModel.addPendingMarket()
+        viewModel.updateMarketSelection(ethereum)
+        viewModel.addPendingMarket()
+
+        val restored = WidgetConfigurationViewModel(WidgetRepository(EmptyWidgetDao), savedState)
+        restored.initialize(appWidgetId = 22, kind = WidgetKind.ASSET_PRICE, existing = null)
+
+        assertEquals(listOf("BTC-USDT", "ETH-USDT"), restored.state.value.markets.map { it.key.providerSymbol })
+        assertTrue(restored.state.value.canSave)
+    }
+
+    @Test
     fun widget_kind_requires_a_known_receiver_owned_by_this_app() {
         assertEquals(
             WidgetKind.PORTFOLIO,

@@ -278,6 +278,7 @@ internal fun WidgetMarketSelectionEntity.toModel(): MarketSelection =
         displayName = displayName,
         symbol = symbol,
         assetType = assetType,
+        selectionId = selectionId,
     )
 
 internal fun WidgetQuoteEntity.toModel(): WidgetQuote =

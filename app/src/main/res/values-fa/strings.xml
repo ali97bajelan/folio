@@ -218,4 +218,8 @@
     <string name="widget_remove_asset">حذف %1$s از این ابزارک</string>
     <string name="widget_market_add_prompt">برای افزودن، دارایی را انتخاب و تأیید کنید.</string>
     <string name="widget_market_duplicate">%1$s از قبل انتخاب شده است.</string>
+    <string name="widget_asset_price_row_title">%1$s · %2$s · %3$s</string>
+    <string name="widget_asset_price_preview_row_one">BTC · ۶۷٬۲۵۰ USDT</string>
+    <string name="widget_asset_price_preview_row_two">ETH · ۳٬۴۲۰ USDT</string>
+    <string name="widget_asset_price_preview_row_three">GOLD · ۲٬۳۴۰ IRT</string>
 </resources>

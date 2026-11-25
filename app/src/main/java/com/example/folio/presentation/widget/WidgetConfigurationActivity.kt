@@ -25,7 +25,6 @@ import kotlinx.coroutines.CancellationException
 import com.example.folio.presentation.widget.WidgetRefreshScheduler
 import com.example.folio.presentation.widget.WidgetUpdateCoordinator
 import kotlinx.coroutines.launch
-import androidx.work.await
 
 class WidgetConfigurationActivity : AppCompatActivity() {
     private lateinit var configurationViewModel: WidgetConfigurationViewModel
@@ -113,12 +112,12 @@ class WidgetConfigurationActivity : AppCompatActivity() {
                 WidgetUpdateCoordinator.update(applicationContext, setOf(saved.appWidgetId))
             }
             try {
-                // A newly configured favorite should not wait for the six-hour periodic run.
-                PriceRefreshWorker.refreshNow(applicationContext).await()
+                // The queued follow-up captures the newly saved selections.
+                PriceRefreshWorker.refreshAfterConfigurationSaved(applicationContext)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Exception) {
-                // Saving configuration remains successful when scheduling is unavailable.
+                // Saved configuration remains valid when background scheduling is unavailable.
             }
             try {
                 WidgetUpdateCoordinator.update(applicationContext, setOf(saved.appWidgetId))

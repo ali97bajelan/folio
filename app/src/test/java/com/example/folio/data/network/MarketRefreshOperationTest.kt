@@ -74,6 +74,63 @@ class MarketRefreshOperationTest {
     }
 
     @Test
+    fun refresh_targets_every_saved_selection_and_deduplicates_shared_markets() {
+        val bitcoin = MarketSelection(
+            key = MarketKey(PortfolioCodes.NOBITEX, "BTCUSDT"),
+            displayName = "Bitcoin",
+            symbol = "BTC",
+            assetType = PortfolioCodes.CRYPTO,
+        )
+        val ethereum = MarketSelection(
+            key = MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"),
+            displayName = "Ethereum",
+            symbol = "ETH",
+            assetType = PortfolioCodes.CRYPTO,
+        )
+        val firstWidget = priceWidget(15, PortfolioCodes.NOBITEX, "BTC-USDT").copy(
+            markets = listOf(bitcoin, ethereum),
+        )
+        val secondWidget = priceWidget(16, PortfolioCodes.NOBITEX, "BTC-USDT")
+        val portfolioAsset = marketAsset(
+            id = 9,
+            symbol = "BTC",
+            provider = PortfolioCodes.NOBITEX,
+            providerSymbol = "BTC-USDT",
+        )
+
+        val targets = buildMarketRefreshTargets(
+            activeAssets = listOf(portfolioAsset),
+            configurations = listOf(firstWidget, secondWidget),
+            quoteClient = MarketQuoteClient(),
+        )
+
+        assertEquals(
+            setOf(
+                MarketKey(PortfolioCodes.NOBITEX, "BTC-USDT"),
+                MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"),
+            ),
+            targets.requestedKeys,
+        )
+        assertEquals(
+            setOf(15, 16),
+            targets.widgetSelectionsByKey
+                .getValue(MarketKey(PortfolioCodes.NOBITEX, "BTC-USDT"))
+                .mapTo(mutableSetOf()) { it.appWidgetId },
+        )
+        assertEquals(
+            setOf(15),
+            targets.widgetSelectionsByKey
+                .getValue(MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"))
+                .mapTo(mutableSetOf()) { it.appWidgetId },
+        )
+        val secondToken = targets.widgetSelectionsByKey
+            .getValue(MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"))
+            .single()
+        assertTrue(isCurrentWidgetSelection(secondToken, listOf(firstWidget)))
+        assertFalse(isCurrentWidgetSelection(secondToken, listOf(firstWidget.copy(markets = listOf(bitcoin)))))
+    }
+
+    @Test
     fun quote_cache_keeps_the_exact_saved_market_key_after_canonical_fetching() {
         val token = WidgetSelectionToken(
             appWidgetId = 14,
@@ -103,11 +160,13 @@ class MarketRefreshOperationTest {
         )
         val changed = saved.copy(
             revision = 5,
-            market = MarketSelection(
-                key = MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"),
-                displayName = "Ethereum",
-                symbol = "ETH",
-                assetType = PortfolioCodes.CRYPTO,
+            markets = listOf(
+                MarketSelection(
+                    key = MarketKey(PortfolioCodes.NOBITEX, "ETH-USDT"),
+                    displayName = "Ethereum",
+                    symbol = "ETH",
+                    assetType = PortfolioCodes.CRYPTO,
+                ),
             ),
         )
 
