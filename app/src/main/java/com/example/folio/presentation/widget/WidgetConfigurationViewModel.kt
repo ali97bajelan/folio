@@ -181,6 +181,23 @@ internal class WidgetConfigurationViewModel(
         }
     }
 
+    fun moveMarket(fromIndex: Int, toIndex: Int) {
+        update { current ->
+            if (current.kind != WidgetKind.ASSET_PRICE ||
+                fromIndex !in current.markets.indices ||
+                toIndex !in current.markets.indices ||
+                fromIndex == toIndex
+            ) {
+                current
+            } else {
+                val reordered = current.markets.toMutableList()
+                val moved = reordered.removeAt(fromIndex)
+                reordered.add(toIndex, moved)
+                current.copy(markets = reordered, saveError = false)
+            }
+        }
+    }
+
     private fun canonicalKey(key: MarketKey): MarketKey =
         runCatching {
             MarketQuoteClient().canonicalKey(key.provider, key.providerSymbol)

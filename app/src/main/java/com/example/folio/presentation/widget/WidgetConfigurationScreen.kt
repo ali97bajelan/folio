@@ -1,20 +1,36 @@
 package com.example.folio.presentation.widget
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.filled.Close
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
@@ -44,6 +60,7 @@ internal fun WidgetConfigurationScreen(
     onMarketSelectionChanged: (MarketSelection?) -> Unit,
     onAddMarket: () -> Unit,
     onRemoveMarket: (com.example.folio.data.widget.MarketKey) -> Unit,
+    onMoveMarket: (Int, Int) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -87,6 +104,7 @@ internal fun WidgetConfigurationScreen(
                     onMarketSelectionChanged = onMarketSelectionChanged,
                     onAddMarket = onAddMarket,
                     onRemoveMarket = onRemoveMarket,
+                    onMoveMarket = onMoveMarket,
                 )
             }
         }
@@ -163,6 +181,7 @@ private fun PriceOptions(
     onMarketSelectionChanged: (MarketSelection?) -> Unit,
     onAddMarket: () -> Unit,
     onRemoveMarket: (com.example.folio.data.widget.MarketKey) -> Unit,
+    onMoveMarket: (Int, Int) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -176,53 +195,16 @@ private fun PriceOptions(
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
-            state.markets.forEach { selected ->
-                FolioListRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    content = {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = stringResource(
-                                    R.string.widget_market_selected,
-                                    isolateFinancialText(selected.symbol),
-                                    selected.displayName,
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = stringResource(
-                                    when (selected.key.provider) {
-                                        PortfolioCodes.NOBITEX -> R.string.widget_asset_price_provider_nobitex
-                                        PortfolioCodes.ABANTETHER -> R.string.widget_asset_price_provider_abantether
-                                        PortfolioCodes.TSETMC -> R.string.widget_asset_price_provider_tsetmc
-                                        PortfolioCodes.RAHAVARD -> R.string.widget_asset_price_provider_rahavard
-                                        else -> R.string.widget_asset_price_provider_unknown
-                                    },
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    trailing = {
-                        val removeDescription = stringResource(
-                            R.string.widget_remove_asset,
-                            selected.displayName,
-                        )
-                        androidx.compose.material3.IconButton(
-                            onClick = { onRemoveMarket(selected.key) },
-                            modifier = Modifier.semantics {
-                                contentDescription = removeDescription
-                            },
-                        ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.Close,
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-            }
+            Text(
+                text = stringResource(R.string.widget_reorder_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ReorderableMarketList(
+                markets = state.markets,
+                onMove = onMoveMarket,
+                onRemove = onRemoveMarket,
+            )
         }
 
         Text(
@@ -278,6 +260,155 @@ private fun PriceOptions(
         }
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ReorderableMarketList(
+    markets: List<MarketSelection>,
+    onMove: (Int, Int) -> Unit,
+    onRemove: (com.example.folio.data.widget.MarketKey) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    var draggedKey by remember { mutableStateOf<String?>(null) }
+    var draggedCenterY by remember { mutableFloatStateOf(0f) }
+    val currentMarkets by rememberUpdatedState(markets)
+    val currentOnMove by rememberUpdatedState(onMove)
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 360.dp),
+        userScrollEnabled = draggedKey == null,
+    ) {
+        itemsIndexed(
+            items = markets,
+            key = { _, selected -> marketReorderKey(selected) },
+        ) { _, selected ->
+            val key = marketReorderKey(selected)
+            val isDragged = draggedKey == key
+            FolioListRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(if (isDragged) 1f else 0f)
+                    .graphicsLayer {
+                        val itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
+                        if (isDragged && itemInfo != null) {
+                            translationY = draggedCenterY - (itemInfo.offset + itemInfo.size / 2f)
+                            shadowElevation = 8.dp.toPx()
+                        } else {
+                            translationY = 0f
+                            shadowElevation = 0f
+                        }
+                    }
+                    .pointerInput(key) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
+                                if (info != null) {
+                                    draggedKey = key
+                                    draggedCenterY = info.offset + info.size / 2f
+                                }
+                            },
+                            onDragEnd = { draggedKey = null },
+                            onDragCancel = { draggedKey = null },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                if (draggedKey == key) {
+                                    draggedCenterY += dragAmount.y
+                                    val targetIndex = listState.layoutInfo.visibleItemsInfo
+                                        .firstOrNull { info ->
+                                            draggedCenterY >= info.offset &&
+                                                draggedCenterY <= info.offset + info.size
+                                        }
+                                        ?.index
+                                    val currentIndex = currentMarkets.indexOfFirst {
+                                        marketReorderKey(it) == key
+                                    }
+                                    if (targetIndex != null && currentIndex >= 0 && targetIndex != currentIndex) {
+                                        currentOnMove(currentIndex, targetIndex)
+                                    }
+                                }
+                            },
+                        )
+                    },
+                leading = {
+                    val handleDescription = stringResource(
+                        R.string.widget_reorder_asset,
+                        selected.displayName,
+                    )
+                    val handleColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .semantics { contentDescription = handleDescription },
+                    ) {
+                        val radius = 1.5.dp.toPx()
+                        val xLeft = size.width * 0.35f
+                        val xRight = size.width * 0.65f
+                        for (row in 0..2) {
+                            val y = size.height * (0.25f + row * 0.25f)
+                            drawCircle(
+                                color = handleColor,
+                                radius = radius,
+                                center = androidx.compose.ui.geometry.Offset(xLeft, y),
+                            )
+                            drawCircle(
+                                color = handleColor,
+                                radius = radius,
+                                center = androidx.compose.ui.geometry.Offset(xRight, y),
+                            )
+                        }
+                    }
+                },
+                trailing = {
+                    val removeDescription = stringResource(
+                        R.string.widget_remove_asset,
+                        selected.displayName,
+                    )
+                    androidx.compose.material3.IconButton(
+                        onClick = { onRemove(selected.key) },
+                        modifier = Modifier.semantics {
+                            contentDescription = removeDescription
+                        },
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                            contentDescription = null,
+                        )
+                    }
+                },
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(
+                            R.string.widget_market_selected,
+                            isolateFinancialText(selected.symbol),
+                            selected.displayName,
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(
+                            when (selected.key.provider) {
+                                PortfolioCodes.NOBITEX -> R.string.widget_asset_price_provider_nobitex
+                                PortfolioCodes.ABANTETHER -> R.string.widget_asset_price_provider_abantether
+                                PortfolioCodes.TSETMC -> R.string.widget_asset_price_provider_tsetmc
+                                PortfolioCodes.RAHAVARD -> R.string.widget_asset_price_provider_rahavard
+                                else -> R.string.widget_asset_price_provider_unknown
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun marketReorderKey(selection: MarketSelection): String =
+    "${selection.key.provider}\u0000${selection.key.providerSymbol}"
 
 @Composable
 private fun AssetTypeSelector(

@@ -80,6 +80,7 @@ class WidgetConfigurationActivity : AppCompatActivity() {
                     onMarketSelectionChanged = configurationViewModel::updateMarketSelection,
                     onAddMarket = configurationViewModel::addPendingMarket,
                     onRemoveMarket = configurationViewModel::removeMarket,
+                    onMoveMarket = configurationViewModel::moveMarket,
                     onSave = ::saveConfiguration,
                     onCancel = ::cancelConfiguration,
                 )

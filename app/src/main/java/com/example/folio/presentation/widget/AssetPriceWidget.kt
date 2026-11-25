@@ -60,7 +60,7 @@ import java.util.Locale
 import kotlinx.coroutines.CancellationException
 
 private const val ASSET_PRICE_ROW_HEIGHT_DP = 72
-private const val ASSET_PRICE_MAX_VISIBLE_ROWS = 3
+private const val ASSET_PRICE_EXPANDED_ROW_MAX_HEIGHT_DP = 88
 
 internal data class AssetPriceViewport(
     val visibleRows: Int,
@@ -73,16 +73,31 @@ internal fun calculateAssetPriceViewport(
     compact: Boolean,
 ): AssetPriceViewport {
     if (rowCount <= 0) return AssetPriceViewport(visibleRows = 0, heightDp = 0)
-    val fixedHeaderHeight = if (compact) 44f else 56f
-    val verticalInsets = if (compact) 16f else 8f
+    val fixedHeaderHeight = if (compact) FolioWidgetSpacing.actionTarget.value else 56f
+    val verticalInsets = if (compact) 8f else FolioWidgetSpacing.compactContentVertical.value
     val availableHeight = (widgetHeightDp - fixedHeaderHeight - verticalInsets)
         .coerceAtLeast(ASSET_PRICE_ROW_HEIGHT_DP.toFloat())
     val fittingRows = (availableHeight / ASSET_PRICE_ROW_HEIGHT_DP).toInt().coerceAtLeast(1)
-    val visibleRows = minOf(rowCount, fittingRows, ASSET_PRICE_MAX_VISIBLE_ROWS)
+    val visibleRows = minOf(rowCount, fittingRows)
     return AssetPriceViewport(
         visibleRows = visibleRows,
         heightDp = visibleRows * ASSET_PRICE_ROW_HEIGHT_DP,
     )
+}
+
+internal fun calculateAssetPriceRowHeight(
+    rowCount: Int,
+    widgetHeightDp: Float,
+    compact: Boolean,
+): Int {
+    if (rowCount <= 1) return ASSET_PRICE_ROW_HEIGHT_DP
+    val fixedHeaderHeight = if (compact) FolioWidgetSpacing.actionTarget.value else 56f
+    val verticalInsets = if (compact) 8f else FolioWidgetSpacing.compactContentVertical.value
+    val availableHeight = (widgetHeightDp - fixedHeaderHeight - verticalInsets)
+        .coerceAtLeast(ASSET_PRICE_ROW_HEIGHT_DP.toFloat())
+    return (availableHeight / rowCount)
+        .toInt()
+        .coerceIn(ASSET_PRICE_ROW_HEIGHT_DP, ASSET_PRICE_EXPANDED_ROW_MAX_HEIGHT_DP)
 }
 
 class AssetPriceWidget : GlanceAppWidget() {
@@ -143,7 +158,7 @@ internal fun AssetPriceWidgetLayout(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.surface),
-                    horizontalPadding = 8.dp,
+                    horizontalPadding = FolioWidgetSpacing.contentHorizontal,
                     titleBar = {
                         TitleBar(
                             startIcon = ImageProvider(R.mipmap.ic_launcher),
@@ -164,7 +179,7 @@ internal fun AssetPriceWidgetLayout(
                         totalHeightDp = size.height.value,
                         modifier = GlanceModifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
                     )
                 }
             } else {
@@ -172,7 +187,10 @@ internal fun AssetPriceWidgetLayout(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(GlanceTheme.colors.surface)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(
+                            horizontal = FolioWidgetSpacing.contentHorizontal,
+                            vertical = FolioWidgetSpacing.compactContentVertical,
+                        ),
                 ) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
@@ -192,7 +210,7 @@ internal fun AssetPriceWidgetLayout(
                         totalHeightDp = size.height.value,
                         modifier = GlanceModifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
+                            .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
                     )
                 }
             }
@@ -258,23 +276,53 @@ private fun AssetPriceWidgetBody(
     }
 
     val viewport = calculateAssetPriceViewport(markets.size, totalHeightDp, compact)
+    val rowHeightDp = if (markets.size <= viewport.visibleRows) {
+        calculateAssetPriceRowHeight(markets.size, totalHeightDp, compact)
+    } else {
+        ASSET_PRICE_ROW_HEIGHT_DP
+    }
+    val listHeightDp = if (markets.size <= viewport.visibleRows) {
+        rowHeightDp * markets.size
+    } else {
+        viewport.heightDp
+    }
+    val now = Instant.now()
     val rows = assetPriceWidgetRows(markets, quotes)
+    val presentations = rows.map { row ->
+        presentAssetPriceQuote(row.quote, isUpdating, now)
+    }
+    val ages = presentations.map { presentation ->
+        formatAssetPriceQuoteAge(context, presentation.quoteAt, now)
+    }
+    val firstRowForEachAge = ages
+        .mapIndexedNotNull { index, age -> age?.let { it to index } }
+        .groupBy({ it.first }, { it.second })
+        .values
+        .mapNotNull { it.firstOrNull() }
+        .toSet()
+    val displayRows = rows.mapIndexed { index, row ->
+        AssetPriceWidgetDisplayRow(
+            row = row,
+            presentation = presentations[index],
+            quoteAge = ages[index].takeIf { index in firstRowForEachAge },
+        )
+    }
 
     LazyColumn(
         modifier = modifier
             .fillMaxWidth()
-            .height(viewport.heightDp.dp),
+            .height(listHeightDp.dp),
     ) {
         items(
-            items = rows,
-            itemId = { row -> row.stableId },
-        ) { row ->
+            items = displayRows,
+            itemId = { displayRow -> displayRow.row.stableId },
+        ) { displayRow ->
             AssetPriceQuoteRow(
                 context = context,
-                row = row,
-                isUpdating = isUpdating,
+                displayRow = displayRow,
                 loadFailed = loadFailed,
                 compact = compact,
+                rowHeightDp = rowHeightDp,
             )
         }
     }
@@ -303,32 +351,33 @@ internal fun assetPriceWidgetRows(
     )
 }
 
+private data class AssetPriceWidgetDisplayRow(
+    val row: AssetPriceWidgetRow,
+    val presentation: AssetPriceWidgetPresentation,
+    val quoteAge: String?,
+)
+
 @Composable
 private fun AssetPriceQuoteRow(
     context: Context,
-    row: AssetPriceWidgetRow,
-    isUpdating: Boolean,
+    displayRow: AssetPriceWidgetDisplayRow,
     loadFailed: Boolean,
     compact: Boolean,
+    rowHeightDp: Int,
 ) {
+    val row = displayRow.row
     val selection = row.selection
-    val presentation = presentAssetPriceQuote(
-        quote = row.quote,
-        isUpdating = isUpdating,
-        now = Instant.now(),
-    )
+    val presentation = displayRow.presentation
     val provider = assetPriceProviderLabel(context, selection.key.provider)
     val title = context.getString(
         R.string.widget_asset_price_row_title,
-        provider,
-        isolateFinancialText(selection.symbol),
         selection.displayName,
+        isolateFinancialText(provider),
     )
     val titleDescription = context.getString(
         R.string.widget_asset_price_row_title,
-        provider,
-        selection.symbol,
         selection.displayName,
+        provider,
     )
     val amount = presentation.price?.let { price ->
         formatAssetPriceAmount(
@@ -339,10 +388,9 @@ private fun AssetPriceQuoteRow(
     }
     val priceText = amount?.let(::isolateFinancialText)
         ?: context.getString(R.string.widget_asset_price_unavailable)
-    val quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, Instant.now())
     val metadata = listOf(
         assetPriceQuoteStatus(context, presentation, loadFailed),
-        quoteAge?.let { context.getString(R.string.widget_asset_price_quote_age, it) },
+        displayRow.quoteAge?.let { context.getString(R.string.widget_asset_price_quote_age, it) },
     ).filterNotNull().filter(String::isNotBlank).joinToString(" · ")
     val rowDescription = listOf(titleDescription, amount ?: priceText, metadata)
         .filter(String::isNotBlank)
@@ -351,9 +399,10 @@ private fun AssetPriceQuoteRow(
     Column(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(ASSET_PRICE_ROW_HEIGHT_DP.dp)
-            .padding(vertical = 3.dp)
+            .height(rowHeightDp.dp)
+            .padding(vertical = FolioWidgetSpacing.compactContentVertical)
             .semantics { contentDescription = rowDescription },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,

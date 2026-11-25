@@ -224,12 +224,14 @@
     <string name="form_local_storage_note">اطلاعات پرتفوی روی همین دستگاه ذخیره می‌شود.</string>
     <string name="asset_symbol_or_market">نماد یا بازار</string>
     <string name="widget_selected_assets">دارایی‌های انتخاب‌شده</string>
+    <string name="widget_reorder_hint">برای تغییر ترتیب، دارایی را نگه دارید و بکشید.</string>
+    <string name="widget_reorder_asset">برای جابه‌جایی %1$s را نگه دارید.</string>
     <string name="widget_add_asset">افزودن دارایی</string>
     <string name="widget_add_selected_asset">افزودن دارایی انتخاب‌شده</string>
     <string name="widget_remove_asset">حذف %1$s از این ابزارک</string>
     <string name="widget_market_add_prompt">برای افزودن، دارایی را انتخاب و تأیید کنید.</string>
     <string name="widget_market_duplicate">%1$s از قبل انتخاب شده است.</string>
-    <string name="widget_asset_price_row_title">%1$s · %2$s · %3$s</string>
+    <string name="widget_asset_price_row_title">%1$s : %2$s</string>
     <string name="widget_asset_price_preview_row_one">BTC · ۶۷٬۲۵۰ USDT</string>
     <string name="widget_asset_price_preview_row_two">ETH · ۳٬۴۲۰ USDT</string>
     <string name="widget_asset_price_preview_row_three">GOLD · ۲٬۳۴۰ IRT</string>

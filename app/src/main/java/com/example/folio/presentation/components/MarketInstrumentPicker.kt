@@ -2,7 +2,10 @@ package com.example.folio.presentation.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -139,24 +142,32 @@ fun MarketInstrumentPicker(
             )
             InstrumentSearchStatus.RESULTS -> Unit
         }
-        state.instruments.forEach { instrument ->
-            FolioListRow(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { pickerViewModel.selectInstrument(instrument) },
+        if (state.instruments.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 240.dp),
             ) {
-                FolioFinancialValue(
-                    value = instrument.symbol,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                )
-                Text(instrument.name, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    instrument.meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                items(state.instruments) { instrument ->
+                    FolioListRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { pickerViewModel.selectInstrument(instrument) },
+                    ) {
+                        FolioFinancialValue(
+                            value = instrument.symbol,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                        )
+                        Text(instrument.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            instrument.meta,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
         MarketProviderIdentifierField(
             value = state.providerSymbol,

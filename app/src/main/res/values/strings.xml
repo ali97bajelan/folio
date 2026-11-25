@@ -295,12 +295,14 @@
     <string name="form_local_storage_note">Portfolio data is stored locally on this device.</string>
     <string name="asset_symbol_or_market">Symbol or market</string>
     <string name="widget_selected_assets">Selected assets</string>
+    <string name="widget_reorder_hint">Hold and drag an asset to change its order.</string>
+    <string name="widget_reorder_asset">Hold to move %1$s</string>
     <string name="widget_add_asset">Add an asset</string>
     <string name="widget_add_selected_asset">Add selected asset</string>
     <string name="widget_remove_asset">Remove %1$s from this widget</string>
     <string name="widget_market_add_prompt">Choose and validate an asset to add it to this widget.</string>
     <string name="widget_market_duplicate">%1$s is already selected.</string>
-    <string name="widget_asset_price_row_title">%1$s · %2$s · %3$s</string>
+    <string name="widget_asset_price_row_title">%1$s : %2$s</string>
     <string name="widget_asset_price_preview_row_one">BTC · 67,250 USDT</string>
     <string name="widget_asset_price_preview_row_two">ETH · 3,420 USDT</string>
     <string name="widget_asset_price_preview_row_three">GOLD · 2,340 IRT</string>
