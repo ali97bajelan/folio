@@ -14,7 +14,7 @@ private val quoteHttpClient = OkHttpClient.Builder()
     .readTimeout(8, TimeUnit.SECONDS)
     .build()
 
-private suspend fun defaultQuoteRequestBody(provider: String, url: String): String {
+internal suspend fun defaultQuoteRequestBody(provider: String, url: String): String {
     val request = Request.Builder()
         .url(url)
         .header(
