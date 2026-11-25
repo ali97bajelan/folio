@@ -4,55 +4,157 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_portfolio_card"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:paddingStart="12dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="8dp">
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_portfolio_name"
+            android:textColor="#FFB1BDCE"
+            android:textSize="13sp" />
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:text="@string/widget_portfolio_name"
-        android:textColor="#FFF7F8FC"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:maxLines="1"
-        android:text="@string/widget_portfolio_preview_total"
-        android:textColor="#FFF7F8FC"
-        android:textSize="21sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:maxLines="1"
-        android:text="@string/widget_portfolio_preview_allocation"
-        android:textColor="#FFB1BDCE"
-        android:textSize="11sp" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_portfolio_preview_total"
+            android:textColor="#FFF7F8FC"
+            android:textSize="22sp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="6dp"
+            android:textStyle="bold" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="5dp"
-        android:layout_marginTop="4dp"
+        android:layout_height="18dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
-        <View
+
+        <TextView
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="58"
-            android:background="#FF76D8B0" />
-        <View
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/type_crypto"
+            android:textColor="#FFF7F8FC"
+            android:textSize="11sp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="48dp"
+            android:layout_height="5dp"
+            android:orientation="horizontal">
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="58"
+                android:background="#FF76D8B0" />
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="42"
+                android:background="#FF2B384D" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_portfolio_preview_share_crypto"
+            android:textColor="#FFB1BDCE"
+            android:textSize="11sp"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="27"
-            android:background="#FF668FFC" />
-        <View
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/type_gold"
+            android:textColor="#FFF7F8FC"
+            android:textSize="11sp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="48dp"
+            android:layout_height="5dp"
+            android:orientation="horizontal">
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="27"
+                android:background="#FF668FFC" />
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="73"
+                android:background="#FF2B384D" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_portfolio_preview_share_gold"
+            android:textColor="#FFB1BDCE"
+            android:textSize="11sp"
+            android:gravity="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="15"
-            android:background="#FFFFC857" />
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/type_usd"
+            android:textColor="#FFF7F8FC"
+            android:textSize="11sp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="48dp"
+            android:layout_height="5dp"
+            android:orientation="horizontal">
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="15"
+                android:background="#FFFFC857" />
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="85"
+                android:background="#FF2B384D" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_portfolio_preview_share_usd"
+            android:textColor="#FFB1BDCE"
+            android:textSize="11sp"
+            android:gravity="end" />
     </LinearLayout>
 </LinearLayout>

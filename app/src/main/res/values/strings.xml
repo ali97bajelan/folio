@@ -263,7 +263,9 @@
     <string name="widget_portfolio_setup_hint">Tap Configure to choose a currency.</string>
     <string name="widget_portfolio_load_error">Portfolio data is unavailable. Open Folio to retry.</string>
     <string name="widget_portfolio_preview_total">12,840 IRT</string>
-    <string name="widget_portfolio_preview_allocation">Crypto 58% · Gold 27% · USD 15%</string>
+    <string name="widget_portfolio_preview_share_crypto">58%</string>
+    <string name="widget_portfolio_preview_share_gold">27%</string>
+    <string name="widget_portfolio_preview_share_usd">15%</string>
     <string name="asset_registry_label">Asset registry</string>
     <string name="asset_form_description">Track digital assets, metals, cash, and equities in one place.</string>
     <string name="quick_fill">Quick fill</string>

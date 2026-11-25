@@ -4,46 +4,52 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_portfolio_card"
     android:orientation="vertical"
-    android:padding="10dp">
-
-    <TextView
+    android:paddingStart="12dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="8dp">
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_title"
-        android:textColor="#FFB1BDCE"
-        android:textSize="10sp" />
+        android:background="@drawable/widget_quote_preview_card"
+        android:orientation="vertical"
+        android:padding="8dp">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_row_one"
-        android:textColor="#FFF7F8FC"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_asset_price_preview_instrument"
+            android:textColor="#FFB1BDCE"
+            android:textSize="11sp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_row_two"
-        android:textColor="#FFF7F8FC"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_asset_price_preview_price"
+            android:textColor="#FFF7F8FC"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:maxLines="1"
-        android:text="@string/widget_asset_price_preview_row_three"
-        android:textColor="#FFF7F8FC"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_asset_price_preview_provider"
+            android:textColor="#FFB1BDCE"
+            android:textSize="10sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_asset_price_preview_age"
+            android:textColor="#FFB1BDCE"
+            android:textSize="10sp" />
+    </LinearLayout>
 </LinearLayout>

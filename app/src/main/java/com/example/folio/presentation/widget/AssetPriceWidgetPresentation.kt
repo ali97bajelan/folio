@@ -72,7 +72,7 @@ internal fun presentAssetPriceQuote(
 internal fun formatAssetPriceAmount(
     price: BigDecimal,
     currency: String,
-    tomanCurrencyLabel: String,
+    @Suppress("UNUSED_PARAMETER") tomanCurrencyLabel: String,
 ): String? {
     if (price.signum() <= 0 || currency.isBlank()) return null
     val normalizedCurrency = currency.uppercase(Locale.ROOT)
@@ -87,11 +87,7 @@ internal fun formatAssetPriceAmount(
         minimumFractionDigits = 0
         roundingMode = RoundingMode.DOWN
     }.format(price)
-    val displayCurrency = if (normalizedCurrency == PortfolioCodes.IRT) {
-        tomanCurrencyLabel
-    } else {
-        normalizedCurrency
-    }
+    val displayCurrency = normalizedCurrency
     return "$number $displayCurrency"
 }
 

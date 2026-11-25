@@ -20,7 +20,7 @@ import androidx.glance.action.Action
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.components.Scaffold
-import androidx.glance.appwidget.components.TitleBar
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -155,7 +155,7 @@ internal fun PortfolioWidgetLayout(
     loadFailed: Boolean,
 ) {
     val size = LocalSize.current
-    val expanded = size.width >= 280.dp && size.height >= 220.dp
+    val expanded = size.width >= 280.dp && size.height >= 244.dp
     val language = LanguagePreferences(context).current()
     val direction = if (language == AppLanguage.PERSIAN) {
         LayoutDirection.Rtl
@@ -167,90 +167,27 @@ internal fun PortfolioWidgetLayout(
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
         FolioWidgetTheme {
-            if (expanded) {
-                Scaffold(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface),
-                    horizontalPadding = FolioWidgetSpacing.contentHorizontal,
-                    titleBar = {
-                        TitleBar(
-                            startIcon = ImageProvider(R.mipmap.ic_launcher),
-                            title = title,
-                            iconColor = GlanceTheme.colors.primary,
-                            actions = {
-                                PortfolioWidgetActionButtons(
-                                    context = context,
-                                    appWidgetId = appWidgetId,
-                                    configuration = configuration,
-                                )
-                            },
-                        )
-                    },
-                ) {
-                    PortfolioWidgetBody(
-                        context = context,
-                        configuration = configuration,
-                        snapshot = snapshot,
-                        isUpdating = isUpdating,
-                        loadFailed = loadFailed,
-                        compact = false,
-                        openDashboard = openDashboard,
-                        modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
-                    )
-                }
-            } else {
-                Scaffold(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface),
-                    horizontalPadding = 0.dp,
-                ) {
-                    Column(
-                        modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
-                    ) {
-                        Row(
-                            modifier = GlanceModifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            if (configuration == null) {
-                                Text(
-                                    text = title,
-                                    modifier = GlanceModifier.defaultWeight(),
-                                    maxLines = 1,
-                                    style = TextStyle(
-                                        color = GlanceTheme.colors.onSurface,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                    ),
-                                )
-                            } else {
-                                Spacer(GlanceModifier.defaultWeight())
-                            }
-                            PortfolioWidgetActionButtons(
-                                context = context,
-                                appWidgetId = appWidgetId,
-                                configuration = configuration,
-                            )
-                        }
-                        PortfolioWidgetBody(
-                            context = context,
-                            configuration = configuration,
-                            snapshot = snapshot,
-                            isUpdating = isUpdating,
-                            loadFailed = loadFailed,
-                            compact = true,
-                            openDashboard = openDashboard,
-                            modifier = GlanceModifier
-                                .fillMaxSize()
-                                .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
-                        )
+            Scaffold(
+                modifier = GlanceModifier.fillMaxSize(),
+                backgroundColor = GlanceTheme.colors.surface,
+                horizontalPadding = FolioWidgetSpacing.contentHorizontal,
+                titleBar = {
+                    WidgetHeader(title = title.takeIf { size.width >= 224.dp || configuration == null }) {
+                        PortfolioWidgetActionButtons(context, appWidgetId, configuration)
                     }
-                }
+                },
+            ) {
+                PortfolioWidgetBody(
+                    context = context,
+                    configuration = configuration,
+                    snapshot = snapshot,
+                    isUpdating = isUpdating,
+                    loadFailed = loadFailed,
+                    compact = !expanded,
+                    openDashboard = openDashboard,
+                    configureAction = configureWidgetAction(appWidgetId),
+                    modifier = GlanceModifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -299,6 +236,36 @@ private fun PortfolioWidgetActionButtons(
 }
 
 @Composable
+internal fun WidgetHeader(
+    title: String?,
+    actions: @Composable () -> Unit,
+) {
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .height(FolioWidgetSpacing.actionTarget)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (title == null) {
+            Spacer(GlanceModifier.defaultWeight())
+        } else {
+            Text(
+                text = title,
+                modifier = GlanceModifier.defaultWeight(),
+                maxLines = 1,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+        }
+        actions()
+    }
+}
+
+@Composable
 internal fun WidgetActionButton(
     icon: Int,
     description: String,
@@ -311,12 +278,20 @@ internal fun WidgetActionButton(
             .semantics { contentDescription = description }
             .clickable(action),
     ) {
-        Image(
-            provider = ImageProvider(icon),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurface),
-            modifier = GlanceModifier.size(22.dp),
-        )
+        Box(
+            modifier = GlanceModifier
+                .size(32.dp)
+                .background(GlanceTheme.colors.secondaryContainer)
+                .cornerRadius(16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(icon),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer),
+                modifier = GlanceModifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -329,13 +304,14 @@ private fun PortfolioWidgetBody(
     loadFailed: Boolean,
     compact: Boolean,
     openDashboard: Action,
+    configureAction: Action,
     modifier: GlanceModifier,
 ) {
     when {
         configuration == null && !loadFailed -> {
             Column(
                 modifier = modifier
-                    .clickable(openDashboard)
+                    .clickable(configureAction)
                     .padding(vertical = FolioSpacing.extraSmall),
             ) {
                 Text(
@@ -384,117 +360,55 @@ private fun PortfolioWidgetBody(
             )
             val status = portfolioWidgetStatus(context, snapshot, isUpdating)
             val age = portfolioWidgetAge(context, snapshot.valuedAt, snapshot.generatedAt)
-            val currency = context.getString(
-                if (activeConfiguration.currency == PortfolioCodes.IRT) {
-                    R.string.widget_currency_irt
-                } else {
-                    R.string.widget_currency_usd
-                },
-            )
+            val totalLabel = context.getString(R.string.widget_portfolio_total)
+            val size = LocalSize.current
+            val showTotalLabel = size.width >= 224.dp && size.height >= 186.dp
 
             Column(
                 modifier = modifier.clickable(openDashboard),
+                verticalAlignment = if (showTotalLabel) Alignment.CenterVertically else Alignment.Top,
             ) {
-                if (compact) {
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .padding(bottom = 1.dp)
-                            .semantics { contentDescription = total.contentDescription },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (total.text.length < 15) {
-                            Text(
-                                text = context.getString(R.string.widget_portfolio_total),
-                                modifier = GlanceModifier.width(42.dp),
-                                maxLines = 1,
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.onSurfaceVariant,
-                                    fontSize = 9.sp,
-                                ),
-                            )
-                        }
-                        Text(
-                            text = total.text,
-                            modifier = GlanceModifier
-                                .defaultWeight()
-                                .semantics { contentDescription = total.contentDescription },
-                            maxLines = 1,
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurface,
-                                fontSize = if (total.text.length < 15) 16.sp else 13.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .padding(bottom = 1.dp)
-                            .semantics { contentDescription = total.contentDescription },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = GlanceModifier.defaultWeight()) {
-                            Text(
-                                text = context.getString(R.string.widget_portfolio_total),
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.onSurfaceVariant,
-                                    fontSize = 11.sp,
-                                ),
-                            )
-                            Text(
-                                text = total.text,
-                                modifier = GlanceModifier.semantics { contentDescription = total.contentDescription },
-                                maxLines = 1,
-                                style = TextStyle(
-                                    color = GlanceTheme.colors.onSurface,
-                                    fontSize = 23.sp,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                            )
-                        }
-                        Text(
-                            text = currency,
-                            style = TextStyle(
-                                color = GlanceTheme.colors.primary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.End,
-                            ),
-                        )
-                    }
+                if (showTotalLabel) {
+                    Text(
+                        text = totalLabel,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 12.sp,
+                        ),
+                    )
                 }
+                Text(
+                    text = total.text,
+                    modifier = GlanceModifier.fillMaxWidth().semantics {
+                        contentDescription = "$totalLabel, ${total.contentDescription}"
+                    },
+                    maxLines = 1,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = when {
+                            !compact -> 32.sp
+                            showTotalLabel -> 28.sp
+                            total.text.length >= 17 -> 17.sp
+                            else -> 22.sp
+                        },
+                        fontWeight = FontWeight.Bold,
+                    ),
+                )
 
                 if (status != null || age.isNotBlank()) {
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .padding(bottom = 1.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        status?.let {
-                            Text(
-                                text = it,
-                                modifier = GlanceModifier.defaultWeight(),
-                                maxLines = 1,
-                                style = TextStyle(
-                                    color = LocalFolioWidgetSemanticColors.current.warning,
-                                    fontSize = if (compact) 9.sp else 11.sp,
-                                ),
-                            )
-                        }
-                        Text(
-                            text = age,
-                            maxLines = 1,
-                            style = TextStyle(
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = if (compact) 8.sp else 10.sp,
-                                textAlign = TextAlign.End,
-                            ),
-                        )
-                    }
+                    Text(
+                        text = if (compact) status ?: age
+                        else listOfNotNull(status, age.takeIf(String::isNotBlank)).joinToString(" · "),
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        maxLines = 1,
+                        style = TextStyle(
+                            color = if (status != null) LocalFolioWidgetSemanticColors.current.warning
+                            else GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = if (compact) 10.sp else 11.sp,
+                        ),
+                    )
                 }
+                Spacer(GlanceModifier.height(if (compact) 2.dp else 8.dp))
 
                 if (rows.isNotEmpty()) {
                     rows.forEachIndexed { index, row ->
@@ -518,9 +432,12 @@ private fun PortfolioAllocationRow(
     compact: Boolean,
     colorIndex: Int,
 ) {
-    val label = portfolioWidgetAssetTypeLabel(context, row.assetType)
+    val otherLabel = context.getString(R.string.widget_portfolio_other)
+    val label = if (row.assetType == otherLabel) otherLabel
+    else portfolioWidgetAssetTypeLabel(context, row.assetType)
     val percentage = formatPortfolioWidgetPercentage(row.percentage)
-    val barWidth = if (compact) 36.dp else 48.dp
+    val barWidth = if (compact) 32.dp else 72.dp
+    val roomy = !compact && LocalSize.current.height >= 284.dp
     val fillFraction = (row.percentage.toFloat() / 100f).coerceIn(0f, 1f)
     val fillWidth = max(1f, barWidth.value * fillFraction).coerceAtMost(barWidth.value).dp
     val colors = LocalFolioWidgetSemanticColors.current.allocationSeries
@@ -529,8 +446,7 @@ private fun PortfolioAllocationRow(
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .padding(bottom = 1.dp)
-            .height(14.dp)
+            .height(if (roomy) 20.dp else 14.dp)
             .semantics {
                 contentDescription = context.getString(
                     R.string.widget_portfolio_allocation_description,
@@ -542,34 +458,36 @@ private fun PortfolioAllocationRow(
     ) {
         Text(
             text = label,
-            modifier = GlanceModifier.width(if (compact) 68.dp else 84.dp),
+            modifier = GlanceModifier.defaultWeight().padding(end = 4.dp),
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = if (compact) 9.sp else 11.sp,
+                fontSize = if (roomy) 12.sp else 10.sp,
             ),
         )
         Box(
             modifier = GlanceModifier
                 .width(barWidth)
-                .height(4.dp)
-                .background(GlanceTheme.colors.secondaryContainer),
+                .height(5.dp)
+                .background(GlanceTheme.colors.secondaryContainer)
+                .cornerRadius(3.dp),
         ) {
             Box(
                 modifier = GlanceModifier
                     .width(fillWidth)
-                    .height(4.dp)
-                    .background(color),
+                    .height(5.dp)
+                    .background(color)
+                    .cornerRadius(3.dp),
             ) {}
         }
         Spacer(modifier = GlanceModifier.width(4.dp))
         Text(
             text = percentage,
-            modifier = GlanceModifier.defaultWeight(),
+            modifier = GlanceModifier.width(if (compact) 44.dp else 58.dp),
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
-                fontSize = if (compact) 9.sp else 11.sp,
+                fontSize = if (roomy) 12.sp else 10.sp,
                 textAlign = TextAlign.End,
             ),
         )

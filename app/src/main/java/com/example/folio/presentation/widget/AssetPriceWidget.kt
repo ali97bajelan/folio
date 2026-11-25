@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
@@ -24,15 +23,14 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.components.Scaffold
-import androidx.glance.appwidget.components.TitleBar
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
+import androidx.glance.layout.Box
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -153,66 +151,29 @@ internal fun AssetPriceWidgetLayout(
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
         FolioWidgetTheme {
-            if (!compact) {
-                Scaffold(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface),
-                    horizontalPadding = FolioWidgetSpacing.contentHorizontal,
-                    titleBar = {
-                        TitleBar(
-                            startIcon = ImageProvider(R.mipmap.ic_launcher),
-                            title = title,
-                            iconColor = GlanceTheme.colors.primary,
-                            actions = { AssetPriceWidgetActionButtons(context, appWidgetId) },
-                        )
-                    },
-                ) {
-                    AssetPriceWidgetBody(
-                        context = context,
-                        configuration = configuration,
-                        quotes = quotes,
-                        isUpdating = isUpdating,
-                        loadFailed = loadFailed,
-                        configureAction = configureAction,
-                        compact = false,
-                        totalHeightDp = size.height.value,
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .padding(horizontal = FolioWidgetSpacing.contentHorizontal),
-                    )
-                }
-            } else {
-                Column(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface)
-                        .padding(
-                            horizontal = FolioWidgetSpacing.contentHorizontal,
-                            vertical = FolioWidgetSpacing.compactContentVertical,
-                        ),
-                ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Spacer(modifier = GlanceModifier.defaultWeight())
-                        AssetPriceWidgetActionButtons(context, appWidgetId)
+            Scaffold(
+                modifier = GlanceModifier.fillMaxSize(),
+                backgroundColor = GlanceTheme.colors.surface,
+                horizontalPadding = FolioWidgetSpacing.contentHorizontal,
+                titleBar = {
+                    Column(modifier = GlanceModifier.padding(top = if (compact) 4.dp else 8.dp)) {
+                        WidgetHeader(title = title.takeIf { size.width >= 208.dp }) {
+                            AssetPriceWidgetActionButtons(context, appWidgetId)
+                        }
                     }
-                    AssetPriceWidgetBody(
-                        context = context,
-                        configuration = configuration,
-                        quotes = quotes,
-                        isUpdating = isUpdating,
-                        loadFailed = loadFailed,
-                        configureAction = configureAction,
-                        compact = true,
-                        totalHeightDp = size.height.value,
-                        modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .padding(horizontal = FolioWidgetSpacing.compactContentHorizontal),
-                    )
-                }
+                },
+            ) {
+                AssetPriceWidgetBody(
+                    context = context,
+                    configuration = configuration,
+                    quotes = quotes,
+                    isUpdating = isUpdating,
+                    loadFailed = loadFailed,
+                    configureAction = configureAction,
+                    compact = compact,
+                    totalHeightDp = size.height.value,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -287,24 +248,12 @@ private fun AssetPriceWidgetBody(
         viewport.heightDp
     }
     val now = Instant.now()
-    val rows = assetPriceWidgetRows(markets, quotes)
-    val presentations = rows.map { row ->
-        presentAssetPriceQuote(row.quote, isUpdating, now)
-    }
-    val ages = presentations.map { presentation ->
-        formatAssetPriceQuoteAge(context, presentation.quoteAt, now)
-    }
-    val firstRowForEachAge = ages
-        .mapIndexedNotNull { index, age -> age?.let { it to index } }
-        .groupBy({ it.first }, { it.second })
-        .values
-        .mapNotNull { it.firstOrNull() }
-        .toSet()
-    val displayRows = rows.mapIndexed { index, row ->
+    val displayRows = assetPriceWidgetRows(markets, quotes).map { row ->
+        val presentation = presentAssetPriceQuote(row.quote, isUpdating, now)
         AssetPriceWidgetDisplayRow(
             row = row,
-            presentation = presentations[index],
-            quoteAge = ages[index].takeIf { index in firstRowForEachAge },
+            presentation = presentation,
+            quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, now),
         )
     }
 
@@ -371,12 +320,7 @@ private fun AssetPriceQuoteRow(
     val provider = assetPriceProviderLabel(context, selection.key.provider)
     val title = context.getString(
         R.string.widget_asset_price_row_title,
-        selection.displayName,
-        isolateFinancialText(provider),
-    )
-    val titleDescription = context.getString(
-        R.string.widget_asset_price_row_title,
-        selection.displayName,
+        selection.symbol,
         provider,
     )
     val amount = presentation.price?.let { price ->
@@ -392,52 +336,65 @@ private fun AssetPriceQuoteRow(
         assetPriceQuoteStatus(context, presentation, loadFailed),
         displayRow.quoteAge?.let { context.getString(R.string.widget_asset_price_quote_age, it) },
     ).filterNotNull().filter(String::isNotBlank).joinToString(" · ")
-    val rowDescription = listOf(titleDescription, amount ?: priceText, metadata)
+    val narrow = LocalSize.current.width < 180.dp
+    val longAmount = narrow && priceText.length >= 15
+    val rowDescription = listOf(title, amount ?: priceText, metadata)
         .filter(String::isNotBlank)
         .joinToString(". ")
 
-    Column(
+    Box(
         modifier = GlanceModifier
             .fillMaxWidth()
             .height(rowHeightDp.dp)
-            .padding(vertical = FolioWidgetSpacing.compactContentVertical)
-            .semantics { contentDescription = rowDescription },
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(bottom = 4.dp),
     ) {
-        Text(
-            text = title,
-            modifier = GlanceModifier.fillMaxWidth(),
-            maxLines = 1,
-            style = TextStyle(
-                color = GlanceTheme.colors.onSurfaceVariant,
-                fontSize = if (compact) 10.sp else 12.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
-        Text(
-            text = priceText,
-            modifier = GlanceModifier.fillMaxWidth(),
-            maxLines = 1,
-            style = TextStyle(
-                color = GlanceTheme.colors.onSurface,
-                fontSize = if (compact) 17.sp else 20.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
-        if (metadata.isNotBlank()) {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(GlanceTheme.colors.surfaceVariant)
+                .cornerRadius(12.dp)
+                .padding(horizontal = if (compact) 8.dp else 14.dp)
+                .semantics { contentDescription = rowDescription },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = metadata,
-                modifier = GlanceModifier.fillMaxWidth(),
+                text = title,
                 maxLines = 1,
                 style = TextStyle(
-                    color = if (presentation.refreshFailed || presentation.unsupported) {
-                        LocalFolioWidgetSemanticColors.current.warning
-                    } else {
-                        GlanceTheme.colors.onSurfaceVariant
-                    },
-                    fontSize = if (compact) 9.sp else 10.sp,
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = if (compact) 11.sp else 13.sp,
+                    fontWeight = FontWeight.Medium,
                 ),
             )
+            Text(
+                text = priceText,
+                maxLines = if (longAmount) 2 else 1,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = when {
+                        longAmount -> 13.sp
+                        compact -> 18.sp
+                        else -> 24.sp
+                    },
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+            if (metadata.isNotBlank()) {
+                Text(
+                    text = metadata,
+                    maxLines = if (narrow && !longAmount) 2 else 1,
+                    style = TextStyle(
+                        color = if (presentation.refreshFailed || presentation.unsupported ||
+                            presentation.freshness == AssetPriceQuoteFreshness.STALE
+                        ) {
+                            LocalFolioWidgetSemanticColors.current.warning
+                        } else {
+                            GlanceTheme.colors.onSurfaceVariant
+                        },
+                        fontSize = if (compact) 10.sp else 11.sp,
+                    ),
+                )
+            }
         }
     }
 }

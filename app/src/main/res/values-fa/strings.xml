@@ -192,7 +192,9 @@
     <string name="widget_portfolio_setup_hint">برای انتخاب ارز، «تنظیم» را بزنید.</string>
     <string name="widget_portfolio_load_error">دادهٔ پرتفوی در دسترس نیست. برای تلاش دوباره فولیو را باز کنید.</string>
     <string name="widget_portfolio_preview_total">۱۲٬۸۴۰ IRT</string>
-    <string name="widget_portfolio_preview_allocation">رمزارز ۵۸٪ · طلا ۲۷٪ · دلار ۱۵٪</string>
+    <string name="widget_portfolio_preview_share_crypto">۵۸٪</string>
+    <string name="widget_portfolio_preview_share_gold">۲۷٪</string>
+    <string name="widget_portfolio_preview_share_usd">۱۵٪</string>
     <string name="asset_registry_label">دفتر دارایی‌ها</string>
     <string name="asset_form_description">رمزارز، فلزات، پول نقد و سهام را یک‌جا پیگیری کنید.</string>
     <string name="quick_fill">پر کردن نمونه</string>
