@@ -2,12 +2,17 @@ package com.example.folio.data.widget
 
 import androidx.room.ColumnInfo
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Relation
 import androidx.room.Transaction
+import androidx.room.Update
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -17,12 +22,44 @@ data class WidgetConfigurationEntity(
     val kind: String,
     val currency: String,
     @ColumnInfo(name = "hide_total") val hideTotal: Boolean,
-    @ColumnInfo(name = "market_provider") val marketProvider: String?,
-    @ColumnInfo(name = "market_provider_symbol") val marketProviderSymbol: String?,
-    @ColumnInfo(name = "market_display_name") val marketDisplayName: String?,
-    @ColumnInfo(name = "market_symbol") val marketSymbol: String?,
-    @ColumnInfo(name = "market_asset_type") val marketAssetType: String?,
     val revision: Long,
+)
+
+@Entity(
+    tableName = "widget_market_selection",
+    foreignKeys = [
+        ForeignKey(
+            entity = WidgetConfigurationEntity::class,
+            parentColumns = ["app_widget_id"],
+            childColumns = ["app_widget_id"],
+            onDelete = ForeignKey.CASCADE,
+            onUpdate = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [
+        Index(value = ["app_widget_id"]),
+        Index(value = ["provider", "provider_symbol"]),
+        Index(value = ["app_widget_id", "provider", "provider_symbol"], unique = true),
+    ],
+)
+data class WidgetMarketSelectionEntity(
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "selection_id") val selectionId: Long = 0,
+    @ColumnInfo(name = "app_widget_id") val appWidgetId: Int,
+    val position: Int,
+    val provider: String,
+    @ColumnInfo(name = "provider_symbol") val providerSymbol: String,
+    @ColumnInfo(name = "display_name") val displayName: String,
+    val symbol: String,
+    @ColumnInfo(name = "asset_type") val assetType: String,
+)
+
+data class WidgetConfigurationWithSelections(
+    @Embedded val configuration: WidgetConfigurationEntity,
+    @Relation(
+        parentColumn = "app_widget_id",
+        entityColumn = "app_widget_id",
+    )
+    val selections: List<WidgetMarketSelectionEntity>,
 )
 
 @Entity(
@@ -43,14 +80,28 @@ data class WidgetQuoteEntity(
 
 @Dao
 interface WidgetDao {
+    @Transaction
     @Query("SELECT * FROM widget_configuration WHERE app_widget_id = :appWidgetId")
-    suspend fun configuration(appWidgetId: Int): WidgetConfigurationEntity?
+    suspend fun configuration(appWidgetId: Int): WidgetConfigurationWithSelections?
 
+    @Transaction
     @Query("SELECT * FROM widget_configuration ORDER BY app_widget_id")
-    suspend fun configurations(): List<WidgetConfigurationEntity>
+    suspend fun configurations(): List<WidgetConfigurationWithSelections>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun putConfiguration(configuration: WidgetConfigurationEntity)
+    @Query("SELECT * FROM widget_market_selection WHERE app_widget_id = :appWidgetId ORDER BY position")
+    suspend fun selections(appWidgetId: Int): List<WidgetMarketSelectionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertConfiguration(configuration: WidgetConfigurationEntity)
+
+    @Update
+    suspend fun updateConfiguration(configuration: WidgetConfigurationEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertSelections(selections: List<WidgetMarketSelectionEntity>)
+
+    @Query("DELETE FROM widget_market_selection WHERE app_widget_id = :appWidgetId")
+    suspend fun deleteSelections(appWidgetId: Int)
 
     @Query("DELETE FROM widget_configuration WHERE app_widget_id IN (:appWidgetIds)")
     suspend fun deleteConfigurations(appWidgetIds: Set<Int>)
@@ -73,37 +124,63 @@ interface WidgetDao {
         """
         DELETE FROM widget_quote
         WHERE NOT EXISTS (
-            SELECT 1 FROM widget_configuration
-            WHERE widget_configuration.market_provider = widget_quote.provider
-              AND widget_configuration.market_provider_symbol = widget_quote.provider_symbol
+            SELECT 1 FROM widget_market_selection
+            WHERE widget_market_selection.provider = widget_quote.provider
+              AND widget_market_selection.provider_symbol = widget_quote.provider_symbol
         )
         """,
     )
     suspend fun deleteUnreferencedQuotes()
 
     @Transaction
-    suspend fun saveConfiguration(candidate: WidgetConfigurationEntity): WidgetConfigurationEntity {
-        val current = configuration(candidate.appWidgetId)
-        val saved = candidate.copy(revision = Math.addExact(current?.revision ?: 0L, 1L))
-        putConfiguration(saved)
-        return saved
+    suspend fun saveConfiguration(candidate: WidgetConfiguration): WidgetConfigurationWithSelections {
+        val current = configuration(candidate.appWidgetId)?.configuration
+        val saved = WidgetConfigurationEntity(
+            appWidgetId = candidate.appWidgetId,
+            kind = candidate.kind.name,
+            currency = candidate.currency,
+            hideTotal = candidate.hideTotal,
+            revision = Math.addExact(current?.revision ?: 0L, 1L),
+        )
+        if (current == null) insertConfiguration(saved) else updateConfiguration(saved)
+
+        val oldByKey = selections(candidate.appWidgetId).associateBy {
+            MarketKey(it.provider, it.providerSymbol)
+        }
+        val newSelections = candidate.markets.mapIndexed { position, market ->
+            WidgetMarketSelectionEntity(
+                selectionId = oldByKey[market.key]?.selectionId ?: 0L,
+                appWidgetId = candidate.appWidgetId,
+                position = position,
+                provider = market.key.provider,
+                providerSymbol = market.key.providerSymbol,
+                displayName = market.displayName,
+                symbol = market.symbol,
+                assetType = market.assetType,
+            )
+        }
+        deleteSelections(candidate.appWidgetId)
+        if (newSelections.isNotEmpty()) insertSelections(newSelections)
+        deleteUnreferencedQuotes()
+        return requireNotNull(configuration(candidate.appWidgetId))
     }
 
     @Transaction
-    suspend fun setTotalHidden(appWidgetId: Int, hidden: Boolean): WidgetConfigurationEntity {
+    suspend fun setTotalHidden(appWidgetId: Int, hidden: Boolean): WidgetConfigurationWithSelections {
         val current = configuration(appWidgetId)
             ?: throw IllegalStateException("No widget configuration exists for id $appWidgetId.")
-        check(current.kind == WidgetKind.PORTFOLIO.name) {
+        check(current.configuration.kind == WidgetKind.PORTFOLIO.name) {
             "Only portfolio widgets have a hide-total setting."
         }
-        if (current.hideTotal == hidden) return current
+        if (current.configuration.hideTotal == hidden) return current
 
-        val updated = current.copy(
-            hideTotal = hidden,
-            revision = Math.addExact(current.revision, 1L),
+        updateConfiguration(
+            current.configuration.copy(
+                hideTotal = hidden,
+                revision = Math.addExact(current.configuration.revision, 1L),
+            ),
         )
-        putConfiguration(updated)
-        return updated
+        return requireNotNull(configuration(appWidgetId))
     }
 
     @Transaction
@@ -128,11 +205,13 @@ interface WidgetDao {
         incoming: WidgetQuoteEntity,
     ): Boolean {
         val current = configuration(appWidgetId) ?: return false
+        val stillSelected = current.selections.any {
+            it.provider == savedKey.provider && it.providerSymbol == savedKey.providerSymbol
+        }
         if (
-            current.kind != WidgetKind.ASSET_PRICE.name ||
-            current.revision != expectedRevision ||
-            current.marketProvider != savedKey.provider ||
-            current.marketProviderSymbol != savedKey.providerSymbol
+            current.configuration.kind != WidgetKind.ASSET_PRICE.name ||
+            current.configuration.revision != expectedRevision ||
+            !stillSelected
         ) {
             return false
         }
@@ -147,7 +226,7 @@ interface WidgetDao {
             "Widget ids must be positive."
         }
 
-        val existingIds = configurations().mapTo(mutableSetOf()) { it.appWidgetId }
+        val existingIds = configurations().mapTo(mutableSetOf()) { it.configuration.appWidgetId }
         val mappings = oldToNew.filter { (oldId, newId) ->
             oldId in existingIds && oldId != newId
         }
@@ -183,40 +262,22 @@ interface WidgetDao {
     }
 }
 
-internal fun WidgetConfigurationEntity.toModel(): WidgetConfiguration {
-    val market = marketProvider?.let { provider ->
-        MarketSelection(
-            key = MarketKey(
-                provider = provider,
-                providerSymbol = requireNotNull(marketProviderSymbol),
-            ),
-            displayName = requireNotNull(marketDisplayName),
-            symbol = requireNotNull(marketSymbol),
-            assetType = requireNotNull(marketAssetType),
-        )
-    }
-    return WidgetConfiguration(
-        appWidgetId = appWidgetId,
-        kind = WidgetKind.valueOf(kind),
-        currency = currency,
-        hideTotal = hideTotal,
-        market = market,
-        revision = revision,
+internal fun WidgetConfigurationWithSelections.toModel(): WidgetConfiguration =
+    WidgetConfiguration(
+        appWidgetId = configuration.appWidgetId,
+        kind = WidgetKind.valueOf(configuration.kind),
+        currency = configuration.currency,
+        hideTotal = configuration.hideTotal,
+        markets = selections.sortedBy { it.position }.map(WidgetMarketSelectionEntity::toModel),
+        revision = configuration.revision,
     )
-}
 
-internal fun WidgetConfiguration.toEntity(): WidgetConfigurationEntity =
-    WidgetConfigurationEntity(
-        appWidgetId = appWidgetId,
-        kind = kind.name,
-        currency = currency,
-        hideTotal = hideTotal,
-        marketProvider = market?.key?.provider,
-        marketProviderSymbol = market?.key?.providerSymbol,
-        marketDisplayName = market?.displayName,
-        marketSymbol = market?.symbol,
-        marketAssetType = market?.assetType,
-        revision = revision,
+internal fun WidgetMarketSelectionEntity.toModel(): MarketSelection =
+    MarketSelection(
+        key = MarketKey(provider, providerSymbol),
+        displayName = displayName,
+        symbol = symbol,
+        assetType = assetType,
     )
 
 internal fun WidgetQuoteEntity.toModel(): WidgetQuote =

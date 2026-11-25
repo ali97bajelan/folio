@@ -120,7 +120,7 @@ class AssetPriceWidgetPresentationTest {
             market = previousMarket,
             revision = 2,
         )
-        val current = loaded.copy(market = changedMarket, revision = 3)
+        val current = loaded.copy(markets = listOf(changedMarket), revision = 3)
 
         assertFalse(isCurrentAssetPriceConfiguration(loaded, current))
     }

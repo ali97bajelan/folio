@@ -194,7 +194,7 @@
     <string name="widget_currency_usd">USD</string>
     <string name="widget_hide_total">Hide total portfolio value</string>
     <string name="widget_asset_type_label">Instrument type</string>
-    <string name="widget_market_required">Choose and validate a market before saving.</string>
+    <string name="widget_market_required">Add at least one asset to this widget.</string>
     <string name="widget_market_selected">%1$s · %2$s</string>
     <string name="widget_asset_price_name">Folio Asset Price</string>
     <string name="widget_asset_price_description">A selected market quote with its provider and quote age.</string>
@@ -283,4 +283,10 @@
     <string name="discard_changes">Discard changes</string>
     <string name="form_local_storage_note">Portfolio data is stored locally on this device.</string>
     <string name="asset_symbol_or_market">Symbol or market</string>
+    <string name="widget_selected_assets">Selected assets</string>
+    <string name="widget_add_asset">Add an asset</string>
+    <string name="widget_add_selected_asset">Add selected asset</string>
+    <string name="widget_remove_asset">Remove %1$s from this widget</string>
+    <string name="widget_market_add_prompt">Choose and validate an asset to add it to this widget.</string>
+    <string name="widget_market_duplicate">%1$s is already selected.</string>
 </resources>

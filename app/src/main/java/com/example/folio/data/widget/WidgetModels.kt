@@ -26,9 +26,27 @@ data class WidgetConfiguration(
     val kind: WidgetKind,
     val currency: String,
     val hideTotal: Boolean,
-    val market: MarketSelection?,
+    val markets: List<MarketSelection>,
     val revision: Long,
-)
+) {
+    constructor(
+        appWidgetId: Int,
+        kind: WidgetKind,
+        currency: String,
+        hideTotal: Boolean,
+        market: MarketSelection?,
+        revision: Long,
+    ) : this(
+        appWidgetId = appWidgetId,
+        kind = kind,
+        currency = currency,
+        hideTotal = hideTotal,
+        markets = listOfNotNull(market),
+        revision = revision,
+    )
+
+    val market: MarketSelection? get() = markets.firstOrNull()
+}
 
 enum class QuoteStatus {
     NEVER_LOADED,

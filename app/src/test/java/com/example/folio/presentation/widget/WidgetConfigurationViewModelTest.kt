@@ -9,6 +9,8 @@ import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetQuoteEntity
 import com.example.folio.data.widget.WidgetRepository
 import com.example.folio.data.widget.WidgetConfigurationEntity
+import com.example.folio.data.widget.WidgetConfigurationWithSelections
+import com.example.folio.data.widget.WidgetMarketSelectionEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -62,7 +64,10 @@ class WidgetConfigurationViewModelTest {
                 assetType = PortfolioCodes.GOLD,
             ),
         )
+        assertFalse(restored.state.value.canSave)
+        restored.addPendingMarket()
         assertTrue(restored.state.value.canSave)
+        assertEquals(1, restored.state.value.markets.size)
     }
 
     @Test
@@ -100,9 +105,13 @@ class WidgetConfigurationViewModelTest {
     }
 
     private object EmptyWidgetDao : WidgetDao {
-        override suspend fun configuration(appWidgetId: Int): WidgetConfigurationEntity? = null
-        override suspend fun configurations(): List<WidgetConfigurationEntity> = emptyList()
-        override suspend fun putConfiguration(configuration: WidgetConfigurationEntity) = Unit
+        override suspend fun configuration(appWidgetId: Int): WidgetConfigurationWithSelections? = null
+        override suspend fun configurations(): List<WidgetConfigurationWithSelections> = emptyList()
+        override suspend fun selections(appWidgetId: Int): List<WidgetMarketSelectionEntity> = emptyList()
+        override suspend fun insertConfiguration(configuration: WidgetConfigurationEntity) = Unit
+        override suspend fun updateConfiguration(configuration: WidgetConfigurationEntity) = Unit
+        override suspend fun insertSelections(selections: List<WidgetMarketSelectionEntity>) = Unit
+        override suspend fun deleteSelections(appWidgetId: Int) = Unit
         override suspend fun deleteConfigurations(appWidgetIds: Set<Int>) = Unit
         override suspend fun updateConfigurationId(oldId: Int, newId: Int): Int = 0
         override suspend fun quote(provider: String, providerSymbol: String): WidgetQuoteEntity? = null

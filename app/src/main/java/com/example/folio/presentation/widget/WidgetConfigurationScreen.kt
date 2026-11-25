@@ -13,6 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.filled.Close
 import com.example.folio.PortfolioCodes
 import com.example.folio.R
 import com.example.folio.data.widget.MarketSelection
@@ -39,6 +42,8 @@ internal fun WidgetConfigurationScreen(
     onQueryChanged: (String) -> Unit,
     onProviderSymbolChanged: (String) -> Unit,
     onMarketSelectionChanged: (MarketSelection?) -> Unit,
+    onAddMarket: () -> Unit,
+    onRemoveMarket: (com.example.folio.data.widget.MarketKey) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -80,6 +85,8 @@ internal fun WidgetConfigurationScreen(
                     onQueryChanged = onQueryChanged,
                     onProviderSymbolChanged = onProviderSymbolChanged,
                     onMarketSelectionChanged = onMarketSelectionChanged,
+                    onAddMarket = onAddMarket,
+                    onRemoveMarket = onRemoveMarket,
                 )
             }
         }
@@ -154,8 +161,74 @@ private fun PriceOptions(
     onQueryChanged: (String) -> Unit,
     onProviderSymbolChanged: (String) -> Unit,
     onMarketSelectionChanged: (MarketSelection?) -> Unit,
+    onAddMarket: () -> Unit,
+    onRemoveMarket: (com.example.folio.data.widget.MarketKey) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(R.string.widget_selected_assets),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        if (state.markets.isEmpty()) {
+            FolioStateMessage(
+                message = stringResource(R.string.widget_market_required),
+                kind = FolioMessageKind.Empty,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            state.markets.forEach { selected ->
+                FolioListRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    content = {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = stringResource(
+                                    R.string.widget_market_selected,
+                                    isolateFinancialText(selected.symbol),
+                                    selected.displayName,
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                text = stringResource(
+                                    when (selected.key.provider) {
+                                        PortfolioCodes.NOBITEX -> R.string.widget_asset_price_provider_nobitex
+                                        PortfolioCodes.ABANTETHER -> R.string.widget_asset_price_provider_abantether
+                                        PortfolioCodes.TSETMC -> R.string.widget_asset_price_provider_tsetmc
+                                        PortfolioCodes.RAHAVARD -> R.string.widget_asset_price_provider_rahavard
+                                        else -> R.string.widget_asset_price_provider_unknown
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    trailing = {
+                        val removeDescription = stringResource(
+                            R.string.widget_remove_asset,
+                            selected.displayName,
+                        )
+                        androidx.compose.material3.IconButton(
+                            onClick = { onRemoveMarket(selected.key) },
+                            modifier = Modifier.semantics {
+                                contentDescription = removeDescription
+                            },
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                                contentDescription = null,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+
+        Text(
+            text = stringResource(R.string.widget_add_asset),
+            style = MaterialTheme.typography.titleSmall,
+        )
         AssetTypeSelector(
             selected = state.assetType,
             onSelected = onAssetTypeChanged,
@@ -173,20 +246,33 @@ private fun PriceOptions(
             onProviderSymbolChanged = onProviderSymbolChanged,
             onManualSelectionValidated = onMarketSelectionChanged,
         )
-        if (state.market == null) {
+        val pending = state.market?.takeIf { state.marketValidated }
+        if (pending == null) {
             FolioStateMessage(
-                message = stringResource(R.string.widget_market_required),
-                kind = FolioMessageKind.Empty,
+                message = stringResource(R.string.widget_market_add_prompt),
+                kind = FolioMessageKind.Info,
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
-            FolioStateMessage(
-                message = stringResource(
+            val alreadyAdded = state.markets.any { it.key == pending.key }
+            val pendingMessage = if (alreadyAdded) {
+                stringResource(R.string.widget_market_duplicate, pending.displayName)
+            } else {
+                stringResource(
                     R.string.widget_market_selected,
-                    isolateFinancialText(state.market.symbol),
-                    state.market.displayName,
-                ),
-                kind = FolioMessageKind.Empty,
+                    isolateFinancialText(pending.symbol),
+                    pending.displayName,
+                )
+            }
+            FolioStateMessage(
+                message = pendingMessage,
+                kind = if (alreadyAdded) FolioMessageKind.Info else FolioMessageKind.Empty,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FolioSecondaryButton(
+                text = stringResource(R.string.widget_add_selected_asset),
+                onClick = onAddMarket,
+                enabled = !alreadyAdded,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

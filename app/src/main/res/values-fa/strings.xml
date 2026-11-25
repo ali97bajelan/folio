@@ -123,7 +123,7 @@
     <string name="widget_currency_usd">دلار · USD</string>
     <string name="widget_hide_total">پنهان کردن ارزش کل پرتفوی</string>
     <string name="widget_asset_type_label">نوع دارایی</string>
-    <string name="widget_market_required">پیش از ذخیره، بازار را انتخاب و تأیید کنید.</string>
+    <string name="widget_market_required">حداقل یک دارایی به این ابزارک اضافه کنید.</string>
     <string name="widget_market_selected">%1$s · %2$s</string>
     <string name="widget_asset_price_name">قیمت دارایی فولیو</string>
     <string name="widget_asset_price_description">قیمت بازار انتخاب‌شده همراه با ارائه‌دهنده و زمان قیمت.</string>
@@ -212,4 +212,10 @@
     <string name="discard_changes">لغو تغییرات</string>
     <string name="form_local_storage_note">اطلاعات پرتفوی روی همین دستگاه ذخیره می‌شود.</string>
     <string name="asset_symbol_or_market">نماد یا بازار</string>
+    <string name="widget_selected_assets">دارایی‌های انتخاب‌شده</string>
+    <string name="widget_add_asset">افزودن دارایی</string>
+    <string name="widget_add_selected_asset">افزودن دارایی انتخاب‌شده</string>
+    <string name="widget_remove_asset">حذف %1$s از این ابزارک</string>
+    <string name="widget_market_add_prompt">برای افزودن، دارایی را انتخاب و تأیید کنید.</string>
+    <string name="widget_market_duplicate">%1$s از قبل انتخاب شده است.</string>
 </resources>

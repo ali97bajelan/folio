@@ -79,6 +79,8 @@ class WidgetConfigurationActivity : AppCompatActivity() {
                     onQueryChanged = configurationViewModel::updateQuery,
                     onProviderSymbolChanged = configurationViewModel::updateProviderSymbol,
                     onMarketSelectionChanged = configurationViewModel::updateMarketSelection,
+                    onAddMarket = configurationViewModel::addPendingMarket,
+                    onRemoveMarket = configurationViewModel::removeMarket,
                     onSave = ::saveConfiguration,
                     onCancel = ::cancelConfiguration,
                 )

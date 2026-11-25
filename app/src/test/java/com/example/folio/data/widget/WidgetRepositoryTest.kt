@@ -29,7 +29,7 @@ class WidgetRepositoryTest {
         )
         valid.validate()
 
-        val invalid = valid.copy(market = null)
+        val invalid = valid.copy(markets = emptyList())
         assertThrows(IllegalArgumentException::class.java) { invalid.validate() }
     }
 

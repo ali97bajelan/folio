@@ -5,6 +5,7 @@ import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.folio.data.widget.WidgetConfigurationEntity
+import com.example.folio.data.widget.WidgetMarketSelectionEntity
 import com.example.folio.data.widget.WidgetDao
 import com.example.folio.data.widget.WidgetQuoteEntity
 import kotlinx.coroutines.flow.Flow
@@ -145,7 +146,73 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
-@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class, WidgetConfigurationEntity::class, WidgetQuoteEntity::class], version = 4, exportSchema = true)
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """CREATE TEMP TABLE widget_market_selection_migration AS
+                SELECT app_widget_id, market_provider, market_provider_symbol,
+                       market_display_name, market_symbol, market_asset_type
+                FROM widget_configuration
+                WHERE kind = 'ASSET_PRICE'
+                  AND market_provider IS NOT NULL
+                  AND market_provider_symbol IS NOT NULL
+                  AND market_display_name IS NOT NULL
+                  AND market_symbol IS NOT NULL
+                  AND market_asset_type IS NOT NULL""".trimIndent(),
+        )
+        database.execSQL(
+            """CREATE TABLE widget_configuration_new (
+                app_widget_id INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                hide_total INTEGER NOT NULL,
+                revision INTEGER NOT NULL,
+                PRIMARY KEY(app_widget_id)
+            )""".trimIndent(),
+        )
+        database.execSQL(
+            """INSERT INTO widget_configuration_new
+                (app_widget_id, kind, currency, hide_total, revision)
+                SELECT app_widget_id, kind, currency, hide_total, revision
+                FROM widget_configuration""".trimIndent(),
+        )
+        database.execSQL("DROP TABLE widget_configuration")
+        database.execSQL("ALTER TABLE widget_configuration_new RENAME TO widget_configuration")
+        database.execSQL(
+            """CREATE TABLE widget_market_selection (
+                selection_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                app_widget_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                provider TEXT NOT NULL,
+                provider_symbol TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                asset_type TEXT NOT NULL,
+                FOREIGN KEY(app_widget_id) REFERENCES widget_configuration(app_widget_id)
+                    ON UPDATE CASCADE ON DELETE CASCADE
+            )""".trimIndent(),
+        )
+        database.execSQL(
+            """INSERT INTO widget_market_selection
+                (app_widget_id, position, provider, provider_symbol, display_name, symbol, asset_type)
+                SELECT app_widget_id, 0, market_provider, market_provider_symbol,
+                       market_display_name, market_symbol, market_asset_type
+                FROM widget_market_selection_migration""".trimIndent(),
+        )
+        database.execSQL("DROP TABLE widget_market_selection_migration")
+        database.execSQL(
+            "CREATE INDEX index_widget_market_selection_app_widget_id ON widget_market_selection(app_widget_id)",
+        )
+        database.execSQL(
+            "CREATE INDEX index_widget_market_selection_provider_provider_symbol ON widget_market_selection(provider, provider_symbol)",
+        )
+        database.execSQL(
+            "CREATE UNIQUE INDEX index_widget_market_selection_app_widget_id_provider_provider_symbol ON widget_market_selection(app_widget_id, provider, provider_symbol)",
+        )
+    }
+}
+
+@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class, WidgetConfigurationEntity::class, WidgetMarketSelectionEntity::class, WidgetQuoteEntity::class], version = 5, exportSchema = true)
 @TypeConverters(DbConverters::class)
 abstract class PortfolioDatabase : RoomDatabase() {
     abstract fun dao(): PortfolioDao

@@ -7,11 +7,11 @@ class WidgetRepository(
         dao.configuration(appWidgetId)?.toModel()
 
     suspend fun configurations(): List<WidgetConfiguration> =
-        dao.configurations().map(WidgetConfigurationEntity::toModel)
+        dao.configurations().map(WidgetConfigurationWithSelections::toModel)
 
     suspend fun save(configuration: WidgetConfiguration): WidgetConfiguration {
         configuration.validate()
-        return dao.saveConfiguration(configuration.toEntity()).toModel()
+        return dao.saveConfiguration(configuration).toModel()
     }
 
     suspend fun setTotalHidden(appWidgetId: Int, hidden: Boolean): WidgetConfiguration =

@@ -3,6 +3,7 @@ package com.example.folio.presentation.widget
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.folio.PortfolioCodes
+import com.example.folio.data.network.MarketQuoteClient
 import com.example.folio.data.widget.MarketKey
 import com.example.folio.data.widget.MarketSelection
 import com.example.folio.data.widget.WidgetConfiguration
@@ -20,6 +21,7 @@ internal data class WidgetConfigurationUiState(
     val isLoading: Boolean = true,
     val currency: String = PortfolioCodes.IRT,
     val hideTotal: Boolean = false,
+    val markets: List<MarketSelection> = emptyList(),
     val assetType: String = PortfolioCodes.CRYPTO,
     val provider: String = "",
     val query: String = "",
@@ -33,7 +35,7 @@ internal data class WidgetConfigurationUiState(
     val canSave: Boolean
         get() = initialized && !isLoading && !isSaving && !loadError && (when (kind) {
             WidgetKind.PORTFOLIO -> true
-            WidgetKind.ASSET_PRICE -> marketValidated && market != null
+            WidgetKind.ASSET_PRICE -> markets.isNotEmpty()
             null -> false
         })
 }
@@ -45,11 +47,7 @@ internal class WidgetConfigurationViewModel(
     private val _state = MutableStateFlow(readSavedState())
     val state: StateFlow<WidgetConfigurationUiState> = _state.asStateFlow()
 
-    fun initialize(
-        appWidgetId: Int,
-        kind: WidgetKind,
-        existing: WidgetConfiguration?,
-    ) {
+    fun initialize(appWidgetId: Int, kind: WidgetKind, existing: WidgetConfiguration?) {
         require(appWidgetId > 0)
         val current = _state.value
         if (current.initialized && current.appWidgetId == appWidgetId && current.kind == kind) {
@@ -67,7 +65,6 @@ internal class WidgetConfigurationViewModel(
         }
 
         val saved = existing?.takeIf { it.appWidgetId == appWidgetId && it.kind == kind }
-        val market = saved?.market
         setState(
             WidgetConfigurationUiState(
                 appWidgetId = appWidgetId,
@@ -76,12 +73,9 @@ internal class WidgetConfigurationViewModel(
                 isLoading = false,
                 currency = saved?.currency ?: PortfolioCodes.IRT,
                 hideTotal = saved?.hideTotal ?: false,
-                assetType = market?.assetType ?: PortfolioCodes.CRYPTO,
-                provider = market?.key?.provider.orEmpty(),
-                query = "",
-                providerSymbol = market?.key?.providerSymbol.orEmpty(),
-                market = market,
-                marketValidated = market != null,
+                markets = saved?.markets.orEmpty(),
+                assetType = saved?.market?.assetType ?: PortfolioCodes.CRYPTO,
+                provider = "",
             ),
         )
     }
@@ -147,20 +141,52 @@ internal class WidgetConfigurationViewModel(
 
     fun updateMarketSelection(selection: MarketSelection?) {
         update {
-            if (selection == null) {
-                it.copy(market = null, marketValidated = false, saveError = false)
-            } else {
-                it.copy(
-                    assetType = selection.assetType,
-                    provider = selection.key.provider,
-                    providerSymbol = selection.key.providerSymbol,
-                    market = selection,
-                    marketValidated = true,
-                    saveError = false,
-                )
-            }
+            it.copy(
+                assetType = selection?.assetType ?: it.assetType,
+                provider = selection?.key?.provider ?: it.provider,
+                providerSymbol = selection?.key?.providerSymbol ?: it.providerSymbol,
+                market = selection,
+                marketValidated = selection != null,
+                saveError = false,
+            )
         }
     }
+
+    fun addPendingMarket() {
+        val current = _state.value
+        val selection = current.market?.takeIf { current.marketValidated } ?: return
+        val canonicalKey = canonicalKey(selection.key)
+        if (current.markets.any { canonicalKey(it.key) == canonicalKey }) return
+        update {
+            it.copy(
+                markets = it.markets + selection.copy(key = canonicalKey),
+                market = null,
+                marketValidated = false,
+                provider = "",
+                query = "",
+                providerSymbol = "",
+                saveError = false,
+            )
+        }
+    }
+
+    fun removeMarket(key: MarketKey) {
+        update {
+            it.copy(
+                markets = it.markets.filterNot { selection ->
+                    canonicalKey(selection.key) == canonicalKey(key)
+                },
+                saveError = false,
+            )
+        }
+    }
+
+    private fun canonicalKey(key: MarketKey): MarketKey =
+        runCatching {
+            MarketQuoteClient().canonicalKey(key.provider, key.providerSymbol)
+        }.getOrElse {
+            MarketKey(key.provider.trim().uppercase(), key.providerSymbol.trim())
+        }
 
     suspend fun save(): WidgetConfiguration? {
         val current = _state.value
@@ -195,33 +221,55 @@ internal class WidgetConfigurationViewModel(
         savedStateHandle[KEY_PROVIDER] = value.provider
         savedStateHandle[KEY_QUERY] = value.query
         savedStateHandle[KEY_PROVIDER_SYMBOL] = value.providerSymbol
+        savedStateHandle[KEY_MARKET_VALIDATED] = value.marketValidated
+        savedStateHandle[KEY_LOAD_ERROR] = value.loadError
         savedStateHandle[KEY_MARKET_PROVIDER] = value.market?.key?.provider
         savedStateHandle[KEY_MARKET_PROVIDER_SYMBOL] = value.market?.key?.providerSymbol
         savedStateHandle[KEY_MARKET_DISPLAY_NAME] = value.market?.displayName
         savedStateHandle[KEY_MARKET_SYMBOL] = value.market?.symbol
         savedStateHandle[KEY_MARKET_ASSET_TYPE] = value.market?.assetType
-        savedStateHandle[KEY_MARKET_VALIDATED] = value.marketValidated
-        savedStateHandle[KEY_LOAD_ERROR] = value.loadError
+        savedStateHandle[KEY_SELECTED_PROVIDERS] = ArrayList(value.markets.map { it.key.provider })
+        savedStateHandle[KEY_SELECTED_SYMBOLS] = ArrayList(value.markets.map { it.key.providerSymbol })
+        savedStateHandle[KEY_SELECTED_NAMES] = ArrayList(value.markets.map { it.displayName })
+        savedStateHandle[KEY_SELECTED_ASSET_SYMBOLS] = ArrayList(value.markets.map { it.symbol })
+        savedStateHandle[KEY_SELECTED_TYPES] = ArrayList(value.markets.map { it.assetType })
     }
 
     private fun readSavedState(): WidgetConfigurationUiState {
-        val provider = savedStateHandle.get<String>(KEY_MARKET_PROVIDER)
-        val providerSymbol = savedStateHandle.get<String>(KEY_MARKET_PROVIDER_SYMBOL)
+        val marketProvider = savedStateHandle.get<String>(KEY_MARKET_PROVIDER)
+        val marketProviderSymbol = savedStateHandle.get<String>(KEY_MARKET_PROVIDER_SYMBOL)
         val displayName = savedStateHandle.get<String>(KEY_MARKET_DISPLAY_NAME)
         val symbol = savedStateHandle.get<String>(KEY_MARKET_SYMBOL)
         val assetType = savedStateHandle.get<String>(KEY_MARKET_ASSET_TYPE)
         val market = if (
-            provider != null && providerSymbol != null && displayName != null &&
-            symbol != null && assetType != null
+            marketProvider != null && marketProviderSymbol != null &&
+            displayName != null && symbol != null && assetType != null
         ) {
             MarketSelection(
-                key = MarketKey(provider, providerSymbol),
+                key = MarketKey(marketProvider, marketProviderSymbol),
                 displayName = displayName,
                 symbol = symbol,
                 assetType = assetType,
             )
         } else {
             null
+        }
+        val providers = savedStateHandle.get<ArrayList<String>>(KEY_SELECTED_PROVIDERS).orEmpty()
+        val symbols = savedStateHandle.get<ArrayList<String>>(KEY_SELECTED_SYMBOLS).orEmpty()
+        val names = savedStateHandle.get<ArrayList<String>>(KEY_SELECTED_NAMES).orEmpty()
+        val assetSymbols = savedStateHandle.get<ArrayList<String>>(KEY_SELECTED_ASSET_SYMBOLS).orEmpty()
+        val types = savedStateHandle.get<ArrayList<String>>(KEY_SELECTED_TYPES).orEmpty()
+        val markets = providers.indices.mapNotNull { index ->
+            if (index >= symbols.size || index >= names.size || index >= assetSymbols.size || index >= types.size) {
+                null
+            } else {
+                MarketSelection(
+                    key = MarketKey(providers[index], symbols[index]),
+                    displayName = names[index],
+                    symbol = assetSymbols[index],
+                    assetType = types[index],
+                )
+            }
         }
 
         return WidgetConfigurationUiState(
@@ -231,12 +279,13 @@ internal class WidgetConfigurationViewModel(
             isLoading = savedStateHandle.get<Boolean>(KEY_INITIALIZED) != true,
             currency = savedStateHandle.get<String>(KEY_CURRENCY) ?: PortfolioCodes.IRT,
             hideTotal = savedStateHandle.get<Boolean>(KEY_HIDE_TOTAL) ?: false,
-            assetType = savedStateHandle.get<String>(KEY_ASSET_TYPE) ?: PortfolioCodes.CRYPTO,
+            markets = markets.ifEmpty { listOfNotNull(market) },
+            assetType = savedStateHandle.get<String>(KEY_ASSET_TYPE) ?: market?.assetType ?: PortfolioCodes.CRYPTO,
             provider = savedStateHandle.get<String>(KEY_PROVIDER).orEmpty(),
             query = savedStateHandle.get<String>(KEY_QUERY).orEmpty(),
             providerSymbol = savedStateHandle.get<String>(KEY_PROVIDER_SYMBOL).orEmpty(),
             market = market,
-            marketValidated = savedStateHandle.get<Boolean>(KEY_MARKET_VALIDATED) ?: false,
+            marketValidated = savedStateHandle.get<Boolean>(KEY_MARKET_VALIDATED) ?: (market != null),
             loadError = savedStateHandle.get<Boolean>(KEY_LOAD_ERROR) ?: false,
         )
     }
@@ -247,7 +296,7 @@ internal class WidgetConfigurationViewModel(
             kind = requireNotNull(kind),
             currency = currency,
             hideTotal = hideTotal,
-            market = if (kind == WidgetKind.ASSET_PRICE && marketValidated) market else null,
+            markets = if (kind == WidgetKind.ASSET_PRICE) markets else emptyList(),
             revision = 0,
         )
 
@@ -267,6 +316,11 @@ internal class WidgetConfigurationViewModel(
         const val KEY_MARKET_SYMBOL = "widget_configuration.market.symbol"
         const val KEY_MARKET_ASSET_TYPE = "widget_configuration.market.asset_type"
         const val KEY_MARKET_VALIDATED = "widget_configuration.market_validated"
+        const val KEY_SELECTED_PROVIDERS = "widget_configuration.selected.providers"
+        const val KEY_SELECTED_SYMBOLS = "widget_configuration.selected.symbols"
+        const val KEY_SELECTED_NAMES = "widget_configuration.selected.names"
+        const val KEY_SELECTED_ASSET_SYMBOLS = "widget_configuration.selected.asset_symbols"
+        const val KEY_SELECTED_TYPES = "widget_configuration.selected.asset_types"
         const val KEY_LOAD_ERROR = "widget_configuration.load_error"
     }
 }
