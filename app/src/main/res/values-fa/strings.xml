@@ -113,6 +113,17 @@
         <item quantity="one">%1$d دارایی منتظر قیمت است</item>
         <item quantity="other">%1$d دارایی منتظر قیمت هستند</item>
     </plurals>
+    <string name="widget_management_title">ابزارک‌ها</string>
+    <string name="widget_management_hint">ابزارک اضافه کنید یا ابزارک‌های صفحهٔ اصلی را مدیریت کنید.</string>
+    <string name="widget_add_price">افزودن ابزارک قیمت</string>
+    <string name="widget_add_portfolio">افزودن ابزارک پرتفوی</string>
+    <string name="widget_installed_title">در صفحهٔ اصلی</string>
+    <string name="widget_instance_label">ابزارک %1$d</string>
+    <string name="widget_configure_existing">تنظیم</string>
+    <string name="widget_not_configured">تنظیم این ابزارک کامل نشده است. برای انتخاب تنظیمات، آن را تنظیم کنید.</string>
+    <string name="widget_no_installed">هنوز ابزارکی از فولیو به صفحهٔ اصلی اضافه نشده است.</string>
+    <string name="widget_pin_unsupported">این لانچر افزودن ابزارک از داخل برنامه را پشتیبانی نمی‌کند. از فهرست ابزارک‌های صفحهٔ اصلی استفاده کنید.</string>
+    <string name="widget_management_error">بارگذاری ابزارک‌ها ممکن نیست. دوباره تلاش کنید.</string>
     <string name="widget_configure_portfolio_title">تنظیم ابزارک پرتفوی</string>
     <string name="widget_configure_price_title">تنظیم ابزارک قیمت دارایی</string>
     <string name="widget_config_loading">در حال بارگذاری تنظیمات ابزارک…</string>

@@ -184,6 +184,17 @@
         <item quantity="one">%1$d asset waiting for a price</item>
         <item quantity="other">%1$d assets waiting for a price</item>
     </plurals>
+    <string name="widget_management_title">Widgets</string>
+    <string name="widget_management_hint">Add a widget or manage the widgets on your home screen.</string>
+    <string name="widget_add_price">Add price widget</string>
+    <string name="widget_add_portfolio">Add portfolio widget</string>
+    <string name="widget_installed_title">On your home screen</string>
+    <string name="widget_instance_label">Widget %1$d</string>
+    <string name="widget_configure_existing">Configure</string>
+    <string name="widget_not_configured">Setup is not complete. Configure this widget to choose its settings.</string>
+    <string name="widget_no_installed">No Folio widgets are on your home screen yet.</string>
+    <string name="widget_pin_unsupported">This launcher can’t add widgets from the app. Add one from the home screen’s widget picker.</string>
+    <string name="widget_management_error">Couldn’t load your widgets. Try again.</string>
     <string name="widget_configure_portfolio_title">Configure portfolio widget</string>
     <string name="widget_configure_price_title">Configure asset price widget</string>
     <string name="widget_config_loading">Loading widget settings…</string>

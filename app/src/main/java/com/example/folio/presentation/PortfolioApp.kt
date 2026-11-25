@@ -82,6 +82,8 @@ import com.example.folio.presentation.components.MarketProviderIdentifierField
 import com.example.folio.presentation.components.ProviderDropdown
 import com.example.folio.presentation.design.*
 import com.example.folio.presentation.icons.FolioIcons
+import com.example.folio.presentation.widget.WidgetManagementScreen
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -231,6 +233,7 @@ fun PortfolioApp(
         "tags" -> stringResource(R.string.tags)
         "locations" -> stringResource(R.string.locations)
         "appearance-language" -> stringResource(R.string.appearance_language)
+        "widgets" -> stringResource(R.string.widget_management_title)
         "asset/new" -> stringResource(R.string.nav_assets)
         "asset/{id}" -> stringResource(R.string.asset_details)
         "asset/edit/{id}" -> stringResource(R.string.nav_assets)
@@ -306,9 +309,18 @@ fun PortfolioApp(
                 }
                 composable("settings") {
                     Settings(
+                        widgetManagement = { navigationController.navigate("widgets") },
                         appearanceLanguage = { navigationController.navigate("appearance-language") },
                         tags = { navigationController.navigate("tags") },
                         locations = { navigationController.navigate("locations") },
+                    )
+                }
+                composable("widgets") {
+                    val widgetMessageScope = rememberCoroutineScope()
+                    WidgetManagementScreen(
+                        onMessage = { message ->
+                            widgetMessageScope.launch { snackbarHost.showSnackbar(message) }
+                        },
                     )
                 }
                 composable("appearance-language") {
@@ -2939,11 +2951,22 @@ private fun TransactionForm(
 @Composable private fun PriceForm(vm:MainViewModel,id:Long,done:()->Unit){val isSaving by vm.isSaving.collectAsStateWithLifecycle();var price by rememberSaveable(id){mutableStateOf("")};var currency by rememberSaveable(id){mutableStateOf(PortfolioCodes.IRT)};var error by rememberSaveable(id){mutableStateOf("")};val invalidPrice=stringResource(R.string.error_price_invalid);FormPage(stringResource(R.string.update_price),error,enabled=!isSaving,done={if(price.toBigDecimalOrNull()==null)error=invalidPrice else vm.savePrice(id,price,currency,{error=it}){done()}}){Field(stringResource(R.string.price),price){price=it};Choice(stringResource(R.string.currency),currency,listOf(PortfolioCodes.IRT,PortfolioCodes.USD,PortfolioCodes.USDT)){currency=it};Tiny(stringResource(R.string.price_snapshot_hint))}}
 @Composable
 private fun Settings(
+    widgetManagement: () -> Unit,
     appearanceLanguage: () -> Unit,
     tags: () -> Unit,
     locations: () -> Unit,
 ) {
     Page(stringResource(R.string.nav_more), subtitle = null, showHeading = false) {
+        PanelCard(Modifier.fillMaxWidth()) {
+            FolioListRow(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = widgetManagement,
+            ) {
+                Text(stringResource(R.string.widget_management_title), fontWeight = FontWeight.Bold)
+                Tiny(stringResource(R.string.widget_management_hint))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
         PanelCard(Modifier.fillMaxWidth()) {
             FolioListRow(
                 modifier = Modifier.fillMaxWidth(),
