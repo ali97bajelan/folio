@@ -116,6 +116,7 @@ internal fun widgetQuoteForAttempt(
             lastSuccessAt = completedAt,
             lastAttemptAt = attemptedAt,
             status = QuoteStatus.AVAILABLE,
+            changePercent = quote.changePercent,
         )
     } else {
         WidgetQuote(

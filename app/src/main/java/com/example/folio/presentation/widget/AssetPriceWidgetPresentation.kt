@@ -26,6 +26,7 @@ internal data class AssetPriceWidgetPresentation(
     val isUpdating: Boolean,
     val refreshFailed: Boolean,
     val unsupported: Boolean,
+    val changePercent: BigDecimal?,
 )
 
 internal fun isCurrentAssetPriceConfiguration(
@@ -65,6 +66,7 @@ internal fun presentAssetPriceQuote(
         isUpdating = isUpdating,
         refreshFailed = quote?.status == QuoteStatus.FAILED,
         unsupported = unsupported,
+        changePercent = successfulQuote?.changePercent,
     )
 }
 

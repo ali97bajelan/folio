@@ -269,6 +269,7 @@ private fun AssetPriceWidgetBody(
             row = row,
             presentation = presentation,
             quoteAge = formatAssetPriceQuoteAge(context, presentation.quoteAt, now),
+            changeText = formatAssetPriceChange(context, presentation.changePercent),
         )
     }
     val sharedQuoteAt = displayRows.mapNotNull { it.presentation.quoteAt }.maxOrNull()
@@ -328,6 +329,7 @@ private data class AssetPriceWidgetDisplayRow(
     val row: AssetPriceWidgetRow,
     val presentation: AssetPriceWidgetPresentation,
     val quoteAge: String?,
+    val changeText: String?,
 )
 
 @Composable
@@ -362,7 +364,8 @@ private fun AssetPriceQuoteRow(
     ).filterNotNull().filter(String::isNotBlank).joinToString(" · ")
     val narrow = LocalSize.current.width < 180.dp
     val longAmount = narrow && priceText.length >= 15
-    val rowDescription = listOf(title, amount ?: priceText, metadata)
+    val rowDescription = listOf(title, amount ?: priceText, displayRow.changeText, metadata)
+        .filterNotNull()
         .filter(String::isNotBlank)
         .joinToString(". ")
 
@@ -397,12 +400,30 @@ private fun AssetPriceQuoteRow(
                     color = GlanceTheme.colors.onSurface,
                     fontSize = when {
                         longAmount -> 13.sp
+                        compact && displayRow.changeText != null -> 16.sp
                         compact -> 18.sp
+                        displayRow.changeText != null -> 21.sp
                         else -> 24.sp
                     },
                     fontWeight = FontWeight.Bold,
                 ),
             )
+            if (displayRow.changeText != null) {
+                val change = presentation.changePercent ?: java.math.BigDecimal.ZERO
+                Text(
+                    text = displayRow.changeText,
+                    maxLines = 1,
+                    style = TextStyle(
+                        color = when {
+                            change.signum() > 0 -> LocalFolioWidgetSemanticColors.current.gain
+                            change.signum() < 0 -> LocalFolioWidgetSemanticColors.current.loss
+                            else -> GlanceTheme.colors.onSurfaceVariant
+                        },
+                        fontSize = if (compact) 10.sp else 11.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                )
+            }
             if (metadata.isNotBlank()) {
                 Text(
                     text = metadata,
@@ -421,6 +442,19 @@ private fun AssetPriceQuoteRow(
             }
         }
     }
+}
+
+private fun formatAssetPriceChange(context: Context, change: java.math.BigDecimal?): String? {
+    if (change == null) return null
+    val formatter = java.text.NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
+    val sign = if (change.signum() > 0) "+" else ""
+    return context.getString(
+        R.string.widget_asset_price_change_percent,
+        "$sign${formatter.format(change)}",
+    )
 }
 
 private fun assetPriceQuoteStatus(

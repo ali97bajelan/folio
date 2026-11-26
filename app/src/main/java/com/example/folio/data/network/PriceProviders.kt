@@ -12,6 +12,7 @@ data class PriceResult(
     val provider: String,
     val providerSymbol: String,
     val fetchedAt: Instant = Instant.now(),
+    val changePercent: BigDecimal? = null,
 )
 
 sealed class PricingException(message: String) : Exception(message) {
@@ -23,8 +24,11 @@ sealed class PricingException(message: String) : Exception(message) {
 object ProviderParsers {
     fun nobitex(symbol: String, body: String): PriceResult {
         val (base, quote) = marketParts(symbol)
-        val rawPrice = JSONObject(body).optJSONObject("stats")?.optJSONObject("$base-$quote")?.optString("latest")
+        val market = JSONObject(body).optJSONObject("stats")?.optJSONObject("$base-$quote")
             ?: throw PricingException.Invalid("Nobitex returned an unexpected market response.")
+        val rawPrice = market.optString("latest")
+            .takeIf(String::isNotBlank)
+            ?: throw PricingException.Invalid("Nobitex returned an invalid latest price.")
         val price = validPrice(rawPrice, "Nobitex")
         val isRial = quote == "rls"
         return PriceResult(
@@ -32,6 +36,7 @@ object ProviderParsers {
             currency = if (isRial) PortfolioCodes.IRT else quote.uppercase(),
             provider = PortfolioCodes.NOBITEX,
             providerSymbol = symbol.uppercase(),
+            changePercent = market.optString("dayChange").toBigDecimalOrNull(),
         )
     }
 

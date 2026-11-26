@@ -231,6 +231,7 @@
     <string name="widget_asset_price_unsupported">Market unavailable · Configure to change</string>
     <string name="widget_asset_price_stale">Stale</string>
     <string name="widget_asset_price_quote_age">Quote time · %1$s</string>
+    <string name="widget_asset_price_change_percent">24h · %1$s%%</string>
     <string name="widget_asset_price_refresh">Refresh market quote</string>
     <string name="widget_asset_price_configure">Configure asset price widget</string>
     <string name="widget_asset_price_preview_title">Sample quote</string>

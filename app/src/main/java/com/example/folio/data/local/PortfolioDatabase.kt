@@ -212,7 +212,19 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
-@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class, WidgetConfigurationEntity::class, WidgetMarketSelectionEntity::class, WidgetQuoteEntity::class], version = 5, exportSchema = true)
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE widget_quote ADD COLUMN previous_price TEXT")
+    }
+}
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE widget_quote ADD COLUMN change_percent TEXT")
+    }
+}
+
+@Database(entities = [TagEntity::class, LocationEntity::class, AssetEntity::class, AssetTagCrossRef::class, TransactionEntity::class, AssetPriceEntity::class, AssetValuationEntity::class, PortfolioSnapshotEntity::class, ProviderRefreshEntity::class, WidgetConfigurationEntity::class, WidgetMarketSelectionEntity::class, WidgetQuoteEntity::class], version = 7, exportSchema = true)
 @TypeConverters(DbConverters::class)
 abstract class PortfolioDatabase : RoomDatabase() {
     abstract fun dao(): PortfolioDao

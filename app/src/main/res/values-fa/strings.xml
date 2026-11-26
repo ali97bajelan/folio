@@ -160,6 +160,7 @@
     <string name="widget_asset_price_unsupported">بازار در دسترس نیست · برای تغییر تنظیم کنید</string>
     <string name="widget_asset_price_stale">قدیمی</string>
     <string name="widget_asset_price_quote_age">زمان قیمت · %1$s</string>
+    <string name="widget_asset_price_change_percent">۲۴س · %1$s%%</string>
     <string name="widget_asset_price_refresh">تازه‌سازی قیمت بازار</string>
     <string name="widget_asset_price_configure">تنظیم ابزارک قیمت دارایی</string>
     <string name="widget_asset_price_preview_title">قیمت نمونه</string>

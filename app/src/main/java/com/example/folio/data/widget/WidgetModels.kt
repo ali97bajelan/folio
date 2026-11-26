@@ -65,6 +65,8 @@ data class WidgetQuote(
     val lastAttemptAt: Instant?,
     val status: QuoteStatus,
     val lastError: String? = null,
+    val previousPrice: BigDecimal? = null,
+    val changePercent: BigDecimal? = null,
 )
 
 data class WidgetPortfolioSnapshot(
@@ -151,7 +153,11 @@ internal fun mergeWidgetQuote(previous: WidgetQuote?, incoming: WidgetQuote): Wi
         val incomingSuccess = requireNotNull(incoming.lastSuccessAt)
         val previousSuccess = previous?.lastSuccessAt
         if (previousSuccess != null && incomingSuccess.isBefore(previousSuccess)) return null
-        return incoming.copy(lastError = null)
+        return incoming.copy(
+            lastError = null,
+            previousPrice = incoming.previousPrice,
+            changePercent = incoming.changePercent,
+        )
     }
 
     return incoming.copy(
@@ -160,5 +166,7 @@ internal fun mergeWidgetQuote(previous: WidgetQuote?, incoming: WidgetQuote): Wi
         quoteAt = previous?.quoteAt,
         lastSuccessAt = previous?.lastSuccessAt,
         lastError = incoming.lastError ?: incoming.status.name,
+        previousPrice = previous?.previousPrice,
+        changePercent = previous?.changePercent,
     )
 }

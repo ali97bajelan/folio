@@ -76,6 +76,8 @@ data class WidgetQuoteEntity(
     @ColumnInfo(name = "last_attempt_at") val lastAttemptAt: Instant?,
     val status: String,
     @ColumnInfo(name = "last_error") val lastError: String?,
+    @ColumnInfo(name = "previous_price") val previousPrice: BigDecimal? = null,
+    @ColumnInfo(name = "change_percent") val changePercent: BigDecimal? = null,
 )
 
 @Dao
@@ -291,6 +293,8 @@ internal fun WidgetQuoteEntity.toModel(): WidgetQuote =
         lastAttemptAt = lastAttemptAt,
         status = QuoteStatus.valueOf(status),
         lastError = lastError,
+        previousPrice = previousPrice,
+        changePercent = changePercent,
     )
 
 internal fun WidgetQuote.toEntity(): WidgetQuoteEntity =
@@ -304,4 +308,6 @@ internal fun WidgetQuote.toEntity(): WidgetQuoteEntity =
         lastAttemptAt = lastAttemptAt,
         status = status.name,
         lastError = lastError,
+        previousPrice = previousPrice,
+        changePercent = changePercent,
     )
