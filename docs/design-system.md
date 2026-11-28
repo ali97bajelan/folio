@@ -1,84 +1,48 @@
 # Folio design system
 
-Folio follows the Android system light or dark setting with brand-authored Material 3 colors. The app and Glance widgets share the same semantic palette. There is no separate in-app theme setting.
+Folio uses one light and dark palette across the Compose app, Glance widgets, Android theme resources, and widget picker previews. Compose and Glance keep native UI components; both draw from the shared tokens in `FolioTokens.kt`.
+
+The app supports Dark, Light, and System appearance. The selected appearance is also applied to both widgets through `FolioWidgetTheme`.
 
 ## Color roles
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| Background | `#F5F7FB` | `#0B1020` |
-| Surface | `#FFFFFF` | `#131B2B` |
-| Raised surface | `#EEF2F9` | `#172137` |
-| Main text | `#172033` | `#F4F6FC` |
-| Muted text | `#4B5B73` | `#B9C4D6` |
-| Border | `#D4DCE8` | `#2C3950` |
-| Primary | `#315FC8` | `#668FFC` |
-| Gain | `#087F5D` | `#76D8B0` |
-| Loss | `#B42336` | `#F47783` |
-| Warning | `#885D00` | `#FFC857` |
-| Disabled | `#929BAD` | `#788297` |
+| Background and surface | `#F7F8FA` / `#FFFFFF` | `#051424` |
+| Surface variant | `#F0F2F5` | `#122131` |
+| Main text | `#171C25` | `#D4E4FA` |
+| Muted text | `#555D67` | `#D8C3AD` |
+| Primary | `#855300` | `#FFC174` |
+| Secondary | `#006B4F` | `#4EDEA3` |
+| Gain / container | `#006B4F` / `#D8F3E8` | `#4EDEA3` / `#123F38` |
+| Loss / container | `#B3261E` / `#F9E1E4` | `#FFB4AB` / `#4B2634` |
+| Warning / container | `#855300` / `#FFEAC2` | `#FFC174` / `#44371F` |
+| Border | `#E3DAD0` | `#273647` |
+| Disabled | `#79716A` | `#A08E7A` |
 
-The eight allocation series colors are shared by Compose charts and widgets: aqua `#76D8B0`, blue `#668FFC`, yellow `#FFC857`, red `#F47783`, purple `#8B7CF6`, cyan `#5BC0EB`, orange `#E28F63`, and teal `#5FADB7`.
+The eight allocation colors are shared between charts, widgets, and previews: `#4EDEA3`, `#FFC174`, `#C7C8FF`, `#D8C3AD`, `#5BC0EB`, `#E28F63`, `#5FADB7`, and `#9B8CFF`.
 
 ## Dimensions and type
 
 | Token group | Values |
 | --- | --- |
-| Spacing | 4, 8, 12, 16, 24, 32 dp |
-| Icon sizes | 16, 20, 24 dp |
-| Corner radii | 8, 12, 16 dp, and pill |
+| Compose spacing | 4, 8, 12, 16, 24, 32 dp |
+| Compose icon sizes | 16, 20, 24 dp |
+| Compose corner radii | 8, 12, 16 dp, and pill |
 | Surface elevation | 0, 1, 3 dp |
-| Interactive targets | At least 48 dp |
+| Minimum interactive target | 48 dp |
 | Motion | Short 150 ms; medium 250 ms |
-| Typography | Material 3 `Typography` roles |
+| Compose typography | Material 3 `Typography` roles |
+| Glance typography and widget geometry | Named roles in `FolioWidgetTokens` |
 
-## Compose usage
+Widget-specific roles cover action targets and icons, card and row corners, compact and expanded text sizes, row spacing, and allocation bars. Width and height breakpoints remain in each widget layout because they describe responsive behavior rather than a reusable visual style.
 
-Place screens inside `FolioTheme`; it selects the light or dark color scheme from the system setting:
+## Compose
 
-```kotlin
-@Composable
-fun ExampleScreen() {
-    FolioTheme {
-        FolioPage(title = stringResource(R.string.assets)) {
-            FolioCard {
-                FolioFinancialValue(
-                    value = "\$1,250.00 USD",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-        }
-    }
-}
-```
+`FolioTheme` maps the selected appearance to `FolioLightColorScheme` or `FolioDarkColorScheme`, `FolioTypography`, `FolioShapes`, and the matching semantic colors. Use `MaterialTheme` for component styling and `LocalFolioSemanticColors` for gain, loss, warning, disabled, border, and allocation roles.
 
-Use the shared field for labeled input and inline feedback:
+## Glance widgets
 
-```kotlin
-FolioField(
-    value = query,
-    onValueChange = onQueryChanged,
-    label = stringResource(R.string.market_search),
-    placeholder = stringResource(R.string.market_search_hint),
-    supportingText = validationMessage,
-    isError = hasValidationError,
-    singleLine = true,
-)
-```
+`FolioWidgetTheme` adapts the same color and semantic tokens to Glance `ColorProvider` values. Widget layouts use `FolioWidgetTokens` for native Glance dimensions and type sizes while preserving their responsive breakpoints and financial text formatting.
 
-`FolioFinancialValue` isolates Latin financial text for mixed RTL/LTR content by default. Use `isolateFinancialText(value)` when passing a financial or provider value to another text component. Keep number and currency formatting in the existing formatter.
-
-## Glance usage
-
-Wrap each widget layout with `FolioWidgetTheme`. It adapts both Material 3 schemes to day/night `ColorProvider` values while keeping the widget UI native to Glance:
-
-```kotlin
-FolioWidgetTheme {
-    Text(
-        text = amount,
-        style = TextStyle(color = GlanceTheme.colors.onSurface),
-    )
-}
-```
-
-Use `LocalFolioWidgetSemanticColors.current.allocationSeries` for allocation bars and `FolioWidgetSpacing` for shared widget content insets and 48 dp action targets. Keep widget-only compact thresholds and launcher sizing in the Glance layout.
+Android XML theme colors and widget picker previews mirror these roles in `values/colors.xml` and `values-night/colors.xml`; keep those resource palettes aligned when changing Folio tokens. Static picker previews use system light/dark resource qualifiers, while live widgets follow the app's selected appearance.

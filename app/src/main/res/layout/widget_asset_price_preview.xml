@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 android:maxLines="1"
                 android:text="@string/widget_market_watch_title"
-                android:textColor="#FFF7F8FC"
+                android:textColor="@color/folio_on_surface"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
@@ -46,7 +46,7 @@
                 android:layout_height="wrap_content"
                 android:maxLines="1"
                 android:text="@string/widget_market_watch_preview_updated"
-                android:textColor="#FF9AA9BC"
+                android:textColor="@color/folio_on_surface_variant"
                 android:textSize="8sp" />
         </LinearLayout>
 
@@ -56,7 +56,7 @@
             android:contentDescription="@null"
             android:padding="2dp"
             android:src="@drawable/widget_refresh"
-            app:tint="#FF4EDEA3" />
+            app:tint="@color/folio_gain" />
 
         <ImageView
             android:layout_width="20dp"
@@ -72,7 +72,7 @@
         android:layout_height="1dp"
         android:layout_marginTop="5dp"
         android:layout_marginBottom="6dp"
-        android:background="#FF273647" />
+        android:background="@color/folio_border" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -94,7 +94,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:text="@string/widget_market_watch_preview_badge"
-                android:textColor="#FFFFC174"
+                android:textColor="@color/folio_warning"
                 android:textSize="13sp"
                 android:textStyle="bold" />
         </FrameLayout>
@@ -114,7 +114,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="@string/widget_asset_price_preview_instrument"
-                android:textColor="#FFF7F8FC"
+                android:textColor="@color/folio_on_surface"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -123,7 +123,7 @@
                 android:layout_height="wrap_content"
                 android:maxLines="1"
                 android:text="@string/widget_asset_price_preview_provider"
-                android:textColor="#FFB1BDCE"
+                android:textColor="@color/folio_on_surface_variant"
                 android:textSize="8sp" />
 
             <TextView
@@ -131,7 +131,7 @@
                 android:layout_height="wrap_content"
                 android:maxLines="1"
                 android:text="@string/widget_market_watch_preview_cached"
-                android:textColor="#FFFFC174"
+                android:textColor="@color/folio_warning"
                 android:textSize="7sp" />
         </LinearLayout>
 
@@ -147,7 +147,7 @@
                 android:gravity="end"
                 android:maxLines="1"
                 android:text="@string/widget_asset_price_preview_price"
-                android:textColor="#FFF7F8FC"
+                android:textColor="@color/folio_on_surface"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -161,7 +161,7 @@
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
                 android:text="@string/widget_market_watch_preview_change"
-                android:textColor="#FF4EDEA3"
+                android:textColor="@color/folio_gain"
                 android:textSize="8sp"
                 android:textStyle="bold" />
         </LinearLayout>

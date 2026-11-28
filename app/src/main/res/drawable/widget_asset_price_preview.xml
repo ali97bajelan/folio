@@ -5,38 +5,38 @@
     android:viewportWidth="160"
     android:viewportHeight="160">
     <path
-        android:fillColor="#FF101A26"
-        android:pathData="M24,2h112a22,22 0,0 1,22 22v112a22,22 0,0 1,-22 22H24A22,22 0,0 1,2 136V24A22,22 0,0 1,24 2z" />
+        android:fillColor="@color/folio_surface"
+        android:pathData="M30,2h100a28,28 0,0 1,28 28v100a28,28 0,0 1,-28 28H30A28,28 0,0 1,2 130V30A28,28 0,0 1,30 2z" />
     <path android:fillColor="#FF0A0F18" android:pathData="M26,10h18a8,8 0,0 1,8 8v8a8,8 0,0 1,-8 8H26a8,8 0,0 1,-8 -8v-8a8,8 0,0 1,8 -8z" />
     <path android:fillColor="#FFF7B72B" android:pathData="M25,18l5,-6l7,2l-5,7z M23,20l5,-3l6,3l-5,4z" />
     <path android:fillColor="#FF13C5A3" android:pathData="M38,15l7,-5l5,8l-7,5z" />
     <path android:fillColor="#FFFFB91F" android:pathData="M37,17a4,4 0,1 1,-8 0a4,4 0,1 1,8 0z" />
     <path android:fillColor="#FF1269E8" android:pathData="M23,19h19a4,4 0,0 1,4 4v5a4,4 0,0 1,-4 4H25a5,5 0,0 1,-5 -5v-4a4,4 0,0 1,3 -4z" />
     <path android:fillColor="#FF42A5FF" android:pathData="M40,23a2,2 0,1 1,0 4a2,2 0,1 1,0 -4z" />
-    <path android:fillColor="#FFF7F8FC" android:pathData="M57,14h53v4H57z" />
-    <path android:fillColor="#FF91A0B4" android:pathData="M57,22h38v3H57z" />
-    <path android:fillColor="#FF123F38" android:pathData="M122,12a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z" />
-    <path android:fillColor="#FF263348" android:pathData="M143,12a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z" />
-    <path android:fillColor="#FF273647" android:pathData="M10,34h140v1H10z" />
+    <path android:fillColor="@color/folio_on_surface" android:pathData="M57,14h53v4H57z" />
+    <path android:fillColor="@color/folio_on_surface_variant" android:pathData="M57,22h38v3H57z" />
+    <path android:fillColor="@color/folio_gain_container" android:pathData="M122,12a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z" />
+    <path android:fillColor="@color/folio_surface_variant" android:pathData="M143,12a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z" />
+    <path android:fillColor="@color/folio_border" android:pathData="M10,34h140v1H10z" />
 
-    <path android:fillColor="#FF1A2838" android:pathData="M18,38h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 60V48a10,10 0,0 1,10 -10z" />
-    <path android:fillColor="#FF263C5B" android:pathData="M17,44h20v20H17z" />
-    <path android:fillColor="#FFFFC174" android:pathData="M45,44h37v3H45z M45,50h30v2H45z M45,56h40v2H45z" />
-    <path android:fillColor="#FFF7F8FC" android:pathData="M99,44h43v4H99z" />
-    <path android:fillColor="#FF123F38" android:pathData="M120,54h26v9h-26z" />
-    <path android:fillColor="#FF4EDEA3" android:pathData="M124,57h18v3h-18z" />
+    <path android:fillColor="@color/folio_surface_variant" android:pathData="M18,38h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 60V48a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="@color/folio_tertiary_container" android:pathData="M17,44h20v20H17z" />
+    <path android:fillColor="@color/folio_primary" android:pathData="M45,44h37v3H45z M45,50h30v2H45z M45,56h40v2H45z" />
+    <path android:fillColor="@color/folio_on_surface" android:pathData="M99,44h43v4H99z" />
+    <path android:fillColor="@color/folio_gain_container" android:pathData="M120,54h26v9h-26z" />
+    <path android:fillColor="@color/folio_gain" android:pathData="M124,57h18v3h-18z" />
 
-    <path android:fillColor="#FF1A2838" android:pathData="M18,74h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 96V84a10,10 0,0 1,10 -10z" />
-    <path android:fillColor="#FF16413C" android:pathData="M17,80h20v20H17z" />
-    <path android:fillColor="#FFFFC174" android:pathData="M45,80h35v3H45z M45,86h27v2H45z M45,92h39v2H45z" />
-    <path android:fillColor="#FFF7F8FC" android:pathData="M101,80h41v4h-41z" />
-    <path android:fillColor="#FF123F38" android:pathData="M120,90h26v9h-26z" />
-    <path android:fillColor="#FF4EDEA3" android:pathData="M124,93h18v3h-18z" />
+    <path android:fillColor="@color/folio_surface_variant" android:pathData="M18,74h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 96V84a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="@color/folio_gain_container" android:pathData="M17,80h20v20H17z" />
+    <path android:fillColor="@color/folio_primary" android:pathData="M45,80h35v3H45z M45,86h27v2H45z M45,92h39v2H45z" />
+    <path android:fillColor="@color/folio_on_surface" android:pathData="M101,80h41v4h-41z" />
+    <path android:fillColor="@color/folio_gain_container" android:pathData="M120,90h26v9h-26z" />
+    <path android:fillColor="@color/folio_gain" android:pathData="M124,93h18v3h-18z" />
 
-    <path android:fillColor="#FF1A2838" android:pathData="M18,110h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 132v-12a10,10 0,0 1,10 -10z" />
-    <path android:fillColor="#FF49371F" android:pathData="M17,116h20v20H17z" />
-    <path android:fillColor="#FFFFC174" android:pathData="M45,116h39v3H45z M45,122h30v2H45z M45,128h34v2H45z" />
-    <path android:fillColor="#FFF7F8FC" android:pathData="M102,116h40v4h-40z" />
-    <path android:fillColor="#FF4B2634" android:pathData="M120,126h26v9h-26z" />
-    <path android:fillColor="#FFFF7383" android:pathData="M124,129h18v3h-18z" />
+    <path android:fillColor="@color/folio_surface_variant" android:pathData="M18,110h124a10,10 0,0 1,10 10v12a10,10 0,0 1,-10 10H18A10,10 0,0 1,8 132v-12a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="@color/folio_warning_container" android:pathData="M17,116h20v20H17z" />
+    <path android:fillColor="@color/folio_primary" android:pathData="M45,116h39v3H45z M45,122h30v2H45z M45,128h34v2H45z" />
+    <path android:fillColor="@color/folio_on_surface" android:pathData="M102,116h40v4h-40z" />
+    <path android:fillColor="@color/folio_loss_container" android:pathData="M120,126h26v9h-26z" />
+    <path android:fillColor="@color/folio_loss" android:pathData="M124,129h18v3h-18z" />
 </vector>

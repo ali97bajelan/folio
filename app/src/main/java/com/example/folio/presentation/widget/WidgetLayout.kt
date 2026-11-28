@@ -8,8 +8,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.example.folio.presentation.design.FolioSpacing
+import com.example.folio.presentation.design.FolioWidgetTokens
 import com.example.folio.presentation.design.isolateFinancialText
-import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -169,9 +169,9 @@ internal fun PortfolioWidgetLayout(
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
         FolioWidgetTheme(theme = ThemePreferences(context).current()) {
             Scaffold(
-                modifier = GlanceModifier.fillMaxSize(),
+                modifier = GlanceModifier.fillMaxSize().cornerRadius(FolioWidgetTokens.Shape.widgetCard),
                 backgroundColor = GlanceTheme.colors.surface,
-                horizontalPadding = FolioWidgetSpacing.contentHorizontal,
+                horizontalPadding = FolioWidgetTokens.Spacing.contentHorizontal,
                 titleBar = {
                     WidgetHeader(title = title.takeIf { size.width >= 224.dp || configuration == null }) {
                         PortfolioWidgetActionButtons(context, appWidgetId, configuration)
@@ -228,6 +228,7 @@ private fun PortfolioWidgetActionButtons(
         icon = R.drawable.widget_refresh,
         description = context.getString(R.string.widget_portfolio_refresh),
         action = refreshWidgetAction(appWidgetId),
+        highlighted = true,
     )
     WidgetActionButton(
         icon = R.drawable.widget_configure,
@@ -245,8 +246,8 @@ internal fun WidgetHeader(
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(FolioWidgetSpacing.actionTarget)
-            .padding(horizontal = 8.dp),
+            .height(FolioWidgetTokens.Size.actionTarget)
+            .padding(horizontal = FolioSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (title == null && subtitle == null) {
@@ -259,7 +260,7 @@ internal fun WidgetHeader(
                         maxLines = 1,
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 13.sp,
+                            fontSize = FolioWidgetTokens.Type.title,
                             fontWeight = FontWeight.Medium,
                         ),
                     )
@@ -270,7 +271,7 @@ internal fun WidgetHeader(
                         maxLines = 1,
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 9.sp,
+                            fontSize = FolioWidgetTokens.Type.caption,
                         ),
                     )
                 }
@@ -285,26 +286,30 @@ internal fun WidgetActionButton(
     icon: Int,
     description: String,
     action: Action,
+    highlighted: Boolean = false,
 ) {
+    val (gain, _, _, gainContainer) = LocalFolioWidgetSemanticColors.current
+    val backgroundColor = if (highlighted) gainContainer else GlanceTheme.colors.surfaceVariant
+    val iconColor = if (highlighted) gain else GlanceTheme.colors.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
         modifier = GlanceModifier
-            .size(FolioWidgetSpacing.actionTarget)
+            .size(FolioWidgetTokens.Size.actionTarget)
             .semantics { contentDescription = description }
             .clickable(action),
     ) {
         Box(
             modifier = GlanceModifier
-                .size(32.dp)
-                .background(GlanceTheme.colors.secondaryContainer)
-                .cornerRadius(16.dp),
+                .size(FolioWidgetTokens.Size.actionButton)
+                .background(backgroundColor)
+                .cornerRadius(FolioWidgetTokens.Shape.actionButton),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 provider = ImageProvider(icon),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer),
-                modifier = GlanceModifier.size(18.dp),
+                colorFilter = ColorFilter.tint(iconColor),
+                modifier = GlanceModifier.size(FolioWidgetTokens.Size.actionIcon),
             )
         }
     }
@@ -333,14 +338,14 @@ private fun PortfolioWidgetBody(
                     text = context.getString(R.string.widget_portfolio_setup),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
-                        fontSize = 15.sp,
+                        fontSize = FolioWidgetTokens.Type.heading,
                         fontWeight = FontWeight.Bold,
                     ),
                 )
                 Spacer(GlanceModifier.height(FolioSpacing.extraSmall))
                 Text(
                     text = context.getString(R.string.widget_portfolio_setup_hint),
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = FolioWidgetTokens.Type.bodyLarge),
                 )
             }
         }
@@ -353,7 +358,7 @@ private fun PortfolioWidgetBody(
             ) {
                 Text(
                     text = context.getString(R.string.widget_portfolio_load_error),
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = FolioWidgetTokens.Type.bodyLarge),
                 )
             }
         }
@@ -388,7 +393,7 @@ private fun PortfolioWidgetBody(
                         text = totalLabel,
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 12.sp,
+                            fontSize = FolioWidgetTokens.Type.bodyLarge,
                         ),
                     )
                 }
@@ -401,10 +406,10 @@ private fun PortfolioWidgetBody(
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
                         fontSize = when {
-                            !compact -> 32.sp
-                            showTotalLabel -> 28.sp
-                            total.text.length >= 17 -> 17.sp
-                            else -> 22.sp
+                            !compact -> FolioWidgetTokens.Type.totalLarge
+                            showTotalLabel -> FolioWidgetTokens.Type.totalMedium
+                            total.text.length >= 17 -> FolioWidgetTokens.Type.compactTotalLong
+                            else -> FolioWidgetTokens.Type.totalCompact
                         },
                         fontWeight = FontWeight.Bold,
                     ),
@@ -419,11 +424,15 @@ private fun PortfolioWidgetBody(
                         style = TextStyle(
                             color = if (status != null) LocalFolioWidgetSemanticColors.current.warning
                             else GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = if (compact) 10.sp else 11.sp,
+                            fontSize = if (compact) FolioWidgetTokens.Type.small else FolioWidgetTokens.Type.body,
                         ),
                     )
                 }
-                Spacer(GlanceModifier.height(if (compact) 2.dp else 8.dp))
+                Spacer(
+                    GlanceModifier.height(
+                        if (compact) FolioWidgetTokens.Spacing.tiny else FolioSpacing.small,
+                    ),
+                )
 
                 if (rows.isNotEmpty()) {
                     rows.forEachIndexed { index, row ->
@@ -451,7 +460,8 @@ private fun PortfolioAllocationRow(
     val label = if (row.assetType == otherLabel) otherLabel
     else portfolioWidgetAssetTypeLabel(context, row.assetType)
     val percentage = formatPortfolioWidgetPercentage(row.percentage)
-    val barWidth = if (compact) 32.dp else 72.dp
+    val barWidth = if (compact) FolioWidgetTokens.Size.allocationBarCompact
+    else FolioWidgetTokens.Size.allocationBarExpanded
     val roomy = !compact && LocalSize.current.height >= 284.dp
     val fillFraction = (row.percentage.toFloat() / 100f).coerceIn(0f, 1f)
     val fillWidth = max(1f, barWidth.value * fillFraction).coerceAtMost(barWidth.value).dp
@@ -461,7 +471,10 @@ private fun PortfolioAllocationRow(
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(if (roomy) 20.dp else 14.dp)
+            .height(
+                if (roomy) FolioWidgetTokens.Size.allocationRowExpanded
+                else FolioWidgetTokens.Size.allocationRowCompact,
+            )
             .semantics {
                 contentDescription = context.getString(
                     R.string.widget_portfolio_allocation_description,
@@ -473,36 +486,39 @@ private fun PortfolioAllocationRow(
     ) {
         Text(
             text = label,
-            modifier = GlanceModifier.defaultWeight().padding(end = 4.dp),
+            modifier = GlanceModifier.defaultWeight().padding(end = FolioWidgetTokens.Spacing.allocationLabelGap),
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = if (roomy) 12.sp else 10.sp,
+                fontSize = if (roomy) FolioWidgetTokens.Type.bodyLarge else FolioWidgetTokens.Type.small,
             ),
         )
         Box(
             modifier = GlanceModifier
                 .width(barWidth)
-                .height(5.dp)
-                .background(GlanceTheme.colors.secondaryContainer)
-                .cornerRadius(3.dp),
+                .height(FolioWidgetTokens.Size.allocationBarHeight)
+                .background(LocalFolioWidgetSemanticColors.current.border)
+                .cornerRadius(FolioWidgetTokens.Shape.allocationBar),
         ) {
             Box(
                 modifier = GlanceModifier
                     .width(fillWidth)
-                    .height(5.dp)
+                    .height(FolioWidgetTokens.Size.allocationBarHeight)
                     .background(color)
-                    .cornerRadius(3.dp),
+                    .cornerRadius(FolioWidgetTokens.Shape.allocationBar),
             ) {}
         }
-        Spacer(modifier = GlanceModifier.width(4.dp))
+        Spacer(modifier = GlanceModifier.width(FolioWidgetTokens.Spacing.allocationValueGap))
         Text(
             text = percentage,
-            modifier = GlanceModifier.width(if (compact) 44.dp else 58.dp),
+            modifier = GlanceModifier.width(
+                if (compact) FolioWidgetTokens.Size.allocationValueCompact
+                else FolioWidgetTokens.Size.allocationValueExpanded,
+            ),
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
-                fontSize = if (roomy) 12.sp else 10.sp,
+                fontSize = if (roomy) FolioWidgetTokens.Type.bodyLarge else FolioWidgetTokens.Type.small,
                 textAlign = TextAlign.End,
             ),
         )

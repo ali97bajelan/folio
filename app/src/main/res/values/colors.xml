@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="folio_system_background">#F5F7FB</color>
-    <color name="folio_system_foreground">#172033</color>
-    <color name="folio_primary">#315FC8</color>
-    <color name="folio_primary_variant">#214A9F</color>
+    <color name="folio_system_background">#F7F8FA</color>
+    <color name="folio_system_foreground">#171C25</color>
+    <color name="folio_primary">#855300</color>
+    <color name="folio_primary_variant">#FFDDB8</color>
     <color name="folio_on_primary">#FFFFFFFF</color>
-    <color name="folio_secondary">#087F5D</color>
+    <color name="folio_primary_container">#FFDDB8</color>
+    <color name="folio_on_primary_container">#2A1700</color>
+    <color name="folio_secondary">#006B4F</color>
     <color name="folio_on_secondary">#FFFFFFFF</color>
-    <color name="folio_disabled">#929BAD</color>
+    <color name="folio_secondary_container">#B5F1D5</color>
+    <color name="folio_on_secondary_container">#002113</color>
+    <color name="folio_tertiary_container">#DEDEFF</color>
+    <color name="folio_on_tertiary_container">#17174F</color>
+    <color name="folio_surface">#FFFFFFFF</color>
+    <color name="folio_surface_variant">#F0F2F5</color>
+    <color name="folio_on_surface">#171C25</color>
+    <color name="folio_on_surface_variant">#555D67</color>
+    <color name="folio_border">#E3DAD0</color>
+    <color name="folio_gain">#006B4F</color>
+    <color name="folio_gain_container">#D8F3E8</color>
+    <color name="folio_loss">#B3261E</color>
+    <color name="folio_loss_container">#F9E1E4</color>
+    <color name="folio_warning">#855300</color>
+    <color name="folio_warning_container">#FFEAC2</color>
+    <color name="folio_disabled">#79716A</color>
+    <color name="folio_allocation_1">#4EDEA3</color>
+    <color name="folio_allocation_2">#FFC174</color>
+    <color name="folio_allocation_3">#C7C8FF</color>
+    <color name="folio_allocation_4">#D8C3AD</color>
+    <color name="folio_allocation_5">#5BC0EB</color>
+    <color name="folio_allocation_6">#E28F63</color>
+    <color name="folio_allocation_7">#5FADB7</color>
+    <color name="folio_allocation_8">#9B8CFF</color>
 </resources>

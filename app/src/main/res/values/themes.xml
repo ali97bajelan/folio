@@ -5,7 +5,7 @@
         <item name="colorPrimaryVariant">@color/folio_primary_variant</item>
         <item name="colorOnPrimary">@color/folio_on_primary</item>
         <item name="colorSecondary">@color/folio_secondary</item>
-        <item name="colorSecondaryVariant">@color/folio_secondary</item>
+        <item name="colorSecondaryVariant">@color/folio_secondary_container</item>
         <item name="colorOnSecondary">@color/folio_on_secondary</item>
         <item name="colorAccent">@color/folio_primary</item>
         <item name="android:colorAccent">@color/folio_primary</item>

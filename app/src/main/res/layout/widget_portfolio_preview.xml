@@ -14,7 +14,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_portfolio_name"
-            android:textColor="#FFB1BDCE"
+            android:textColor="@color/folio_on_surface_variant"
             android:textSize="13sp" />
 
     <TextView
@@ -23,7 +23,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_portfolio_preview_total"
-            android:textColor="#FFF7F8FC"
+            android:textColor="@color/folio_on_surface"
             android:textSize="22sp"
             android:layout_marginTop="4dp"
             android:layout_marginBottom="6dp"
@@ -41,7 +41,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/type_crypto"
-            android:textColor="#FFF7F8FC"
+            android:textColor="@color/folio_on_surface"
             android:textSize="11sp"
             android:layout_weight="1" />
 
@@ -53,12 +53,12 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="58"
-                android:background="#FF76D8B0" />
+                android:background="@color/folio_allocation_1" />
             <View
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="42"
-                android:background="#FF2B384D" />
+                android:background="@color/folio_border" />
         </LinearLayout>
 
         <TextView
@@ -67,7 +67,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_portfolio_preview_share_crypto"
-            android:textColor="#FFB1BDCE"
+            android:textColor="@color/folio_on_surface_variant"
             android:textSize="11sp"
             android:gravity="end" />
     </LinearLayout>
@@ -84,7 +84,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/type_gold"
-            android:textColor="#FFF7F8FC"
+            android:textColor="@color/folio_on_surface"
             android:textSize="11sp"
             android:layout_weight="1" />
 
@@ -96,12 +96,12 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="27"
-                android:background="#FF668FFC" />
+                android:background="@color/folio_allocation_2" />
             <View
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="73"
-                android:background="#FF2B384D" />
+                android:background="@color/folio_border" />
         </LinearLayout>
 
         <TextView
@@ -110,7 +110,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_portfolio_preview_share_gold"
-            android:textColor="#FFB1BDCE"
+            android:textColor="@color/folio_on_surface_variant"
             android:textSize="11sp"
             android:gravity="end" />
     </LinearLayout>
@@ -127,7 +127,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/type_usd"
-            android:textColor="#FFF7F8FC"
+            android:textColor="@color/folio_on_surface"
             android:textSize="11sp"
             android:layout_weight="1" />
 
@@ -139,12 +139,12 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="15"
-                android:background="#FFFFC857" />
+                android:background="@color/folio_allocation_3" />
             <View
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="85"
-                android:background="#FF2B384D" />
+                android:background="@color/folio_border" />
         </LinearLayout>
 
         <TextView
@@ -153,7 +153,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/widget_portfolio_preview_share_usd"
-            android:textColor="#FFB1BDCE"
+            android:textColor="@color/folio_on_surface_variant"
             android:textSize="11sp"
             android:gravity="end" />
     </LinearLayout>

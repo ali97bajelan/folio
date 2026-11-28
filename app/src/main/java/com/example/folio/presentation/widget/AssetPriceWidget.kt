@@ -12,7 +12,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -59,6 +58,8 @@ import com.example.folio.data.widget.WidgetConfiguration
 import com.example.folio.data.widget.WidgetKind
 import com.example.folio.data.widget.WidgetQuote
 import com.example.folio.presentation.ThemePreferences
+import com.example.folio.presentation.design.FolioSpacing
+import com.example.folio.presentation.design.FolioWidgetTokens
 import com.example.folio.presentation.design.isolateFinancialText
 import java.time.Duration
 import java.time.Instant
@@ -83,7 +84,7 @@ internal fun calculateAssetPriceViewport(
 ): AssetPriceViewport {
     if (rowCount <= 0) return AssetPriceViewport(visibleRows = 0, heightDp = 0)
     val fixedHeaderHeight = if (compact) 68f else 72f
-    val verticalInsets = if (compact) 8f else FolioWidgetSpacing.compactContentVertical.value
+    val verticalInsets = if (compact) 8f else FolioWidgetTokens.Spacing.compactContentVertical.value
     val availableHeight = (widgetHeightDp - fixedHeaderHeight - verticalInsets)
         .coerceAtLeast(ASSET_PRICE_ROW_HEIGHT_DP.toFloat())
     val fittingRows = (availableHeight / ASSET_PRICE_ROW_HEIGHT_DP).toInt().coerceAtLeast(1)
@@ -101,7 +102,7 @@ internal fun calculateAssetPriceRowHeight(
 ): Int {
     if (rowCount <= 1) return ASSET_PRICE_ROW_HEIGHT_DP
     val fixedHeaderHeight = if (compact) 68f else 72f
-    val verticalInsets = if (compact) 8f else FolioWidgetSpacing.compactContentVertical.value
+    val verticalInsets = if (compact) 8f else FolioWidgetTokens.Spacing.compactContentVertical.value
     val availableHeight = (widgetHeightDp - fixedHeaderHeight - verticalInsets)
         .coerceAtLeast(ASSET_PRICE_ROW_HEIGHT_DP.toFloat())
     return (availableHeight / rowCount)
@@ -178,9 +179,9 @@ internal fun AssetPriceWidgetLayout(
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
         FolioWidgetTheme(theme = ThemePreferences(context).current()) {
             Scaffold(
-                modifier = GlanceModifier.fillMaxSize().cornerRadius(28.dp),
+                modifier = GlanceModifier.fillMaxSize().cornerRadius(FolioWidgetTokens.Shape.widgetCard),
                 backgroundColor = GlanceTheme.colors.surface,
-                horizontalPadding = 12.dp,
+                horizontalPadding = FolioSpacing.medium,
                 titleBar = {
                     MarketWatchHeader(
                         context = context,
@@ -220,33 +221,37 @@ private fun MarketWatchHeader(
         Column(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 4.dp else 8.dp, bottom = 10.dp),
+                .padding(
+                    top = if (compact) FolioWidgetTokens.Spacing.headerCompactTop
+                    else FolioWidgetTokens.Spacing.headerExpandedTop,
+                    bottom = FolioWidgetTokens.Spacing.headerBottom,
+                ),
         ) {
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Spacer(modifier = GlanceModifier.width(8.dp))
+                Spacer(modifier = GlanceModifier.width(FolioSpacing.small))
                 Box(
                     modifier = GlanceModifier
-                        .size(FolioWidgetSpacing.actionTarget)
+                        .size(FolioWidgetTokens.Size.actionTarget)
                         .clickable(openDashboard),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     Image(
                         provider = ImageProvider(R.mipmap.ic_launcher),
                         contentDescription = context.getString(R.string.nav_dashboard),
-                        modifier = GlanceModifier.size(40.dp),
+                        modifier = GlanceModifier.size(FolioWidgetTokens.Size.dashboardIcon),
                     )
                 }
-                Spacer(modifier = GlanceModifier.width(2.dp))
+                Spacer(modifier = GlanceModifier.width(FolioWidgetTokens.Spacing.tiny))
                 Column(modifier = GlanceModifier.defaultWeight()) {
                     Text(
                         text = title,
                         maxLines = 1,
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurface,
-                            fontSize = if (compact) 12.sp else 14.sp,
+                            fontSize = if (compact) FolioWidgetTokens.Type.bodyLarge else FolioWidgetTokens.Type.titleLarge,
                             fontWeight = FontWeight.Bold,
                         ),
                     )
@@ -256,12 +261,12 @@ private fun MarketWatchHeader(
                             maxLines = 1,
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = if (compact) 9.sp else 10.sp,
+                                fontSize = if (compact) FolioWidgetTokens.Type.caption else FolioWidgetTokens.Type.small,
                             ),
                         )
                     }
                 }
-                Spacer(modifier = GlanceModifier.width(4.dp))
+                Spacer(modifier = GlanceModifier.width(FolioSpacing.extraSmall))
                 MarketWatchActionButton(
                     icon = R.drawable.widget_refresh,
                     description = context.getString(R.string.widget_asset_price_refresh),
@@ -275,11 +280,11 @@ private fun MarketWatchHeader(
                     highlighted = false,
                 )
             }
-            Spacer(modifier = GlanceModifier.height(10.dp))
+            Spacer(modifier = GlanceModifier.height(FolioWidgetTokens.Spacing.headerDividerGap))
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(1.dp)
+                    .height(FolioWidgetTokens.Size.divider)
                     .background(LocalFolioWidgetSemanticColors.current.border),
             ) {}
         }
@@ -299,22 +304,22 @@ private fun MarketWatchActionButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = GlanceModifier
-            .size(FolioWidgetSpacing.actionTarget)
+            .size(FolioWidgetTokens.Size.actionTarget)
             .semantics { contentDescription = description }
             .clickable(action),
     ) {
         Box(
             modifier = GlanceModifier
-                .size(32.dp)
+                .size(FolioWidgetTokens.Size.actionButton)
                 .background(backgroundColor)
-                .cornerRadius(12.dp),
+                .cornerRadius(FolioWidgetTokens.Shape.actionButton),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 provider = ImageProvider(icon),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(iconColor),
-                modifier = GlanceModifier.size(18.dp),
+                modifier = GlanceModifier.size(FolioWidgetTokens.Size.actionIcon),
             )
         }
     }
@@ -337,7 +342,7 @@ private fun AssetPriceWidgetBody(
         Column(
             modifier = modifier
                 .clickable(configureAction)
-                .padding(vertical = 4.dp),
+                .padding(vertical = FolioSpacing.extraSmall),
         ) {
             Text(
                 text = context.getString(
@@ -346,14 +351,14 @@ private fun AssetPriceWidgetBody(
                 ),
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurface,
-                    fontSize = 14.sp,
+                    fontSize = FolioWidgetTokens.Type.titleLarge,
                     fontWeight = FontWeight.Bold,
                 ),
             )
             if (!loadFailed) {
                 Text(
                     text = context.getString(R.string.widget_asset_price_setup_hint),
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = FolioWidgetTokens.Type.body),
                 )
             }
         }
@@ -494,15 +499,18 @@ private fun AssetPriceQuoteRow(
     val cardModifier = GlanceModifier
         .fillMaxSize()
         .background(GlanceTheme.colors.surfaceVariant)
-        .cornerRadius(18.dp)
-        .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = 8.dp)
+        .cornerRadius(FolioWidgetTokens.Shape.marketWatchRow)
+        .padding(
+            horizontal = if (compact) FolioSpacing.small else FolioSpacing.medium,
+            vertical = FolioSpacing.small,
+        )
         .semantics { contentDescription = rowDescription }
 
     Box(
         modifier = GlanceModifier
             .fillMaxWidth()
             .height(rowHeightDp.dp)
-            .padding(bottom = 4.dp),
+            .padding(bottom = FolioSpacing.extraSmall),
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             if (wide) {
@@ -511,21 +519,21 @@ private fun AssetPriceQuoteRow(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     MarketWatchBadge(selection = selection, compact = false)
-                    Spacer(modifier = GlanceModifier.width(10.dp))
+                    Spacer(modifier = GlanceModifier.width(FolioWidgetTokens.Spacing.marketRowBadgeGap))
                     Column(modifier = GlanceModifier.defaultWeight()) {
                         MarketWatchIdentity(symbol, displayName, compact = false)
-                        Spacer(modifier = GlanceModifier.height(4.dp))
+                        Spacer(modifier = GlanceModifier.height(FolioSpacing.extraSmall))
                         MarketWatchProviderState(
                             provider = provider,
                             stateText = stateText,
                             highlighted = stateText != null,
                         )
                     }
-                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Spacer(modifier = GlanceModifier.width(FolioSpacing.small))
                     Column(horizontalAlignment = Alignment.End) {
                         MarketWatchPrice(priceValue, currency, compact = false)
                         displayRow.changeText?.let { changeText ->
-                            Spacer(modifier = GlanceModifier.height(4.dp))
+                            Spacer(modifier = GlanceModifier.height(FolioSpacing.extraSmall))
                             MarketWatchChangeChip(
                                 text = changeText,
                                 change = presentation.changePercent,
@@ -540,12 +548,12 @@ private fun AssetPriceQuoteRow(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     MarketWatchBadge(selection = selection, compact = true)
-                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Spacer(modifier = GlanceModifier.width(FolioSpacing.small))
                     Column(modifier = GlanceModifier.defaultWeight()) {
                         MarketWatchIdentity(symbol, displayName, compact = true)
-                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        Spacer(modifier = GlanceModifier.height(FolioWidgetTokens.Spacing.tiny))
                         MarketWatchPrice(priceValue, currency, compact = true)
-                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        Spacer(modifier = GlanceModifier.height(FolioWidgetTokens.Spacing.tiny))
                         Row(
                             modifier = GlanceModifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -557,11 +565,11 @@ private fun AssetPriceQuoteRow(
                                 style = TextStyle(
                                     color = if (isWarning) LocalFolioWidgetSemanticColors.current.warning
                                     else GlanceTheme.colors.onSurfaceVariant,
-                                    fontSize = 10.sp,
+                                    fontSize = FolioWidgetTokens.Type.small,
                                 ),
                             )
                             displayRow.changeText?.let { changeText ->
-                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                Spacer(modifier = GlanceModifier.width(FolioWidgetTokens.Spacing.stateHorizontal))
                                 MarketWatchChangeChip(
                                     text = changeText,
                                     change = presentation.changePercent,
@@ -619,16 +627,16 @@ private fun MarketWatchBadge(
     }
     Box(
         modifier = GlanceModifier
-            .size(if (compact) 30.dp else 36.dp)
+            .size(if (compact) FolioWidgetTokens.Size.badgeCompact else FolioWidgetTokens.Size.badgeExpanded)
             .background(backgroundColor)
-            .cornerRadius(if (compact) 10.dp else 12.dp),
+            .cornerRadius(if (compact) FolioWidgetTokens.Shape.badgeCompact else FolioWidgetTokens.Shape.badgeExpanded),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = glyph,
             style = TextStyle(
                 color = foregroundColor,
-                fontSize = if (compact) 14.sp else 17.sp,
+                fontSize = if (compact) FolioWidgetTokens.Type.titleLarge else FolioWidgetTokens.Type.badge,
                 fontWeight = FontWeight.Bold,
             ),
         )
@@ -650,19 +658,19 @@ private fun MarketWatchIdentity(
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = if (compact) 12.sp else 14.sp,
+                fontSize = if (compact) FolioWidgetTokens.Type.bodyLarge else FolioWidgetTokens.Type.titleLarge,
                 fontWeight = FontWeight.Medium,
             ),
         )
         displayName?.let { name ->
-            Spacer(modifier = GlanceModifier.width(6.dp))
+            Spacer(modifier = GlanceModifier.width(FolioWidgetTokens.Spacing.stateHorizontal))
             Text(
                 text = name,
                 modifier = GlanceModifier.defaultWeight(),
                 maxLines = 1,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = if (compact) 10.sp else 11.sp,
+                    fontSize = if (compact) FolioWidgetTokens.Type.small else FolioWidgetTokens.Type.body,
                 ),
             )
         }
@@ -685,19 +693,22 @@ private fun MarketWatchProviderState(
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
-                fontSize = 11.sp,
+                fontSize = FolioWidgetTokens.Type.body,
             ),
         )
         stateText?.let { text ->
-            Spacer(modifier = GlanceModifier.width(4.dp))
+            Spacer(modifier = GlanceModifier.width(FolioSpacing.extraSmall))
             Box(
                 modifier = GlanceModifier
                     .background(
                         if (highlighted) LocalFolioWidgetSemanticColors.current.warningContainer
                         else GlanceTheme.colors.surface,
                     )
-                    .cornerRadius(6.dp)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                    .cornerRadius(FolioWidgetTokens.Shape.stateChip)
+                    .padding(
+                        horizontal = FolioWidgetTokens.Spacing.stateHorizontal,
+                        vertical = FolioWidgetTokens.Spacing.stateVertical,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -706,7 +717,7 @@ private fun MarketWatchProviderState(
                     style = TextStyle(
                         color = if (highlighted) LocalFolioWidgetSemanticColors.current.warning
                         else GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 9.sp,
+                        fontSize = FolioWidgetTokens.Type.caption,
                         fontWeight = FontWeight.Medium,
                     ),
                 )
@@ -727,18 +738,18 @@ private fun MarketWatchPrice(
             maxLines = 1,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = if (compact) 16.sp else 19.sp,
+                fontSize = if (compact) FolioWidgetTokens.Type.priceCompact else FolioWidgetTokens.Type.price,
                 fontWeight = FontWeight.Bold,
             ),
         )
         currency?.let {
-            Spacer(modifier = GlanceModifier.width(4.dp))
+            Spacer(modifier = GlanceModifier.width(FolioSpacing.extraSmall))
             Text(
                 text = isolateFinancialText(it),
                 maxLines = 1,
                 style = TextStyle(
                     color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = if (compact) 9.sp else 10.sp,
+                    fontSize = if (compact) FolioWidgetTokens.Type.caption else FolioWidgetTokens.Type.small,
                     fontWeight = FontWeight.Medium,
                 ),
             )
@@ -767,8 +778,12 @@ private fun MarketWatchChangeChip(
     Box(
         modifier = GlanceModifier
             .background(backgroundColor)
-            .cornerRadius(7.dp)
-            .padding(horizontal = if (compact) 6.dp else 8.dp, vertical = 3.dp),
+            .cornerRadius(FolioWidgetTokens.Shape.changeChip)
+            .padding(
+                horizontal = if (compact) FolioWidgetTokens.Spacing.changeChipCompactHorizontal
+                else FolioWidgetTokens.Spacing.changeChipExpandedHorizontal,
+                vertical = FolioWidgetTokens.Spacing.changeChipVertical,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -776,7 +791,7 @@ private fun MarketWatchChangeChip(
             maxLines = 1,
             style = TextStyle(
                 color = foreground,
-                fontSize = if (compact) 10.sp else 11.sp,
+                fontSize = if (compact) FolioWidgetTokens.Type.small else FolioWidgetTokens.Type.body,
                 fontWeight = FontWeight.Bold,
             ),
         )

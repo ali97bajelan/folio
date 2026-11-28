@@ -3,19 +3,18 @@ package com.example.folio.presentation.widget
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.glance.GlanceComposable
 import androidx.glance.GlanceTheme
 import androidx.glance.material3.ColorProviders
 import androidx.glance.unit.ColorProvider
 import androidx.glance.color.ColorProvider as DayNightColorProvider
+import com.example.folio.presentation.AppTheme
 import com.example.folio.presentation.design.FolioDarkColorScheme
 import com.example.folio.presentation.design.FolioDarkSemanticColors
 import com.example.folio.presentation.design.FolioLightColorScheme
 import com.example.folio.presentation.design.FolioLightSemanticColors
-import com.example.folio.presentation.design.FolioMinimumTouchTarget
-import com.example.folio.presentation.design.FolioSpacing
-import androidx.compose.ui.graphics.Color
-import com.example.folio.presentation.AppTheme
+import com.example.folio.presentation.design.FolioSemanticColors
 
 internal data class FolioWidgetSemanticColors(
     val gain: ColorProvider,
@@ -33,6 +32,22 @@ internal val LocalFolioWidgetSemanticColors = compositionLocalOf<FolioWidgetSema
     error("Folio widget colors are only available inside FolioWidgetTheme.")
 }
 
+private fun fixedColorProvider(color: Color): ColorProvider =
+    DayNightColorProvider(day = color, night = color)
+
+private fun fixedWidgetSemanticColors(colors: FolioSemanticColors) =
+    FolioWidgetSemanticColors(
+        gain = fixedColorProvider(colors.gain),
+        loss = fixedColorProvider(colors.loss),
+        warning = fixedColorProvider(colors.warning),
+        gainContainer = fixedColorProvider(colors.gainContainer),
+        lossContainer = fixedColorProvider(colors.lossContainer),
+        warningContainer = fixedColorProvider(colors.warningContainer),
+        disabled = fixedColorProvider(colors.disabled),
+        border = fixedColorProvider(colors.border),
+        allocationSeries = colors.allocationSeries,
+    )
+
 private val folioGlanceSemanticColors = FolioWidgetSemanticColors(
     gain = DayNightColorProvider(
         day = FolioLightSemanticColors.gain,
@@ -47,16 +62,16 @@ private val folioGlanceSemanticColors = FolioWidgetSemanticColors(
         night = FolioDarkSemanticColors.warning,
     ),
     gainContainer = DayNightColorProvider(
-        day = Color(0xFFD8F3E8),
-        night = Color(0xFF123F38),
+        day = FolioLightSemanticColors.gainContainer,
+        night = FolioDarkSemanticColors.gainContainer,
     ),
     lossContainer = DayNightColorProvider(
-        day = Color(0xFFF9E1E4),
-        night = Color(0xFF4B2634),
+        day = FolioLightSemanticColors.lossContainer,
+        night = FolioDarkSemanticColors.lossContainer,
     ),
     warningContainer = DayNightColorProvider(
-        day = Color(0xFFFFEAC2),
-        night = Color(0xFF44371F),
+        day = FolioLightSemanticColors.warningContainer,
+        night = FolioDarkSemanticColors.warningContainer,
     ),
     disabled = DayNightColorProvider(
         day = FolioLightSemanticColors.disabled,
@@ -66,16 +81,13 @@ private val folioGlanceSemanticColors = FolioWidgetSemanticColors(
         day = FolioLightSemanticColors.border,
         night = FolioDarkSemanticColors.border,
     ),
-    allocationSeries = FolioDarkSemanticColors.allocationSeries,
+    allocationSeries = FolioLightSemanticColors.allocationSeries,
 )
 
 private val folioGlanceColorProviders = ColorProviders(
     light = FolioLightColorScheme,
     dark = FolioDarkColorScheme,
 )
-
-private fun fixedColorProvider(color: Color): ColorProvider =
-    DayNightColorProvider(day = color, night = color)
 
 private fun widgetColorProviders(theme: AppTheme) = when (theme) {
     AppTheme.DARK -> ColorProviders(light = FolioDarkColorScheme, dark = FolioDarkColorScheme)
@@ -85,28 +97,8 @@ private fun widgetColorProviders(theme: AppTheme) = when (theme) {
 
 private fun widgetSemanticColors(theme: AppTheme): FolioWidgetSemanticColors = when (theme) {
     AppTheme.SYSTEM -> folioGlanceSemanticColors
-    AppTheme.DARK -> FolioWidgetSemanticColors(
-        gain = fixedColorProvider(FolioDarkSemanticColors.gain),
-        loss = fixedColorProvider(FolioDarkSemanticColors.loss),
-        warning = fixedColorProvider(FolioDarkSemanticColors.warning),
-        gainContainer = fixedColorProvider(Color(0xFF123F38)),
-        lossContainer = fixedColorProvider(Color(0xFF4B2634)),
-        warningContainer = fixedColorProvider(Color(0xFF44371F)),
-        disabled = fixedColorProvider(FolioDarkSemanticColors.disabled),
-        border = fixedColorProvider(FolioDarkSemanticColors.border),
-        allocationSeries = FolioDarkSemanticColors.allocationSeries,
-    )
-    AppTheme.LIGHT -> FolioWidgetSemanticColors(
-        gain = fixedColorProvider(FolioLightSemanticColors.gain),
-        loss = fixedColorProvider(FolioLightSemanticColors.loss),
-        warning = fixedColorProvider(FolioLightSemanticColors.warning),
-        gainContainer = fixedColorProvider(Color(0xFFD8F3E8)),
-        lossContainer = fixedColorProvider(Color(0xFFF9E1E4)),
-        warningContainer = fixedColorProvider(Color(0xFFFFEAC2)),
-        disabled = fixedColorProvider(FolioLightSemanticColors.disabled),
-        border = fixedColorProvider(FolioLightSemanticColors.border),
-        allocationSeries = FolioLightSemanticColors.allocationSeries,
-    )
+    AppTheme.DARK -> fixedWidgetSemanticColors(FolioDarkSemanticColors)
+    AppTheme.LIGHT -> fixedWidgetSemanticColors(FolioLightSemanticColors)
 }
 
 @Composable
@@ -121,11 +113,4 @@ internal fun FolioWidgetTheme(
             content = content,
         )
     }
-}
-
-internal object FolioWidgetSpacing {
-    val contentHorizontal = FolioSpacing.small
-    val compactContentHorizontal = FolioSpacing.extraSmall
-    val compactContentVertical = FolioSpacing.extraSmall
-    val actionTarget = FolioMinimumTouchTarget
 }

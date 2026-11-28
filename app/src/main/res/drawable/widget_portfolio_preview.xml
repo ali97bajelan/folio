@@ -5,16 +5,16 @@
     android:viewportWidth="256"
     android:viewportHeight="140">
     <path
-        android:fillColor="#FF131B2B"
-        android:pathData="M16,0h224a16,16 0,0 1,16 16v108a16,16 0,0 1,-16 16H16A16,16 0,0 1,0 124V16A16,16 0,0 1,16 0z" />
-    <path android:fillColor="#FFF7F8FC" android:pathData="M18,17h105v6H18z" />
-    <path android:fillColor="#FF76D8B0" android:pathData="M18,37h125v17H18z" />
-    <path android:fillColor="#FF8F9CB1" android:pathData="M18,65h61v4H18z" />
-    <path android:fillColor="#FF76D8B0" android:pathData="M18,77h131v5H18z" />
-    <path android:fillColor="#FF668FFC" android:pathData="M149,77h61v5h-61z" />
-    <path android:fillColor="#FFFFC857" android:pathData="M18,90h61v5H18z" />
-    <path android:fillColor="#FF668FFC" android:pathData="M79,90h52v5H79z" />
-    <path android:fillColor="#FFFFC857" android:pathData="M18,103h61v5H18z" />
-    <path android:fillColor="#FFF47783" android:pathData="M79,103h35v5H79z" />
-    <path android:fillColor="#FF8F9CB1" android:pathData="M18,121h95v4H18z" />
+        android:fillColor="@color/folio_surface"
+        android:pathData="M28,0h200a28,28 0,0 1,28 28v84a28,28 0,0 1,-28 28H28A28,28 0,0 1,0 112V28A28,28 0,0 1,28 0z" />
+    <path android:fillColor="@color/folio_on_surface" android:pathData="M18,17h105v6H18z" />
+    <path android:fillColor="@color/folio_allocation_1" android:pathData="M18,37h125v17H18z" />
+    <path android:fillColor="@color/folio_on_surface_variant" android:pathData="M18,65h61v4H18z" />
+    <path android:fillColor="@color/folio_allocation_1" android:pathData="M18,77h131v5H18z" />
+    <path android:fillColor="@color/folio_allocation_2" android:pathData="M149,77h61v5h-61z" />
+    <path android:fillColor="@color/folio_allocation_3" android:pathData="M18,90h61v5H18z" />
+    <path android:fillColor="@color/folio_allocation_2" android:pathData="M79,90h52v5H79z" />
+    <path android:fillColor="@color/folio_allocation_3" android:pathData="M18,103h61v5H18z" />
+    <path android:fillColor="@color/folio_allocation_4" android:pathData="M79,103h35v5H79z" />
+    <path android:fillColor="@color/folio_on_surface_variant" android:pathData="M18,121h95v4H18z" />
 </vector>

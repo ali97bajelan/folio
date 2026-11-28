@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 val FolioDarkColorScheme: ColorScheme = darkColorScheme(
     primary = Color(0xFFFFC174),
@@ -21,6 +22,8 @@ val FolioDarkColorScheme: ColorScheme = darkColorScheme(
     onSecondaryContainer = Color(0xFF00311F),
     tertiary = Color(0xFFC7C8FF),
     onTertiary = Color(0xFF1000A9),
+    tertiaryContainer = Color(0xFF34365F),
+    onTertiaryContainer = Color(0xFFE1E1FF),
     background = Color(0xFF051424),
     onBackground = Color(0xFFD4E4FA),
     surface = Color(0xFF051424),
@@ -74,6 +77,9 @@ data class FolioSemanticColors(
     val gain: Color,
     val loss: Color,
     val warning: Color,
+    val gainContainer: Color,
+    val lossContainer: Color,
+    val warningContainer: Color,
     val disabled: Color,
     val border: Color,
     val allocationSeries: List<Color>,
@@ -94,6 +100,9 @@ val FolioDarkSemanticColors = FolioSemanticColors(
     gain = Color(0xFF4EDEA3),
     loss = Color(0xFFFFB4AB),
     warning = Color(0xFFFFC174),
+    gainContainer = Color(0xFF123F38),
+    lossContainer = Color(0xFF4B2634),
+    warningContainer = Color(0xFF44371F),
     disabled = Color(0xFFA08E7A),
     border = Color(0xFF273647),
     allocationSeries = FolioAllocationSeries,
@@ -103,6 +112,9 @@ val FolioLightSemanticColors = FolioSemanticColors(
     gain = Color(0xFF006B4F),
     loss = Color(0xFFB3261E),
     warning = Color(0xFF855300),
+    gainContainer = Color(0xFFD8F3E8),
+    lossContainer = Color(0xFFF9E1E4),
+    warningContainer = Color(0xFFFFEAC2),
     disabled = Color(0xFF79716A),
     border = Color(0xFFE3DAD0),
     allocationSeries = FolioAllocationSeries,
@@ -116,6 +128,71 @@ object FolioSpacing {
     val extraLarge = 24.dp
     val extraExtraLarge = 32.dp
     val all = listOf(extraSmall, small, medium, large, extraLarge, extraExtraLarge)
+}
+
+object FolioWidgetTokens {
+    object Spacing {
+        val contentHorizontal = FolioSpacing.small
+        val compactContentVertical = FolioSpacing.extraSmall
+        val tiny = 2.dp
+        val headerCompactTop = FolioSpacing.extraSmall
+        val headerExpandedTop = FolioSpacing.small
+        val headerBottom = 10.dp
+        val headerDividerGap = 10.dp
+        val marketRowBadgeGap = 10.dp
+        val stateHorizontal = 6.dp
+        val stateVertical = 2.dp
+        val changeChipCompactHorizontal = 6.dp
+        val changeChipExpandedHorizontal = FolioSpacing.small
+        val changeChipVertical = 3.dp
+        val allocationLabelGap = FolioSpacing.extraSmall
+        val allocationValueGap = FolioSpacing.extraSmall
+    }
+
+    object Size {
+        val actionTarget = FolioMinimumTouchTarget
+        val dashboardIcon = 40.dp
+        val actionButton = 32.dp
+        val actionIcon = 18.dp
+        val divider = 1.dp
+        val badgeCompact = 30.dp
+        val badgeExpanded = 36.dp
+        val allocationBarCompact = 32.dp
+        val allocationBarExpanded = 72.dp
+        val allocationBarHeight = 5.dp
+        val allocationRowCompact = 14.dp
+        val allocationRowExpanded = 20.dp
+        val allocationValueCompact = 44.dp
+        val allocationValueExpanded = 58.dp
+    }
+
+    object Shape {
+        val widgetCard = 28.dp
+        val marketWatchRow = 18.dp
+        val actionButton = 12.dp
+        val badgeCompact = 10.dp
+        val badgeExpanded = 12.dp
+        val stateChip = 6.dp
+        val changeChip = 7.dp
+        val allocationBar = 3.dp
+    }
+
+    object Type {
+        val caption = 9.sp
+        val small = 10.sp
+        val body = 11.sp
+        val bodyLarge = 12.sp
+        val title = 13.sp
+        val titleLarge = 14.sp
+        val heading = 15.sp
+        val priceCompact = 16.sp
+        val badge = 17.sp
+        val compactTotalLong = badge
+        val price = 19.sp
+        val totalCompact = 22.sp
+        val totalMedium = 28.sp
+        val totalLarge = 32.sp
+    }
 }
 
 object FolioIconSize {
