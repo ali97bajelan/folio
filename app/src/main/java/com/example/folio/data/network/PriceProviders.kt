@@ -85,12 +85,15 @@ object ProviderParsers {
         val trade = data.optJSONObject("last_trade") ?: JSONObject()
         val rawPrice = header.optString("real_close_price").ifBlank { trade.optString("close_price") }
         val timestamp = header.optString("end_date_time").ifBlank { trade.optString("end_date_time") }
+        val rawChangePercent = header.optString("real_close_price_change_percent").toBigDecimalOrNull()
+            ?: trade.optString("close_price_change_percent").toBigDecimalOrNull()
         return PriceResult(
             price = validPrice(rawPrice, "Rahavard").divide(BigDecimal.TEN),
             currency = PortfolioCodes.IRT,
             provider = PortfolioCodes.RAHAVARD,
             providerSymbol = symbol,
             fetchedAt = runCatching { OffsetDateTime.parse(timestamp).toInstant() }.getOrElse { Instant.now() },
+            changePercent = rawChangePercent?.multiply(BigDecimal("100")),
         )
     }
 
