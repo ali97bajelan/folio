@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -83,6 +84,7 @@ import com.example.folio.presentation.components.ProviderDropdown
 import com.example.folio.presentation.design.*
 import com.example.folio.presentation.icons.FolioIcons
 import com.example.folio.presentation.widget.WidgetManagementScreen
+import com.example.folio.presentation.widget.WidgetUpdateCoordinator
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -214,6 +216,8 @@ fun PortfolioApp(
     themePreferences: ThemePreferences,
 ) {
     var theme by remember { mutableStateOf(themePreferences.current()) }
+    val context = LocalContext.current
+    val widgetThemeUpdateScope = rememberCoroutineScope()
     val viewModel: MainViewModel = viewModel(factory = factory)
     val navigationController = rememberNavController()
     val snackbarHost = remember { SnackbarHostState() }
@@ -330,6 +334,9 @@ fun PortfolioApp(
                         onThemeSelected = { selected ->
                             theme = selected
                             themePreferences.set(selected)
+                            widgetThemeUpdateScope.launch {
+                                WidgetUpdateCoordinator.invalidateAll(context)
+                            }
                         },
                     )
                 }

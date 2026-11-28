@@ -48,6 +48,7 @@ import com.example.folio.data.widget.compactWidgetTypeValues
 import com.example.folio.data.widget.widgetAllocationPercentages
 import com.example.folio.presentation.AppLanguage
 import com.example.folio.presentation.LanguagePreferences
+import com.example.folio.presentation.ThemePreferences
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -166,7 +167,7 @@ internal fun PortfolioWidgetLayout(
     val openDashboard = actionStartActivity<MainActivity>()
 
     CompositionLocalProvider(LocalLayoutDirection provides direction) {
-        FolioWidgetTheme {
+        FolioWidgetTheme(theme = ThemePreferences(context).current()) {
             Scaffold(
                 modifier = GlanceModifier.fillMaxSize(),
                 backgroundColor = GlanceTheme.colors.surface,
